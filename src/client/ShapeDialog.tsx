@@ -73,6 +73,8 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [roots, setRoots] = useState<Snapshot['roots']>()
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<ShapeInfo | null>(null)
+  const [viewLoading, setViewLoading] = useState(false)
+  const [viewError, setViewError] = useState('')
   const windowRef = useRef<HTMLElement>(null)
   const viewRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
@@ -95,13 +97,54 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
     }
   }, [])
 
+  const openView = useCallback(async (shape: ShapeInfo): Promise<void> => {
+    setSelected(shape)
+    setViewError('')
+    if (shape.views.length === 0) {
+      setViewLoading(false)
+      return
+    }
+    setViewLoading(true)
+    try {
+      const response = await fetch(`/dsh-shape/view/${encodeURIComponent(shape.id)}/`, { cache: 'no-store' })
+      if (!response.ok) {
+        let message = `Host 返回 HTTP ${String(response.status)}。`
+        if (response.status === 404) {
+          const payload = await response.json().catch(() => null) as { error?: { message?: unknown } } | null
+          message = payload?.error?.message === 'unknown dsh-shape route'
+            ? 'Host 视图路由未加载（HTTP 404）。请重启 DSH 后重试。'
+            : '这个 shape 没有可打开的 views/index.html。'
+        }
+        throw new Error(message)
+      }
+      if (!(response.headers.get('content-type') ?? '').includes('text/html')) {
+        throw new Error('Host 返回的不是 HTML 页面。')
+      }
+      setViewError('')
+    } catch (cause) {
+      setViewError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setViewLoading(false)
+    }
+  }, [])
+
+  const closeView = useCallback((): void => {
+    setSelected(null)
+    setViewError('')
+    setViewLoading(false)
+  }, [])
+
   useEffect(() => {
     if (!open) return
     void load(false)
   }, [load, open])
 
   useEffect(() => {
-    if (!open) setSelected(null)
+    if (!open) {
+      setSelected(null)
+      setViewError('')
+      setViewLoading(false)
+    }
   }, [open])
 
   useEffect(() => {
@@ -119,7 +162,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
       if (event.key !== 'Escape') return
       event.preventDefault()
       if (selectedRef.current !== null) {
-        setSelected(null)
+        closeView()
         return
       }
       onCloseRef.current()
@@ -130,7 +173,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
       document.body.style.overflow = previousOverflow
       previous?.focus()
     }
-  }, [open])
+  }, [closeView, open])
 
   if (!open) return null
 
@@ -233,7 +276,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
                     data-shape-id={shape.id}
                     aria-haspopup="dialog"
                     aria-label={`打开 ${shape.title}`}
-                    onClick={() => { setSelected(shape) }}
+                    onClick={() => { void openView(shape) }}
                   >
                     <div className={css.cardHead}>
                       <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>
@@ -275,7 +318,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
         <div
           className={css.viewBackdrop}
           role="presentation"
-          onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null) }}
+          onMouseDown={(event) => { if (event.target === event.currentTarget) closeView() }}
         >
           <section
             ref={viewRef}
@@ -304,25 +347,39 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
                 aria-label="关闭"
                 title="关闭"
                 data-testid="dsh-shape-view-close"
-                onClick={() => { setSelected(null) }}
+                onClick={closeView}
               >
                 <IconCloseOutlineRegular />
               </button>
             </header>
             <div className={css.viewBody}>
-              {selected.views.length > 0 ? (
+              {selected.views.length === 0 ? (
+                <div className={css.placeholder}>
+                  <span className={css.placeholderMark} aria-hidden="true">◇</span>
+                  <strong>这个 shape 没有 views/ 界面</strong>
+                  <span>在 shape 目录下添加 `views/index.html` 后再试。</span>
+                </div>
+              ) : viewLoading ? (
+                <div className={css.placeholder}>
+                  <span className={css.placeholderMark} aria-hidden="true">…</span>
+                  <span>正在打开界面…</span>
+                </div>
+              ) : viewError !== '' ? (
+                <div className={css.placeholder} data-testid="dsh-shape-view-error">
+                  <span className={css.placeholderMark} aria-hidden="true">!</span>
+                  <strong>无法打开 shape 界面</strong>
+                  <span className={css.placeholderMessage}>{viewError}</span>
+                  <Button variant="outline" size="sm" onClick={() => { void openView(selected) }}>
+                    重试
+                  </Button>
+                </div>
+              ) : (
                 <iframe
                   className={css.viewFrame}
                   title={selected.title}
                   src={`/dsh-shape/view/${encodeURIComponent(selected.id)}/`}
                   sandbox="allow-scripts allow-forms allow-modals allow-popups"
                 />
-              ) : (
-                <div className={css.placeholder}>
-                  <span className={css.placeholderMark} aria-hidden="true">◇</span>
-                  <strong>这个 shape 没有 views/ 界面</strong>
-                  <span>在 shape 目录下添加 `views/index.html` 后再试。</span>
-                </div>
               )}
             </div>
             <footer className={css.footer}>

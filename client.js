@@ -9,7 +9,7 @@ window.__ModuleLoader__.load({
 		let react_dom = require("react-dom");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		//#region \0dsh-css:E:\Project\dsh-shape\packages\experimental\dsh-shape-build\src\client\shape-dialog.module.css.mjs
-		const css = ".g_Pq1W_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_window:focus{outline:none}.g_Pq1W_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.g_Pq1W_heading{align-items:center;gap:12px;min-width:0;display:flex}.g_Pq1W_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.g_Pq1W_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.g_Pq1W_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.g_Pq1W_headingText{min-width:0}.g_Pq1W_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.g_Pq1W_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.g_Pq1W_actions{flex:none;gap:4px;display:flex}.g_Pq1W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.g_Pq1W_iconButton>svg{width:16px;height:16px}@media (hover:hover){.g_Pq1W_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.g_Pq1W_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.g_Pq1W_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_content{flex:1;min-height:0;padding:22px;overflow:auto}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.g_Pq1W_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s;display:flex}@media (hover:hover){.g_Pq1W_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}}.g_Pq1W_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_cardHead{align-items:flex-start;gap:10px;min-width:0;display:flex}.g_Pq1W_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.g_Pq1W_cardIdentity{flex:1;min-width:0}.g_Pq1W_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.g_Pq1W_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.g_Pq1W_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.g_Pq1W_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;display:flex}.g_Pq1W_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.g_Pq1W_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.g_Pq1W_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.g_Pq1W_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.g_Pq1W_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite g_Pq1W_shimmer}.g_Pq1W_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_viewWindow:focus{outline:none}.g_Pq1W_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.g_Pq1W_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.g_Pq1W_viewHeadingText{min-width:0}.g_Pq1W_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.g_Pq1W_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.g_Pq1W_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.g_Pq1W_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.g_Pq1W_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.g_Pq1W_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.g_Pq1W_footerCount{flex:none}@keyframes g_Pq1W_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes g_Pq1W_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes g_Pq1W_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.g_Pq1W_backdrop{padding:8px}.g_Pq1W_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_header{padding:14px 16px}.g_Pq1W_content{padding:14px}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.g_Pq1W_card{min-height:176px;padding:12px}.g_Pq1W_subtitle{display:none}.g_Pq1W_footer{padding:8px 16px}.g_Pq1W_viewBackdrop{padding:8px}.g_Pq1W_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_viewHeader{padding:12px 14px}.g_Pq1W_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.g_Pq1W_backdrop,.g_Pq1W_window,.g_Pq1W_skeletonCard{animation:none}.g_Pq1W_card{transition:none}}";
+		const css = ".g_Pq1W_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_window:focus{outline:none}.g_Pq1W_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.g_Pq1W_heading{align-items:center;gap:12px;min-width:0;display:flex}.g_Pq1W_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.g_Pq1W_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.g_Pq1W_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.g_Pq1W_headingText{min-width:0}.g_Pq1W_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.g_Pq1W_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.g_Pq1W_actions{flex:none;gap:4px;display:flex}.g_Pq1W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.g_Pq1W_iconButton>svg{width:16px;height:16px}@media (hover:hover){.g_Pq1W_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.g_Pq1W_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.g_Pq1W_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_content{flex:1;min-height:0;padding:22px;overflow:auto}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.g_Pq1W_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s;display:flex}@media (hover:hover){.g_Pq1W_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}}.g_Pq1W_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_cardHead{align-items:flex-start;gap:10px;min-width:0;display:flex}.g_Pq1W_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.g_Pq1W_cardIdentity{flex:1;min-width:0}.g_Pq1W_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.g_Pq1W_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.g_Pq1W_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.g_Pq1W_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;display:flex}.g_Pq1W_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.g_Pq1W_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.g_Pq1W_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.g_Pq1W_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.g_Pq1W_placeholderMessage{max-width:540px;line-height:1.5}.g_Pq1W_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite g_Pq1W_shimmer}.g_Pq1W_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_viewWindow:focus{outline:none}.g_Pq1W_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.g_Pq1W_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.g_Pq1W_viewHeadingText{min-width:0}.g_Pq1W_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.g_Pq1W_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.g_Pq1W_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.g_Pq1W_viewBody .g_Pq1W_placeholder{flex:1;width:100%}.g_Pq1W_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.g_Pq1W_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.g_Pq1W_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.g_Pq1W_footerCount{flex:none}@keyframes g_Pq1W_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes g_Pq1W_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes g_Pq1W_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.g_Pq1W_backdrop{padding:8px}.g_Pq1W_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_header{padding:14px 16px}.g_Pq1W_content{padding:14px}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.g_Pq1W_card{min-height:176px;padding:12px}.g_Pq1W_subtitle{display:none}.g_Pq1W_footer{padding:8px 16px}.g_Pq1W_viewBackdrop{padding:8px}.g_Pq1W_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_viewHeader{padding:12px 14px}.g_Pq1W_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.g_Pq1W_backdrop,.g_Pq1W_window,.g_Pq1W_skeletonCard{animation:none}.g_Pq1W_card{transition:none}}";
 		const tagId = "dsh-shape/shape-dialog.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -46,6 +46,7 @@ window.__ModuleLoader__.load({
 			"origin": "g_Pq1W_origin",
 			"placeholder": "g_Pq1W_placeholder",
 			"placeholderMark": "g_Pq1W_placeholderMark",
+			"placeholderMessage": "g_Pq1W_placeholderMessage",
 			"placeholderPath": "g_Pq1W_placeholderPath",
 			"shimmer": "g_Pq1W_shimmer",
 			"skeletonCard": "g_Pq1W_skeletonCard",
@@ -105,6 +106,8 @@ window.__ModuleLoader__.load({
 			const [roots, setRoots] = (0, react.useState)();
 			const [error, setError] = (0, react.useState)("");
 			const [selected, setSelected] = (0, react.useState)(null);
+			const [viewLoading, setViewLoading] = (0, react.useState)(false);
+			const [viewError, setViewError] = (0, react.useState)("");
 			const windowRef = (0, react.useRef)(null);
 			const viewRef = (0, react.useRef)(null);
 			const onCloseRef = (0, react.useRef)(onClose);
@@ -125,12 +128,44 @@ window.__ModuleLoader__.load({
 					setStatus("error");
 				}
 			}, []);
+			const openView = (0, react.useCallback)(async (shape) => {
+				setSelected(shape);
+				setViewError("");
+				if (shape.views.length === 0) {
+					setViewLoading(false);
+					return;
+				}
+				setViewLoading(true);
+				try {
+					const response = await fetch(`/dsh-shape/view/${encodeURIComponent(shape.id)}/`, { cache: "no-store" });
+					if (!response.ok) {
+						let message = `Host 返回 HTTP ${String(response.status)}。`;
+						if (response.status === 404) message = (await response.json().catch(() => null))?.error?.message === "unknown dsh-shape route" ? "Host 视图路由未加载（HTTP 404）。请重启 DSH 后重试。" : "这个 shape 没有可打开的 views/index.html。";
+						throw new Error(message);
+					}
+					if (!(response.headers.get("content-type") ?? "").includes("text/html")) throw new Error("Host 返回的不是 HTML 页面。");
+					setViewError("");
+				} catch (cause) {
+					setViewError(cause instanceof Error ? cause.message : String(cause));
+				} finally {
+					setViewLoading(false);
+				}
+			}, []);
+			const closeView = (0, react.useCallback)(() => {
+				setSelected(null);
+				setViewError("");
+				setViewLoading(false);
+			}, []);
 			(0, react.useEffect)(() => {
 				if (!open) return;
 				load(false);
 			}, [load, open]);
 			(0, react.useEffect)(() => {
-				if (!open) setSelected(null);
+				if (!open) {
+					setSelected(null);
+					setViewError("");
+					setViewLoading(false);
+				}
 			}, [open]);
 			(0, react.useEffect)(() => {
 				if (!open) return;
@@ -146,7 +181,7 @@ window.__ModuleLoader__.load({
 					if (event.key !== "Escape") return;
 					event.preventDefault();
 					if (selectedRef.current !== null) {
-						setSelected(null);
+						closeView();
 						return;
 					}
 					onCloseRef.current();
@@ -157,7 +192,7 @@ window.__ModuleLoader__.load({
 					document.body.style.overflow = previousOverflow;
 					previous?.focus();
 				};
-			}, [open]);
+			}, [closeView, open]);
 			if (!open) return null;
 			const subtitle = status === "loading" ? "正在读取 shape…" : status === "error" ? "读取失败" : `${String(shapes.length)} 个 shape`;
 			return (0, react_dom.createPortal)(/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -282,7 +317,7 @@ window.__ModuleLoader__.load({
 											"aria-haspopup": "dialog",
 											"aria-label": `打开 ${shape.title}`,
 											onClick: () => {
-												setSelected(shape);
+												openView(shape);
 											},
 											children: [
 												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -366,7 +401,7 @@ window.__ModuleLoader__.load({
 					className: shape_dialog_module_css_default.viewBackdrop,
 					role: "presentation",
 					onMouseDown: (event) => {
-						if (event.target === event.currentTarget) setSelected(null);
+						if (event.target === event.currentTarget) closeView();
 					},
 					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
 						ref: viewRef,
@@ -407,20 +442,13 @@ window.__ModuleLoader__.load({
 									"aria-label": "关闭",
 									title: "关闭",
 									"data-testid": "dsh-shape-view-close",
-									onClick: () => {
-										setSelected(null);
-									},
+									onClick: closeView,
 									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutlineRegular, {})
 								})]
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 								className: shape_dialog_module_css_default.viewBody,
-								children: selected.views.length > 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
-									className: shape_dialog_module_css_default.viewFrame,
-									title: selected.title,
-									src: `/dsh-shape/view/${encodeURIComponent(selected.id)}/`,
-									sandbox: "allow-scripts allow-forms allow-modals allow-popups"
-								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+								children: selected.views.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 									className: shape_dialog_module_css_default.placeholder,
 									children: [
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
@@ -431,6 +459,41 @@ window.__ModuleLoader__.load({
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "这个 shape 没有 views/ 界面" }),
 										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "在 shape 目录下添加 `views/index.html` 后再试。" })
 									]
+								}) : viewLoading ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: shape_dialog_module_css_default.placeholder,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+										className: shape_dialog_module_css_default.placeholderMark,
+										"aria-hidden": "true",
+										children: "…"
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "正在打开界面…" })]
+								}) : viewError !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: shape_dialog_module_css_default.placeholder,
+									"data-testid": "dsh-shape-view-error",
+									children: [
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: shape_dialog_module_css_default.placeholderMark,
+											"aria-hidden": "true",
+											children: "!"
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "无法打开 shape 界面" }),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+											className: shape_dialog_module_css_default.placeholderMessage,
+											children: viewError
+										}),
+										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+											variant: "outline",
+											size: "sm",
+											onClick: () => {
+												openView(selected);
+											},
+											children: "重试"
+										})
+									]
+								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
+									className: shape_dialog_module_css_default.viewFrame,
+									title: selected.title,
+									src: `/dsh-shape/view/${encodeURIComponent(selected.id)}/`,
+									sandbox: "allow-scripts allow-forms allow-modals allow-popups"
 								})
 							}),
 							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {

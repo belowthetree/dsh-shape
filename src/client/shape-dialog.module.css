@@ -309,6 +309,11 @@
   white-space: nowrap;
 }
 
+.placeholderMessage {
+  max-width: 540px;
+  line-height: 1.5;
+}
+
 .skeletonCard {
   min-height: 190px;
   background: linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary, white)) 50%, var(--dsw-alias-bg-layer-3) 70%);
@@ -396,6 +401,11 @@
   flex: 1;
   min-height: 0;
   background: var(--dsw-alias-bg-layer-1);
+}
+
+.viewBody .placeholder {
+  flex: 1;
+  width: 100%;
 }
 
 .viewFrame {
