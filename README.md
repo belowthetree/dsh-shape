@@ -8,6 +8,7 @@ dsh-shape 是 DeepSeek Harness 的插件：把 shape 作为可安装的文件夹
 - 在对话顶栏显示 **Shapes** 按钮，点击打开大窗口，以应用网格展示所有 shape
 - `Ctrl + .` 可从页面任意位置快速打开
 - 展示 shape 的 title、id、description、来源、版本，以及 `views` / `slots` / `tools` 文件数量
+- 点击任意 shape 卡片，在第二个窗口打开它的 `views/` 界面
 - 支持刷新重扫，新 shape 放进目录后无需重启 DSH
 
 ## Shape 文件夹

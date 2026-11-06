@@ -72,8 +72,13 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [shapes, setShapes] = useState<ShapeInfo[]>([])
   const [roots, setRoots] = useState<Snapshot['roots']>()
   const [error, setError] = useState('')
+  const [selected, setSelected] = useState<ShapeInfo | null>(null)
   const windowRef = useRef<HTMLElement>(null)
+  const viewRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
+  const selectedRef = useRef(selected)
+  onCloseRef.current = onClose
+  selectedRef.current = selected
   onCloseRef.current = onClose
 
   const load = useCallback(async (refresh: boolean): Promise<void> => {
@@ -96,6 +101,16 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   }, [load, open])
 
   useEffect(() => {
+    if (!open) setSelected(null)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
+    if (selected === null) windowRef.current?.focus()
+    else viewRef.current?.focus()
+  }, [open, selected])
+
+  useEffect(() => {
     if (!open) return
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
     const previousOverflow = document.body.style.overflow
@@ -103,10 +118,13 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
       event.preventDefault()
+      if (selectedRef.current !== null) {
+        setSelected(null)
+        return
+      }
       onCloseRef.current()
     }
     document.addEventListener('keydown', onKeyDown)
-    windowRef.current?.focus()
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
@@ -207,11 +225,15 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
               {shapes.map((shape) => {
                 const initial = Array.from(shape.title.trim())[0] ?? '?'
                 return (
-                  <article
+                  <button
+                    type="button"
                     className={css.card}
                     key={shape.id}
                     data-testid="dsh-shape-card"
                     data-shape-id={shape.id}
+                    aria-haspopup="dialog"
+                    aria-label={`打开 ${shape.title}`}
+                    onClick={() => { setSelected(shape) }}
                   >
                     <div className={css.cardHead}>
                       <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>
@@ -234,7 +256,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
                       <span className={css.badge}>{String(shape.tools.length)} tools</span>
                       <span className={css.badge}>{shape.output}</span>
                     </div>
-                  </article>
+                  </button>
                 )
               })}
             </div>
@@ -248,6 +270,68 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
           <span className={css.footerCount}>{String(shapes.length)} registered</span>
         </footer>
       </section>
+
+      {selected !== null && (
+        <div
+          className={css.viewBackdrop}
+          role="presentation"
+          onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null) }}
+        >
+          <section
+            ref={viewRef}
+            tabIndex={-1}
+            className={css.viewWindow}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dsh-shape-view-title"
+            data-testid="dsh-shape-view"
+          >
+            <header className={css.viewHeader}>
+              <div className={css.viewHeading}>
+                <span className={css.appIcon} aria-hidden="true">
+                  {(Array.from(selected.title.trim())[0] ?? '?').toLocaleUpperCase()}
+                </span>
+                <div className={css.viewHeadingText}>
+                  <h3 className={css.viewTitle} id="dsh-shape-view-title">{selected.title}</h3>
+                  <p className={css.viewSubtitle}>
+                    {selected.id} · {String(selected.views.length)} views
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={css.iconButton}
+                aria-label="关闭"
+                title="关闭"
+                data-testid="dsh-shape-view-close"
+                onClick={() => { setSelected(null) }}
+              >
+                <IconCloseOutlineRegular />
+              </button>
+            </header>
+            <div className={css.viewBody}>
+              {selected.views.length > 0 ? (
+                <iframe
+                  className={css.viewFrame}
+                  title={selected.title}
+                  src={`/dsh-shape/view/${encodeURIComponent(selected.id)}/`}
+                  sandbox="allow-scripts allow-forms allow-modals allow-popups"
+                />
+              ) : (
+                <div className={css.placeholder}>
+                  <span className={css.placeholderMark} aria-hidden="true">◇</span>
+                  <strong>这个 shape 没有 views/ 界面</strong>
+                  <span>在 shape 目录下添加 `views/index.html` 后再试。</span>
+                </div>
+              )}
+            </div>
+            <footer className={css.footer}>
+              <span className={css.footerPath} title={selected.dir}>{selected.dir}</span>
+              <span className={css.footerCount}>{selected.views[0] ?? 'no views'}</span>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   ), document.body)
 }

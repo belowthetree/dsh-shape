@@ -70,6 +70,29 @@ interface Manifest {
 
 const ROUTE = '/dsh-shape'
 const API = `${ROUTE}/api`
+const VIEW = `${ROUTE}/view`
+
+const CONTENT_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.htm': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
+  '.txt': 'text/plain; charset=utf-8',
+  '.md': 'text/plain; charset=utf-8',
+  '.wasm': 'application/wasm',
+}
 
 /**
  * List files below one directory, relative to it and using `/` separators.
@@ -212,6 +235,70 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     roots: { bundled: bundledDir, user: userDir },
   })
 
+  const serveView = async (url: URL, res: ServerResponse): Promise<void> => {
+    const rest = url.pathname.slice(`${VIEW}/`.length)
+    const separator = rest.indexOf('/')
+    if (separator === -1) {
+      res.writeHead(308, { location: `${url.pathname}/` })
+      res.end()
+      return
+    }
+
+    let id: string
+    try {
+      id = decodeURIComponent(rest.slice(0, separator))
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+      return
+    }
+
+    const shape = shapes.find(candidate => candidate.id === id && candidate.valid)
+    if (shape === undefined) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+      return
+    }
+
+    let requested = rest.slice(separator + 1)
+    try {
+      requested = decodeURIComponent(requested)
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown view' } })
+      return
+    }
+    if (requested === '' || requested.endsWith('/')) requested += 'index.html'
+
+    const normalized = path.posix.normalize(requested)
+    if (normalized.startsWith('..') || normalized.startsWith('/') || normalized.includes('\\') || normalized.includes('\0')) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown view' } })
+      return
+    }
+
+    let entry = shape.views.includes(normalized) ? normalized : undefined
+    if (entry === undefined && normalized === 'index.html') {
+      entry = shape.views.find(file => !file.includes('/') && /\.html?$/i.test(file))
+    }
+    if (entry === undefined) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown view' } })
+      return
+    }
+
+    let body: Buffer
+    try {
+      body = await readFile(path.join(shape.dir, 'views', entry))
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown view' } })
+      return
+    }
+
+    res.writeHead(200, {
+      'content-type': CONTENT_TYPES[path.extname(entry).toLowerCase()] ?? 'application/octet-stream',
+      'content-length': body.byteLength,
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    })
+    res.end(body)
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://dsh.invalid')
     if (req.method === 'GET' && url.pathname === `${API}/shapes`) {
@@ -225,6 +312,10 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     if (req.method === 'POST' && url.pathname === `${API}/refresh`) {
       await refresh()
       json(res, 200, snapshot())
+      return
+    }
+    if (req.method === 'GET' && url.pathname.startsWith(`${VIEW}/`)) {
+      await serveView(url, res)
       return
     }
     json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown dsh-shape route' } })
