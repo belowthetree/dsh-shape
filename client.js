@@ -1417,6 +1417,8 @@ window.__ModuleLoader__.load({
 				provide(capability) {
 					if (capability.plugin.trim().length === 0 || capability.capability.trim().length === 0) throw new Error("capability plugin and capability must be non-empty");
 					if (!(0, import_semver.valid)(capability.version)) throw new Error(`invalid capability version: ${capability.version}`);
+					if (capability.description !== void 0 && (typeof capability.description !== "string" || capability.description.trim().length === 0)) throw new Error("capability description must be a non-empty string");
+					if (capability.usage !== void 0 && (typeof capability.usage !== "string" || capability.usage.trim().length === 0)) throw new Error("capability usage must be a non-empty string");
 					const key = keyOf(capability.plugin, capability.capability);
 					if (entries.has(key)) throw new Error(`capability already provided: ${key}`);
 					entries.set(key, capability);
@@ -2552,6 +2554,8 @@ window.__ModuleLoader__.load({
 					plugin: entry.plugin,
 					capability: entry.capability,
 					version: entry.version,
+					...entry.description === void 0 ? {} : { description: entry.description },
+					...entry.usage === void 0 ? {} : { usage: entry.usage },
 					methods,
 					fields
 				};
@@ -2576,12 +2580,16 @@ window.__ModuleLoader__.load({
 				plugin: "dsh-shape",
 				capability: "core",
 				version: "1.0.0",
+				description: "Shape ABI metadata provided by the dsh-shape runtime itself.",
+				usage: "Read apiVersion to branch on the shape ABI. Version 1 is the current ABI; no methods are exposed.",
 				api: { apiVersion: 1 }
 			}), "dsh-shape: core capability");
 			ctx.effect(() => capabilities.provide({
 				plugin: "dsh-shape",
 				capability: "workspace",
 				version: "1.0.0",
+				description: "Navigate between DSH workspaces in registry order.",
+				usage: "Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace's most recent Session, or its blank Session when none exists.",
 				api: createWorkspaceSwitch(ctx)
 			}), "dsh-shape: workspace capability");
 			capabilities.subscribe(() => {

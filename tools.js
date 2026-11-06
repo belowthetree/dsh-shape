@@ -411,6 +411,8 @@ export function apply(ctx, config) {
                 plugin: { type: 'string' },
                 capability: { type: 'string' },
                 version: { type: 'string' },
+                description: { type: 'string' },
+                usage: { type: 'string' },
                 methods: { type: 'array', items: { type: 'string' } },
                 fields: { type: 'array', items: { type: 'string' } },
               },
@@ -422,7 +424,13 @@ export function apply(ctx, config) {
         type: 'text',
         text: value.capabilities.length === 0
           ? 'No capability catalog is available. The dsh-shape Client publishes it after startup; restart DSH if this is a fresh install.'
-          : `Available shape capabilities:\n${value.capabilities.map(entry => `- ${entry.plugin}#${entry.capability} v${entry.version}${entry.methods.length ? `; methods: ${entry.methods.join(', ')}` : ''}${entry.fields.length ? `; fields: ${entry.fields.join(', ')}` : ''}`).join('\n')}`,
+          : `Available shape capabilities:\n${value.capabilities.map(entry => [
+            `- ${entry.plugin}#${entry.capability} v${entry.version}`,
+            ...(entry.description === undefined ? [] : [`  purpose: ${entry.description}`]),
+            ...(entry.usage === undefined ? [] : [`  usage: ${entry.usage}`]),
+            ...(entry.methods.length === 0 ? [] : [`  methods: ${entry.methods.join(', ')}`]),
+            ...(entry.fields.length === 0 ? [] : [`  fields: ${entry.fields.join(', ')}`]),
+          ].join('\n')).join('\n')}`,
       }],
     },
     async execute() {

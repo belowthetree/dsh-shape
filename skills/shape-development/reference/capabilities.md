@@ -10,6 +10,8 @@ A provider is a DSH Client plugin with:
 - `ctx.shapeCapabilities.provide({ plugin, capability, version, api })` inside a `ctx.effect`.
 - `plugin` and `capability`: non-empty strings.
 - `version`: valid semver contract version, independent of the provider package version.
+- `description`: optional short statement of what the API is for.
+- `usage`: optional guidance on how to call it, including method notes.
 - `api`: the object passed to shapes.
 
 One provider may own one `plugin#capability`. A duplicate registration throws. The disposer removes the capability.
@@ -22,6 +24,8 @@ export function apply(ctx) {
     plugin: 'my-plugin',
     capability: 'workspace',
     version: '1.0.0',
+    description: 'Navigate DSH workspaces.',
+    usage: 'Call next() or previous() to switch; list() returns workspace summaries.',
     api: {
       list: () => [],
       open: id => {},
@@ -44,9 +48,9 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 
 ## Built-ins
 
-- `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`.
-- `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`.
+- `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`; ABI metadata.
+- `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation.
 
-`shape_capabilities` lists providers with qualified id, contract version, method names, and non-function field types. It is a catalog, not a signature reference; inspect provider source or use `cordis` for exact service behavior.
+`shape_capabilities` lists providers with qualified id, contract version, self-description, usage guidance, method names, and non-function field types. It is a discovery catalog, not a signature or validation contract; inspect provider source or use `cordis` for exact service behavior.
 
-The catalog is mirrored from the Client registry to the Host. External providers appear after registration.
+`description` and `usage` are optional, non-empty strings when provided. Missing metadata does not block registration or resolution. The catalog is mirrored from the Client registry to the Host. External providers appear after registration.

@@ -34,6 +34,10 @@ export interface ShapeCapability {
   capability: string
   /** Capability contract version, independent of the plugin package version. */
   version: string
+  /** Short statement of what the API is for. */
+  description?: string
+  /** How a shape should call the API, including method notes. */
+  usage?: string
   /** Narrow API passed to shapes that require this capability. */
   api: unknown
 }
@@ -121,6 +125,14 @@ export function createShapeCapabilityRegistry(): ShapeCapabilityRegistry {
       }
       if (!valid(capability.version)) {
         throw new Error(`invalid capability version: ${capability.version}`)
+      }
+      if (capability.description !== undefined
+        && (typeof capability.description !== 'string' || capability.description.trim().length === 0)) {
+        throw new Error('capability description must be a non-empty string')
+      }
+      if (capability.usage !== undefined
+        && (typeof capability.usage !== 'string' || capability.usage.trim().length === 0)) {
+        throw new Error('capability usage must be a non-empty string')
       }
       const key = keyOf(capability.plugin, capability.capability)
       if (entries.has(key)) throw new Error(`capability already provided: ${key}`)

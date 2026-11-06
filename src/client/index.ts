@@ -49,6 +49,8 @@ async function syncCapabilities(registry: ShapeCapabilityRegistry): Promise<void
       plugin: entry.plugin,
       capability: entry.capability,
       version: entry.version,
+      ...(entry.description === undefined ? {} : { description: entry.description }),
+      ...(entry.usage === undefined ? {} : { usage: entry.usage }),
       methods,
       fields,
     }
@@ -76,6 +78,8 @@ export function apply(ctx: Context): void {
     plugin: 'dsh-shape',
     capability: 'core',
     version: '1.0.0',
+    description: 'Shape ABI metadata provided by the dsh-shape runtime itself.',
+    usage: 'Read apiVersion to branch on the shape ABI. Version 1 is the current ABI; no methods are exposed.',
     api: { apiVersion: 1 },
   }), 'dsh-shape: core capability')
 
@@ -83,6 +87,8 @@ export function apply(ctx: Context): void {
     plugin: 'dsh-shape',
     capability: 'workspace',
     version: '1.0.0',
+    description: 'Navigate between DSH workspaces in registry order.',
+    usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists.',
     api: createWorkspaceSwitch(ctx),
   }), 'dsh-shape: workspace capability')
 

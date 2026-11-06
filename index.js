@@ -257,17 +257,23 @@ function readCapabilityCatalog(value) {
 		const plugin = record.plugin;
 		const capability = record.capability;
 		const version = record.version;
+		const description = record.description;
+		const usage = record.usage;
 		const methods = record.methods;
 		const fields = record.fields;
 		if (typeof plugin !== "string" || plugin.length === 0 || plugin.length > 200) throw new Error("invalid capability plugin");
 		if (typeof capability !== "string" || capability.length === 0 || capability.length > 200) throw new Error("invalid capability name");
 		if (typeof version !== "string" || version.length === 0 || version.length > 100) throw new Error("invalid capability version");
+		if (description !== void 0 && (typeof description !== "string" || description.length > 2e3)) throw new Error("invalid capability description");
+		if (usage !== void 0 && (typeof usage !== "string" || usage.length > 8e3)) throw new Error("invalid capability usage");
 		if (!Array.isArray(methods) || methods.some((item) => typeof item !== "string" || item.length > 200)) throw new Error("invalid capability methods");
 		if (!Array.isArray(fields) || fields.some((item) => typeof item !== "string" || item.length > 300)) throw new Error("invalid capability fields");
 		return {
 			plugin,
 			capability,
 			version,
+			...typeof description === "string" ? { description } : {},
+			...typeof usage === "string" ? { usage } : {},
 			methods,
 			fields
 		};
