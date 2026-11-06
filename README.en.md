@@ -76,6 +76,58 @@ Shape folder changes do not require a DSH restart:
 
 > Changing dsh-shape's own Host or Client code still requires rebuilding and restarting DSH.
 
+## Capability requirements
+
+Shapes can require capabilities provided by plugins. Capabilities use a `plugin + capability` compound ID so equal short names in different plugins cannot collide:
+
+```json
+{
+  "shape": {
+    "apiVersion": 1,
+    "requires": [
+      {
+        "plugin": "dsh-shape-workspace",
+        "capability": "workspace",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape-toast",
+        "capability": "toast",
+        "version": "^1.0.0",
+        "optional": true
+      }
+    ]
+  }
+}
+```
+
+A provider is a normal DSH Client plugin:
+
+```ts
+export const inject = ['shapeCapabilities']
+
+export function apply(ctx) {
+  ctx.effect(() => ctx.shapeCapabilities.provide({
+    plugin: 'dsh-shape-workspace',
+    capability: 'workspace',
+    version: '1.0.0',
+    api: {
+      snapshot: () => ctx.workspaces.list.getSnapshot(),
+      openSession: id => ctx.uiWorkspace.openSession(id),
+    },
+  }), 'workspace capability')
+}
+```
+
+Before startup dsh-shape checks:
+
+- the `plugin#capability` exists
+- the provider's contract version satisfies the shape's semver range
+- `shape.apiVersion` matches the supported ABI
+- a missing required capability blocks the card and suppresses its chat cards
+
+The registry is provided by the dsh-shape Client as the `shapeCapabilities` service. Only one provider may own a given `plugin#capability`.
+
 ## Install
 
 ```sh

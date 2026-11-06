@@ -76,6 +76,58 @@ shape 文件夹的改动不需要重启 DSH：
 
 > 修改 dsh-shape 插件自身的 Host / Client 代码仍需重新构建并重启 DSH。
 
+## Shape 依赖能力
+
+Shape 可以声明它需要的插件能力。能力使用 `plugin + capability` 复合 ID，避免不同插件同名：
+
+```json
+{
+  "shape": {
+    "apiVersion": 1,
+    "requires": [
+      {
+        "plugin": "dsh-shape-workspace",
+        "capability": "workspace",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape-toast",
+        "capability": "toast",
+        "version": "^1.0.0",
+        "optional": true
+      }
+    ]
+  }
+}
+```
+
+能力提供方是一个普通 DSH Client 插件：
+
+```ts
+export const inject = ['shapeCapabilities']
+
+export function apply(ctx) {
+  ctx.effect(() => ctx.shapeCapabilities.provide({
+    plugin: 'dsh-shape-workspace',
+    capability: 'workspace',
+    version: '1.0.0',
+    api: {
+      snapshot: () => ctx.workspaces.list.getSnapshot(),
+      openSession: id => ctx.uiWorkspace.openSession(id),
+    },
+  }), 'workspace capability')
+}
+```
+
+启动前会检查：
+
+- `plugin#capability` 是否存在
+- provider 的契约版本是否满足 semver 范围
+- `shape.apiVersion` 是否等于当前支持的 ABI 版本
+- 缺少必需依赖时，卡片被标记为 blocked，聊天卡片也不会渲染
+
+注册中心由 dsh-shape Client 提供，服务名是 `shapeCapabilities`。同一 `plugin#capability` 只允许一个 provider。
+
 ## 安装
 
 ```sh

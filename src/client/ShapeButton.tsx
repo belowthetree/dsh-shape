@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ShapeResolverInjected } from '../capabilities.ts'
 import { ShapeDialog } from './ShapeDialog.tsx'
 
 /**
  * Render the header action and own the dialog's open state.
+ * @param props.resolveShape - capability resolver injected by the Client entry.
  * @returns the button plus its dialog.
  */
-export function ShapeButton() {
+export function ShapeButton({ resolveShape }: ShapeResolverInjected) {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export function ShapeButton() {
       >
         Shapes
       </Button>
-      <ShapeDialog open={open} onClose={() => { setOpen(false) }} />
+      <ShapeDialog open={open} onClose={() => { setOpen(false) }} resolveShape={resolveShape} />
     </>
   )
 }

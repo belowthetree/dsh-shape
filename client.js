@@ -4,10 +4,1486 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		//#region \0rolldown/runtime.js
+		var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod), cb = null), mod.exports);
+		//#endregion
 		let react = require("react");
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react_dom = require("react-dom");
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/constants.js
+		var require_constants = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SEMVER_SPEC_VERSION = "2.0.0";
+			const MAX_LENGTH = 256;
+			const MAX_SAFE_INTEGER = Number.MAX_SAFE_INTEGER || 9007199254740991;
+			module.exports = {
+				MAX_LENGTH,
+				MAX_SAFE_COMPONENT_LENGTH: 16,
+				MAX_SAFE_BUILD_LENGTH: MAX_LENGTH - 6,
+				MAX_SAFE_INTEGER,
+				RELEASE_TYPES: [
+					"major",
+					"premajor",
+					"minor",
+					"preminor",
+					"patch",
+					"prepatch",
+					"prerelease"
+				],
+				SEMVER_SPEC_VERSION,
+				FLAG_INCLUDE_PRERELEASE: 1,
+				FLAG_LOOSE: 2
+			};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/debug.js
+		var require_debug = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			module.exports = typeof process === "object" && {}.NODE_DEBUG && /\bsemver\b/i.test({}.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/re.js
+		var require_re = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const { MAX_SAFE_COMPONENT_LENGTH, MAX_SAFE_BUILD_LENGTH, MAX_LENGTH } = require_constants();
+			const debug = require_debug();
+			exports = module.exports = {};
+			const re = exports.re = [];
+			const safeRe = exports.safeRe = [];
+			const src = exports.src = [];
+			const safeSrc = exports.safeSrc = [];
+			const t = exports.t = {};
+			let R = 0;
+			const LETTERDASHNUMBER = "[a-zA-Z0-9-]";
+			const safeRegexReplacements = [
+				["\\s", 1],
+				["\\d", MAX_LENGTH],
+				[LETTERDASHNUMBER, MAX_SAFE_BUILD_LENGTH]
+			];
+			const makeSafeRegex = (value) => {
+				for (const [token, max] of safeRegexReplacements) value = value.split(`${token}*`).join(`${token}{0,${max}}`).split(`${token}+`).join(`${token}{1,${max}}`);
+				return value;
+			};
+			const createToken = (name, value, isGlobal) => {
+				const safe = makeSafeRegex(value);
+				const index = R++;
+				debug(name, index, value);
+				t[name] = index;
+				src[index] = value;
+				safeSrc[index] = safe;
+				re[index] = new RegExp(value, isGlobal ? "g" : void 0);
+				safeRe[index] = new RegExp(safe, isGlobal ? "g" : void 0);
+			};
+			createToken("NUMERICIDENTIFIER", "0|[1-9]\\d*");
+			createToken("NUMERICIDENTIFIERLOOSE", "\\d+");
+			createToken("NONNUMERICIDENTIFIER", `\\d*[a-zA-Z-]${LETTERDASHNUMBER}*`);
+			createToken("MAINVERSION", `(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})\\.(${src[t.NUMERICIDENTIFIER]})`);
+			createToken("MAINVERSIONLOOSE", `(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})\\.(${src[t.NUMERICIDENTIFIERLOOSE]})`);
+			createToken("PRERELEASEIDENTIFIER", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIER]})`);
+			createToken("PRERELEASEIDENTIFIERLOOSE", `(?:${src[t.NONNUMERICIDENTIFIER]}|${src[t.NUMERICIDENTIFIERLOOSE]})`);
+			createToken("PRERELEASE", `(?:-(${src[t.PRERELEASEIDENTIFIER]}(?:\\.${src[t.PRERELEASEIDENTIFIER]})*))`);
+			createToken("PRERELEASELOOSE", `(?:-?(${src[t.PRERELEASEIDENTIFIERLOOSE]}(?:\\.${src[t.PRERELEASEIDENTIFIERLOOSE]})*))`);
+			createToken("BUILDIDENTIFIER", `${LETTERDASHNUMBER}+`);
+			createToken("BUILD", `(?:\\+(${src[t.BUILDIDENTIFIER]}(?:\\.${src[t.BUILDIDENTIFIER]})*))`);
+			createToken("FULLPLAIN", `v?${src[t.MAINVERSION]}${src[t.PRERELEASE]}?${src[t.BUILD]}?`);
+			createToken("FULL", `^${src[t.FULLPLAIN]}$`);
+			createToken("LOOSEPLAIN", `[v=\\s]*${src[t.MAINVERSIONLOOSE]}${src[t.PRERELEASELOOSE]}?${src[t.BUILD]}?`);
+			createToken("LOOSE", `^${src[t.LOOSEPLAIN]}$`);
+			createToken("GTLT", "((?:<|>)?=?)");
+			createToken("XRANGEIDENTIFIERLOOSE", `${src[t.NUMERICIDENTIFIERLOOSE]}|x|X|\\*`);
+			createToken("XRANGEIDENTIFIER", `${src[t.NUMERICIDENTIFIER]}|x|X|\\*`);
+			createToken("XRANGEPLAIN", `[v=\\s]*(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:\\.(${src[t.XRANGEIDENTIFIER]})(?:${src[t.PRERELEASE]})?${src[t.BUILD]}?)?)?`);
+			createToken("XRANGEPLAINLOOSE", `[v=\\s]*(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:\\.(${src[t.XRANGEIDENTIFIERLOOSE]})(?:${src[t.PRERELEASELOOSE]})?${src[t.BUILD]}?)?)?`);
+			createToken("XRANGE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAIN]}$`);
+			createToken("XRANGELOOSE", `^${src[t.GTLT]}\\s*${src[t.XRANGEPLAINLOOSE]}$`);
+			createToken("COERCEPLAIN", `(^|[^\\d])(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}})(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?(?:\\.(\\d{1,${MAX_SAFE_COMPONENT_LENGTH}}))?`);
+			createToken("COERCE", `${src[t.COERCEPLAIN]}(?:$|[^\\d])`);
+			createToken("COERCEFULL", src[t.COERCEPLAIN] + `(?:${src[t.PRERELEASE]})?(?:${src[t.BUILD]})?(?:$|[^\\d])`);
+			createToken("COERCERTL", src[t.COERCE], true);
+			createToken("COERCERTLFULL", src[t.COERCEFULL], true);
+			createToken("LONETILDE", "(?:~>?)");
+			createToken("TILDETRIM", `(\\s*)${src[t.LONETILDE]}\\s+`, true);
+			exports.tildeTrimReplace = "$1~";
+			createToken("TILDE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAIN]}$`);
+			createToken("TILDELOOSE", `^${src[t.LONETILDE]}${src[t.XRANGEPLAINLOOSE]}$`);
+			createToken("LONECARET", "(?:\\^)");
+			createToken("CARETTRIM", `(\\s*)${src[t.LONECARET]}\\s+`, true);
+			exports.caretTrimReplace = "$1^";
+			createToken("CARET", `^${src[t.LONECARET]}${src[t.XRANGEPLAIN]}$`);
+			createToken("CARETLOOSE", `^${src[t.LONECARET]}${src[t.XRANGEPLAINLOOSE]}$`);
+			createToken("COMPARATORLOOSE", `^${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]})$|^$`);
+			createToken("COMPARATOR", `^${src[t.GTLT]}\\s*(${src[t.FULLPLAIN]})$|^$`);
+			createToken("COMPARATORTRIM", `(\\s*)${src[t.GTLT]}\\s*(${src[t.LOOSEPLAIN]}|${src[t.XRANGEPLAIN]})`, true);
+			exports.comparatorTrimReplace = "$1$2$3";
+			createToken("HYPHENRANGE", `^\\s*(${src[t.XRANGEPLAIN]})\\s+-\\s+(${src[t.XRANGEPLAIN]})\\s*$`);
+			createToken("HYPHENRANGELOOSE", `^\\s*(${src[t.XRANGEPLAINLOOSE]})\\s+-\\s+(${src[t.XRANGEPLAINLOOSE]})\\s*$`);
+			createToken("STAR", "(<|>)?=?\\s*\\*");
+			createToken("GTE0", "^\\s*>=\\s*0\\.0\\.0\\s*$");
+			createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/parse-options.js
+		var require_parse_options = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const looseOption = Object.freeze({ loose: true });
+			const emptyOpts = Object.freeze({});
+			const parseOptions = (options) => {
+				if (!options) return emptyOpts;
+				if (typeof options !== "object") return looseOption;
+				return options;
+			};
+			module.exports = parseOptions;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/identifiers.js
+		var require_identifiers = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const numeric = /^[0-9]+$/;
+			const compareIdentifiers = (a, b) => {
+				if (typeof a === "number" && typeof b === "number") return a === b ? 0 : a < b ? -1 : 1;
+				const anum = numeric.test(a);
+				const bnum = numeric.test(b);
+				if (anum && bnum) {
+					a = +a;
+					b = +b;
+				}
+				return a === b ? 0 : anum && !bnum ? -1 : bnum && !anum ? 1 : a < b ? -1 : 1;
+			};
+			const rcompareIdentifiers = (a, b) => compareIdentifiers(b, a);
+			module.exports = {
+				compareIdentifiers,
+				rcompareIdentifiers
+			};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/semver.js
+		var require_semver$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const debug = require_debug();
+			const { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
+			const { safeRe: re, t } = require_re();
+			const parseOptions = require_parse_options();
+			const { compareIdentifiers } = require_identifiers();
+			const isPrereleaseIdentifier = (prerelease, identifier) => {
+				const identifiers = identifier.split(".");
+				if (identifiers.length > prerelease.length) return false;
+				for (let i = 0; i < identifiers.length; i++) if (compareIdentifiers(prerelease[i], identifiers[i]) !== 0) return false;
+				return true;
+			};
+			module.exports = class SemVer {
+				constructor(version, options) {
+					options = parseOptions(options);
+					if (version instanceof SemVer) if (version.loose === !!options.loose && version.includePrerelease === !!options.includePrerelease) return version;
+					else version = version.version;
+					else if (typeof version !== "string") throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`);
+					if (version.length > MAX_LENGTH) throw new TypeError(`version is longer than ${MAX_LENGTH} characters`);
+					debug("SemVer", version, options);
+					this.options = options;
+					this.loose = !!options.loose;
+					this.includePrerelease = !!options.includePrerelease;
+					const m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
+					if (!m) throw new TypeError(`Invalid Version: ${version}`);
+					this.raw = version;
+					this.major = +m[1];
+					this.minor = +m[2];
+					this.patch = +m[3];
+					if (this.major > MAX_SAFE_INTEGER || this.major < 0) throw new TypeError("Invalid major version");
+					if (this.minor > MAX_SAFE_INTEGER || this.minor < 0) throw new TypeError("Invalid minor version");
+					if (this.patch > MAX_SAFE_INTEGER || this.patch < 0) throw new TypeError("Invalid patch version");
+					if (!m[4]) this.prerelease = [];
+					else this.prerelease = m[4].split(".").map((id) => {
+						if (/^[0-9]+$/.test(id)) {
+							const num = +id;
+							if (num >= 0 && num < MAX_SAFE_INTEGER) return num;
+						}
+						return id;
+					});
+					this.build = m[5] ? m[5].split(".") : [];
+					this.format();
+				}
+				format() {
+					this.version = `${this.major}.${this.minor}.${this.patch}`;
+					if (this.prerelease.length) this.version += `-${this.prerelease.join(".")}`;
+					return this.version;
+				}
+				toString() {
+					return this.version;
+				}
+				compare(other) {
+					debug("SemVer.compare", this.version, this.options, other);
+					if (!(other instanceof SemVer)) {
+						if (typeof other === "string" && other === this.version) return 0;
+						other = new SemVer(other, this.options);
+					}
+					if (other.version === this.version) return 0;
+					return this.compareMain(other) || this.comparePre(other);
+				}
+				compareMain(other) {
+					if (!(other instanceof SemVer)) other = new SemVer(other, this.options);
+					if (this.major < other.major) return -1;
+					if (this.major > other.major) return 1;
+					if (this.minor < other.minor) return -1;
+					if (this.minor > other.minor) return 1;
+					if (this.patch < other.patch) return -1;
+					if (this.patch > other.patch) return 1;
+					return 0;
+				}
+				comparePre(other) {
+					if (!(other instanceof SemVer)) other = new SemVer(other, this.options);
+					if (this.prerelease.length && !other.prerelease.length) return -1;
+					else if (!this.prerelease.length && other.prerelease.length) return 1;
+					else if (!this.prerelease.length && !other.prerelease.length) return 0;
+					let i = 0;
+					do {
+						const a = this.prerelease[i];
+						const b = other.prerelease[i];
+						debug("prerelease compare", i, a, b);
+						if (a === void 0 && b === void 0) return 0;
+						else if (b === void 0) return 1;
+						else if (a === void 0) return -1;
+						else if (a === b) continue;
+						else return compareIdentifiers(a, b);
+					} while (++i);
+				}
+				compareBuild(other) {
+					if (!(other instanceof SemVer)) other = new SemVer(other, this.options);
+					let i = 0;
+					do {
+						const a = this.build[i];
+						const b = other.build[i];
+						debug("build compare", i, a, b);
+						if (a === void 0 && b === void 0) return 0;
+						else if (b === void 0) return 1;
+						else if (a === void 0) return -1;
+						else if (a === b) continue;
+						else return compareIdentifiers(a, b);
+					} while (++i);
+				}
+				inc(release, identifier, identifierBase) {
+					if (release.startsWith("pre")) {
+						if (!identifier && identifierBase === false) throw new Error("invalid increment argument: identifier is empty");
+						if (identifier) {
+							const match = `-${identifier}`.match(this.options.loose ? re[t.PRERELEASELOOSE] : re[t.PRERELEASE]);
+							if (!match || match[1] !== identifier) throw new Error(`invalid identifier: ${identifier}`);
+						}
+					}
+					switch (release) {
+						case "premajor":
+							this.prerelease.length = 0;
+							this.patch = 0;
+							this.minor = 0;
+							this.major++;
+							this.inc("pre", identifier, identifierBase);
+							break;
+						case "preminor":
+							this.prerelease.length = 0;
+							this.patch = 0;
+							this.minor++;
+							this.inc("pre", identifier, identifierBase);
+							break;
+						case "prepatch":
+							this.prerelease.length = 0;
+							this.inc("patch", identifier, identifierBase);
+							this.inc("pre", identifier, identifierBase);
+							break;
+						case "prerelease":
+							if (this.prerelease.length === 0) this.inc("patch", identifier, identifierBase);
+							this.inc("pre", identifier, identifierBase);
+							break;
+						case "release":
+							if (this.prerelease.length === 0) throw new Error(`version ${this.raw} is not a prerelease`);
+							this.prerelease.length = 0;
+							break;
+						case "major":
+							if (this.minor !== 0 || this.patch !== 0 || this.prerelease.length === 0) this.major++;
+							this.minor = 0;
+							this.patch = 0;
+							this.prerelease = [];
+							break;
+						case "minor":
+							if (this.patch !== 0 || this.prerelease.length === 0) this.minor++;
+							this.patch = 0;
+							this.prerelease = [];
+							break;
+						case "patch":
+							if (this.prerelease.length === 0) this.patch++;
+							this.prerelease = [];
+							break;
+						case "pre": {
+							const base = Number(identifierBase) ? 1 : 0;
+							if (this.prerelease.length === 0) this.prerelease = [base];
+							else {
+								let i = this.prerelease.length;
+								while (--i >= 0) if (typeof this.prerelease[i] === "number") {
+									this.prerelease[i]++;
+									i = -2;
+								}
+								if (i === -1) {
+									if (identifier === this.prerelease.join(".") && identifierBase === false) throw new Error("invalid increment argument: identifier already exists");
+									this.prerelease.push(base);
+								}
+							}
+							if (identifier) {
+								let prerelease = [identifier, base];
+								if (identifierBase === false) prerelease = [identifier];
+								if (isPrereleaseIdentifier(this.prerelease, identifier)) {
+									const prereleaseBase = this.prerelease[identifier.split(".").length];
+									if (isNaN(prereleaseBase)) this.prerelease = prerelease;
+								} else this.prerelease = prerelease;
+							}
+							break;
+						}
+						default: throw new Error(`invalid increment argument: ${release}`);
+					}
+					this.raw = this.format();
+					if (this.build.length) this.raw += `+${this.build.join(".")}`;
+					return this;
+				}
+			};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/parse.js
+		var require_parse = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const parse = (version, options, throwErrors = false) => {
+				if (version instanceof SemVer) return version;
+				try {
+					return new SemVer(version, options);
+				} catch (er) {
+					if (!throwErrors) return null;
+					throw er;
+				}
+			};
+			module.exports = parse;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/valid.js
+		var require_valid$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const parse = require_parse();
+			const valid = (version, options) => {
+				const v = parse(version, options);
+				return v ? v.version : null;
+			};
+			module.exports = valid;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/clean.js
+		var require_clean = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const parse = require_parse();
+			const clean = (version, options) => {
+				const s = parse(version.trim().replace(/^[=v]+/, ""), options);
+				return s ? s.version : null;
+			};
+			module.exports = clean;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/inc.js
+		var require_inc = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const inc = (version, release, options, identifier, identifierBase) => {
+				if (typeof options === "string") {
+					identifierBase = identifier;
+					identifier = options;
+					options = void 0;
+				}
+				try {
+					return new SemVer(version instanceof SemVer ? version.version : version, options).inc(release, identifier, identifierBase).version;
+				} catch (er) {
+					return null;
+				}
+			};
+			module.exports = inc;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/diff.js
+		var require_diff = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const parse = require_parse();
+			const diff = (version1, version2) => {
+				const v1 = parse(version1, null, true);
+				const v2 = parse(version2, null, true);
+				const comparison = v1.compare(v2);
+				if (comparison === 0) return null;
+				const v1Higher = comparison > 0;
+				const highVersion = v1Higher ? v1 : v2;
+				const lowVersion = v1Higher ? v2 : v1;
+				const highHasPre = !!highVersion.prerelease.length;
+				if (!!lowVersion.prerelease.length && !highHasPre) {
+					if (!lowVersion.patch && !lowVersion.minor) return "major";
+					if (lowVersion.compareMain(highVersion) === 0) {
+						if (lowVersion.minor && !lowVersion.patch) return "minor";
+						return "patch";
+					}
+				}
+				const prefix = highHasPre ? "pre" : "";
+				if (v1.major !== v2.major) return prefix + "major";
+				if (v1.minor !== v2.minor) return prefix + "minor";
+				if (v1.patch !== v2.patch) return prefix + "patch";
+				return "prerelease";
+			};
+			module.exports = diff;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/major.js
+		var require_major = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const major = (a, loose) => new SemVer(a, loose).major;
+			module.exports = major;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/minor.js
+		var require_minor = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const minor = (a, loose) => new SemVer(a, loose).minor;
+			module.exports = minor;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/patch.js
+		var require_patch = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const patch = (a, loose) => new SemVer(a, loose).patch;
+			module.exports = patch;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/prerelease.js
+		var require_prerelease = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const parse = require_parse();
+			const prerelease = (version, options) => {
+				const parsed = parse(version, options);
+				return parsed && parsed.prerelease.length ? parsed.prerelease : null;
+			};
+			module.exports = prerelease;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare.js
+		var require_compare = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
+			module.exports = compare;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rcompare.js
+		var require_rcompare = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const rcompare = (a, b, loose) => compare(b, a, loose);
+			module.exports = rcompare;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-loose.js
+		var require_compare_loose = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const compareLoose = (a, b) => compare(a, b, true);
+			module.exports = compareLoose;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-build.js
+		var require_compare_build = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const compareBuild = (a, b, loose) => {
+				const versionA = new SemVer(a, loose);
+				const versionB = new SemVer(b, loose);
+				return versionA.compare(versionB) || versionA.compareBuild(versionB);
+			};
+			module.exports = compareBuild;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js
+		var require_sort = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compareBuild = require_compare_build();
+			const sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
+			module.exports = sort;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js
+		var require_rsort = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compareBuild = require_compare_build();
+			const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
+			module.exports = rsort;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gt.js
+		var require_gt = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const gt = (a, b, loose) => compare(a, b, loose) > 0;
+			module.exports = gt;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lt.js
+		var require_lt = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const lt = (a, b, loose) => compare(a, b, loose) < 0;
+			module.exports = lt;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/eq.js
+		var require_eq = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const eq = (a, b, loose) => compare(a, b, loose) === 0;
+			module.exports = eq;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/neq.js
+		var require_neq = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const neq = (a, b, loose) => compare(a, b, loose) !== 0;
+			module.exports = neq;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gte.js
+		var require_gte = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const gte = (a, b, loose) => compare(a, b, loose) >= 0;
+			module.exports = gte;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lte.js
+		var require_lte = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const compare = require_compare();
+			const lte = (a, b, loose) => compare(a, b, loose) <= 0;
+			module.exports = lte;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/cmp.js
+		var require_cmp = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const eq = require_eq();
+			const neq = require_neq();
+			const gt = require_gt();
+			const gte = require_gte();
+			const lt = require_lt();
+			const lte = require_lte();
+			const cmp = (a, op, b, loose) => {
+				switch (op) {
+					case "===":
+						if (typeof a === "object") a = a.version;
+						if (typeof b === "object") b = b.version;
+						return a === b;
+					case "!==":
+						if (typeof a === "object") a = a.version;
+						if (typeof b === "object") b = b.version;
+						return a !== b;
+					case "":
+					case "=":
+					case "==": return eq(a, b, loose);
+					case "!=": return neq(a, b, loose);
+					case ">": return gt(a, b, loose);
+					case ">=": return gte(a, b, loose);
+					case "<": return lt(a, b, loose);
+					case "<=": return lte(a, b, loose);
+					default: throw new TypeError(`Invalid operator: ${op}`);
+				}
+			};
+			module.exports = cmp;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/coerce.js
+		var require_coerce = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const parse = require_parse();
+			const { safeRe: re, t } = require_re();
+			const coerce = (version, options) => {
+				if (version instanceof SemVer) return version;
+				if (typeof version === "number") version = String(version);
+				if (typeof version !== "string") return null;
+				options = options || {};
+				let match = null;
+				if (!options.rtl) match = version.match(options.includePrerelease ? re[t.COERCEFULL] : re[t.COERCE]);
+				else {
+					const coerceRtlRegex = options.includePrerelease ? re[t.COERCERTLFULL] : re[t.COERCERTL];
+					let next;
+					while ((next = coerceRtlRegex.exec(version)) && (!match || match.index + match[0].length !== version.length)) {
+						if (!match || next.index + next[0].length !== match.index + match[0].length) match = next;
+						coerceRtlRegex.lastIndex = next.index + next[1].length + next[2].length;
+					}
+					coerceRtlRegex.lastIndex = -1;
+				}
+				if (match === null) return null;
+				const major = match[2];
+				return parse(`${major}.${match[3] || "0"}.${match[4] || "0"}${options.includePrerelease && match[5] ? `-${match[5]}` : ""}${options.includePrerelease && match[6] ? `+${match[6]}` : ""}`, options);
+			};
+			module.exports = coerce;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/truncate.js
+		var require_truncate = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const parse = require_parse();
+			const constants = require_constants();
+			const SemVer = require_semver$1();
+			const truncate = (version, truncation, options) => {
+				if (!constants.RELEASE_TYPES.includes(truncation)) return null;
+				const clonedVersion = cloneInputVersion(version, options);
+				return clonedVersion && doTruncation(clonedVersion, truncation);
+			};
+			const cloneInputVersion = (version, options) => {
+				return parse(version instanceof SemVer ? version.version : version, options);
+			};
+			const doTruncation = (version, truncation) => {
+				if (isPrerelease(truncation)) return version.version;
+				version.prerelease = [];
+				switch (truncation) {
+					case "major":
+						version.minor = 0;
+						version.patch = 0;
+						break;
+					case "minor":
+						version.patch = 0;
+						break;
+				}
+				return version.format();
+			};
+			const isPrerelease = (type) => {
+				return type.startsWith("pre");
+			};
+			module.exports = truncate;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/lrucache.js
+		var require_lrucache = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			var LRUCache = class {
+				constructor() {
+					this.max = 1e3;
+					this.map = /* @__PURE__ */ new Map();
+				}
+				get(key) {
+					const value = this.map.get(key);
+					if (value === void 0) return;
+					else {
+						this.map.delete(key);
+						this.map.set(key, value);
+						return value;
+					}
+				}
+				delete(key) {
+					return this.map.delete(key);
+				}
+				set(key, value) {
+					if (!this.delete(key) && value !== void 0) {
+						if (this.map.size >= this.max) {
+							const firstKey = this.map.keys().next().value;
+							this.delete(firstKey);
+						}
+						this.map.set(key, value);
+					}
+					return this;
+				}
+			};
+			module.exports = LRUCache;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/range.js
+		var require_range = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SPACE_CHARACTERS = /\s+/g;
+			module.exports = class Range {
+				constructor(range, options) {
+					options = parseOptions(options);
+					if (range instanceof Range) if (range.loose === !!options.loose && range.includePrerelease === !!options.includePrerelease) return range;
+					else return new Range(range.raw, options);
+					if (range instanceof Comparator) {
+						this.raw = range.value;
+						this.set = [[range]];
+						this.formatted = void 0;
+						return this;
+					}
+					this.options = options;
+					this.loose = !!options.loose;
+					this.includePrerelease = !!options.includePrerelease;
+					this.raw = range.trim().replace(SPACE_CHARACTERS, " ");
+					this.set = this.raw.split("||").map((r) => this.parseRange(r.trim())).filter((c) => c.length);
+					if (!this.set.length) throw new TypeError(`Invalid SemVer Range: ${this.raw}`);
+					if (this.set.length > 1) {
+						const first = this.set[0];
+						this.set = this.set.filter((c) => !isNullSet(c[0]));
+						if (this.set.length === 0) this.set = [first];
+						else if (this.set.length > 1) {
+							for (const c of this.set) if (c.length === 1 && isAny(c[0])) {
+								this.set = [c];
+								break;
+							}
+						}
+					}
+					this.formatted = void 0;
+				}
+				get range() {
+					if (this.formatted === void 0) {
+						this.formatted = "";
+						for (let i = 0; i < this.set.length; i++) {
+							if (i > 0) this.formatted += "||";
+							const comps = this.set[i];
+							for (let k = 0; k < comps.length; k++) {
+								if (k > 0) this.formatted += " ";
+								this.formatted += comps[k].toString().trim();
+							}
+						}
+					}
+					return this.formatted;
+				}
+				format() {
+					return this.range;
+				}
+				toString() {
+					return this.range;
+				}
+				parseRange(range) {
+					range = range.replace(BUILDSTRIPRE, "");
+					const memoKey = ((this.options.includePrerelease && FLAG_INCLUDE_PRERELEASE) | (this.options.loose && FLAG_LOOSE)) + ":" + range;
+					const cached = cache.get(memoKey);
+					if (cached) return cached;
+					const loose = this.options.loose;
+					const hr = loose ? re[t.HYPHENRANGELOOSE] : re[t.HYPHENRANGE];
+					range = range.replace(hr, hyphenReplace(this.options.includePrerelease));
+					debug("hyphen replace", range);
+					range = range.replace(re[t.COMPARATORTRIM], comparatorTrimReplace);
+					debug("comparator trim", range);
+					range = range.replace(re[t.TILDETRIM], tildeTrimReplace);
+					debug("tilde trim", range);
+					range = range.replace(re[t.CARETTRIM], caretTrimReplace);
+					debug("caret trim", range);
+					let rangeList = range.split(" ").map((comp) => parseComparator(comp, this.options)).join(" ").split(/\s+/).map((comp) => replaceGTE0(comp, this.options));
+					if (loose) rangeList = rangeList.filter((comp) => {
+						debug("loose invalid filter", comp, this.options);
+						return !!comp.match(re[t.COMPARATORLOOSE]);
+					});
+					debug("range list", rangeList);
+					const rangeMap = /* @__PURE__ */ new Map();
+					const comparators = rangeList.map((comp) => new Comparator(comp, this.options));
+					for (const comp of comparators) {
+						if (isNullSet(comp)) return [comp];
+						rangeMap.set(comp.value, comp);
+					}
+					if (rangeMap.size > 1 && rangeMap.has("")) rangeMap.delete("");
+					const result = [...rangeMap.values()];
+					cache.set(memoKey, result);
+					return result;
+				}
+				intersects(range, options) {
+					if (!(range instanceof Range)) throw new TypeError("a Range is required");
+					return this.set.some((thisComparators) => {
+						return isSatisfiable(thisComparators, options) && range.set.some((rangeComparators) => {
+							return isSatisfiable(rangeComparators, options) && thisComparators.every((thisComparator) => {
+								return rangeComparators.every((rangeComparator) => {
+									return thisComparator.intersects(rangeComparator, options);
+								});
+							});
+						});
+					});
+				}
+				test(version) {
+					if (!version) return false;
+					if (typeof version === "string") try {
+						version = new SemVer(version, this.options);
+					} catch (er) {
+						return false;
+					}
+					for (let i = 0; i < this.set.length; i++) if (testSet(this.set[i], version, this.options)) return true;
+					return false;
+				}
+			};
+			const cache = new (require_lrucache())();
+			const parseOptions = require_parse_options();
+			const Comparator = require_comparator();
+			const debug = require_debug();
+			const SemVer = require_semver$1();
+			const { safeRe: re, src, t, comparatorTrimReplace, tildeTrimReplace, caretTrimReplace } = require_re();
+			const { FLAG_INCLUDE_PRERELEASE, FLAG_LOOSE } = require_constants();
+			const BUILDSTRIPRE = new RegExp(src[t.BUILD], "g");
+			const isNullSet = (c) => c.value === "<0.0.0-0";
+			const isAny = (c) => c.value === "";
+			const isSatisfiable = (comparators, options) => {
+				let result = true;
+				const remainingComparators = comparators.slice();
+				let testComparator = remainingComparators.pop();
+				while (result && remainingComparators.length) {
+					result = remainingComparators.every((otherComparator) => {
+						return testComparator.intersects(otherComparator, options);
+					});
+					testComparator = remainingComparators.pop();
+				}
+				return result;
+			};
+			const parseComparator = (comp, options) => {
+				comp = comp.replace(re[t.BUILD], "");
+				debug("comp", comp, options);
+				comp = replaceCarets(comp, options);
+				debug("caret", comp);
+				comp = replaceTildes(comp, options);
+				debug("tildes", comp);
+				comp = replaceXRanges(comp, options);
+				debug("xrange", comp);
+				comp = replaceStars(comp, options);
+				debug("stars", comp);
+				return comp;
+			};
+			const isX = (id) => !id || id.toLowerCase() === "x" || id === "*";
+			const invalidXRangeOrder = (M, m, p) => isX(M) && !isX(m) || isX(m) && p && !isX(p);
+			const replaceTildes = (comp, options) => {
+				return comp.trim().split(/\s+/).map((c) => replaceTilde(c, options)).join(" ");
+			};
+			const replaceTilde = (comp, options) => {
+				const r = options.loose ? re[t.TILDELOOSE] : re[t.TILDE];
+				const z = options.includePrerelease ? "-0" : "";
+				return comp.replace(r, (_, M, m, p, pr) => {
+					debug("tilde", comp, _, M, m, p, pr);
+					let ret;
+					if (isX(M)) ret = "";
+					else if (isX(m)) ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+					else if (isX(p)) ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+					else if (pr) {
+						debug("replaceTilde pr", pr);
+						ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+					} else ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
+					debug("tilde return", ret);
+					return ret;
+				});
+			};
+			const replaceCarets = (comp, options) => {
+				return comp.trim().split(/\s+/).map((c) => replaceCaret(c, options)).join(" ");
+			};
+			const replaceCaret = (comp, options) => {
+				debug("caret", comp, options);
+				const r = options.loose ? re[t.CARETLOOSE] : re[t.CARET];
+				const z = options.includePrerelease ? "-0" : "";
+				return comp.replace(r, (_, M, m, p, pr) => {
+					debug("caret", comp, _, M, m, p, pr);
+					let ret;
+					if (isX(M)) ret = "";
+					else if (isX(m)) ret = `>=${M}.0.0${z} <${+M + 1}.0.0-0`;
+					else if (isX(p)) if (M === "0") ret = `>=${M}.${m}.0${z} <${M}.${+m + 1}.0-0`;
+					else ret = `>=${M}.${m}.0${z} <${+M + 1}.0.0-0`;
+					else if (pr) {
+						debug("replaceCaret pr", pr);
+						if (M === "0") if (m === "0") ret = `>=${M}.${m}.${p}-${pr} <${M}.${m}.${+p + 1}-0`;
+						else ret = `>=${M}.${m}.${p}-${pr} <${M}.${+m + 1}.0-0`;
+						else ret = `>=${M}.${m}.${p}-${pr} <${+M + 1}.0.0-0`;
+					} else {
+						debug("no pr");
+						if (M === "0") if (m === "0") ret = `>=${M}.${m}.${p} <${M}.${m}.${+p + 1}-0`;
+						else ret = `>=${M}.${m}.${p} <${M}.${+m + 1}.0-0`;
+						else ret = `>=${M}.${m}.${p} <${+M + 1}.0.0-0`;
+					}
+					debug("caret return", ret);
+					return ret;
+				});
+			};
+			const replaceXRanges = (comp, options) => {
+				debug("replaceXRanges", comp, options);
+				return comp.split(/\s+/).map((c) => replaceXRange(c, options)).join(" ");
+			};
+			const replaceXRange = (comp, options) => {
+				comp = comp.trim();
+				const r = options.loose ? re[t.XRANGELOOSE] : re[t.XRANGE];
+				return comp.replace(r, (ret, gtlt, M, m, p, pr) => {
+					debug("xRange", comp, ret, gtlt, M, m, p, pr);
+					if (invalidXRangeOrder(M, m, p)) return comp;
+					const xM = isX(M);
+					const xm = xM || isX(m);
+					const xp = xm || isX(p);
+					const anyX = xp;
+					if (gtlt === "=" && anyX) gtlt = "";
+					pr = options.includePrerelease ? "-0" : "";
+					if (xM) if (gtlt === ">" || gtlt === "<") ret = "<0.0.0-0";
+					else ret = "*";
+					else if (gtlt && anyX) {
+						if (xm) m = 0;
+						p = 0;
+						if (gtlt === ">") {
+							gtlt = ">=";
+							if (xm) {
+								M = +M + 1;
+								m = 0;
+								p = 0;
+							} else {
+								m = +m + 1;
+								p = 0;
+							}
+						} else if (gtlt === "<=") {
+							gtlt = "<";
+							if (xm) M = +M + 1;
+							else m = +m + 1;
+						}
+						if (gtlt === "<") pr = "-0";
+						ret = `${gtlt + M}.${m}.${p}${pr}`;
+					} else if (xm) ret = `>=${M}.0.0${pr} <${+M + 1}.0.0-0`;
+					else if (xp) ret = `>=${M}.${m}.0${pr} <${M}.${+m + 1}.0-0`;
+					debug("xRange return", ret);
+					return ret;
+				});
+			};
+			const replaceStars = (comp, options) => {
+				debug("replaceStars", comp, options);
+				return comp.trim().replace(re[t.STAR], "");
+			};
+			const replaceGTE0 = (comp, options) => {
+				debug("replaceGTE0", comp, options);
+				return comp.trim().replace(re[options.includePrerelease ? t.GTE0PRE : t.GTE0], "");
+			};
+			const hyphenReplace = (incPr) => ($0, from, fM, fm, fp, fpr, fb, to, tM, tm, tp, tpr) => {
+				if (isX(fM)) from = "";
+				else if (isX(fm)) from = `>=${fM}.0.0${incPr ? "-0" : ""}`;
+				else if (isX(fp)) from = `>=${fM}.${fm}.0${incPr ? "-0" : ""}`;
+				else if (fpr) from = `>=${from}`;
+				else from = `>=${from}${incPr ? "-0" : ""}`;
+				if (isX(tM)) to = "";
+				else if (isX(tm)) to = `<${+tM + 1}.0.0-0`;
+				else if (isX(tp)) to = `<${tM}.${+tm + 1}.0-0`;
+				else if (tpr) to = `<=${tM}.${tm}.${tp}-${tpr}`;
+				else if (incPr) to = `<${tM}.${tm}.${+tp + 1}-0`;
+				else to = `<=${to}`;
+				return `${from} ${to}`.trim();
+			};
+			const testSet = (set, version, options) => {
+				for (let i = 0; i < set.length; i++) if (!set[i].test(version)) return false;
+				if (version.prerelease.length && !options.includePrerelease) {
+					for (let i = 0; i < set.length; i++) {
+						debug(set[i].semver);
+						if (set[i].semver === Comparator.ANY) continue;
+						if (set[i].semver.prerelease.length > 0) {
+							const allowed = set[i].semver;
+							if (allowed.major === version.major && allowed.minor === version.minor && allowed.patch === version.patch) return true;
+						}
+					}
+					return false;
+				}
+				return true;
+			};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js
+		var require_comparator = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const ANY = Symbol("SemVer ANY");
+			module.exports = class Comparator {
+				static get ANY() {
+					return ANY;
+				}
+				constructor(comp, options) {
+					options = parseOptions(options);
+					if (comp instanceof Comparator) if (comp.loose === !!options.loose) return comp;
+					else comp = comp.value;
+					comp = comp.trim().split(/\s+/).join(" ");
+					debug("comparator", comp, options);
+					this.options = options;
+					this.loose = !!options.loose;
+					this.parse(comp);
+					if (this.semver === ANY) this.value = "";
+					else this.value = this.operator + this.semver.version;
+					debug("comp", this);
+				}
+				parse(comp) {
+					const r = this.options.loose ? re[t.COMPARATORLOOSE] : re[t.COMPARATOR];
+					const m = comp.match(r);
+					if (!m) throw new TypeError(`Invalid comparator: ${comp}`);
+					this.operator = m[1] !== void 0 ? m[1] : "";
+					if (this.operator === "=") this.operator = "";
+					if (!m[2]) this.semver = ANY;
+					else this.semver = new SemVer(m[2], this.options.loose);
+				}
+				toString() {
+					return this.value;
+				}
+				test(version) {
+					debug("Comparator.test", version, this.options.loose);
+					if (this.semver === ANY || version === ANY) return true;
+					if (typeof version === "string") try {
+						version = new SemVer(version, this.options);
+					} catch (er) {
+						return false;
+					}
+					return cmp(version, this.operator, this.semver, this.options);
+				}
+				intersects(comp, options) {
+					if (!(comp instanceof Comparator)) throw new TypeError("a Comparator is required");
+					if (this.operator === "") {
+						if (this.value === "") return true;
+						return new Range(comp.value, options).test(this.value);
+					} else if (comp.operator === "") {
+						if (comp.value === "") return true;
+						return new Range(this.value, options).test(comp.semver);
+					}
+					options = parseOptions(options);
+					if (options.includePrerelease && (this.value === "<0.0.0-0" || comp.value === "<0.0.0-0")) return false;
+					if (!options.includePrerelease && (this.value.startsWith("<0.0.0") || comp.value.startsWith("<0.0.0"))) return false;
+					if (this.operator.startsWith(">") && comp.operator.startsWith(">")) return true;
+					if (this.operator.startsWith("<") && comp.operator.startsWith("<")) return true;
+					if (this.semver.version === comp.semver.version && this.operator.includes("=") && comp.operator.includes("=")) return true;
+					if (cmp(this.semver, "<", comp.semver, options) && this.operator.startsWith(">") && comp.operator.startsWith("<")) return true;
+					if (cmp(this.semver, ">", comp.semver, options) && this.operator.startsWith("<") && comp.operator.startsWith(">")) return true;
+					return false;
+				}
+			};
+			const parseOptions = require_parse_options();
+			const { safeRe: re, t } = require_re();
+			const cmp = require_cmp();
+			const debug = require_debug();
+			const SemVer = require_semver$1();
+			const Range = require_range();
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/satisfies.js
+		var require_satisfies = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const Range = require_range();
+			const satisfies = (version, range, options) => {
+				try {
+					range = new Range(range, options);
+				} catch (er) {
+					return false;
+				}
+				return range.test(version);
+			};
+			module.exports = satisfies;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/to-comparators.js
+		var require_to_comparators = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const Range = require_range();
+			const toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
+			module.exports = toComparators;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/max-satisfying.js
+		var require_max_satisfying = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const Range = require_range();
+			const maxSatisfying = (versions, range, options) => {
+				let max = null;
+				let maxSV = null;
+				let rangeObj = null;
+				try {
+					rangeObj = new Range(range, options);
+				} catch (er) {
+					return null;
+				}
+				versions.forEach((v) => {
+					if (rangeObj.test(v)) {
+						if (!max || maxSV.compare(v) === -1) {
+							max = v;
+							maxSV = new SemVer(max, options);
+						}
+					}
+				});
+				return max;
+			};
+			module.exports = maxSatisfying;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-satisfying.js
+		var require_min_satisfying = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const Range = require_range();
+			const minSatisfying = (versions, range, options) => {
+				let min = null;
+				let minSV = null;
+				let rangeObj = null;
+				try {
+					rangeObj = new Range(range, options);
+				} catch (er) {
+					return null;
+				}
+				versions.forEach((v) => {
+					if (rangeObj.test(v)) {
+						if (!min || minSV.compare(v) === 1) {
+							min = v;
+							minSV = new SemVer(min, options);
+						}
+					}
+				});
+				return min;
+			};
+			module.exports = minSatisfying;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-version.js
+		var require_min_version = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const Range = require_range();
+			const gt = require_gt();
+			const minVersion = (range, loose) => {
+				range = new Range(range, loose);
+				let minver = new SemVer("0.0.0");
+				if (range.test(minver)) return minver;
+				minver = new SemVer("0.0.0-0");
+				if (range.test(minver)) return minver;
+				minver = null;
+				for (let i = 0; i < range.set.length; ++i) {
+					const comparators = range.set[i];
+					let setMin = null;
+					comparators.forEach((comparator) => {
+						const compver = new SemVer(comparator.semver.version);
+						switch (comparator.operator) {
+							case ">":
+								if (compver.prerelease.length === 0) compver.patch++;
+								else compver.prerelease.push(0);
+								compver.raw = compver.format();
+							case "":
+							case ">=":
+								if (!setMin || gt(compver, setMin)) setMin = compver;
+								break;
+							case "<":
+							case "<=": break;
+							/* istanbul ignore next */
+							default: throw new Error(`Unexpected operation: ${comparator.operator}`);
+						}
+					});
+					if (setMin && (!minver || gt(minver, setMin))) minver = setMin;
+				}
+				if (minver && range.test(minver)) return minver;
+				return null;
+			};
+			module.exports = minVersion;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/valid.js
+		var require_valid = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const Range = require_range();
+			const validRange = (range, options) => {
+				try {
+					return new Range(range, options).range || "*";
+				} catch (er) {
+					return null;
+				}
+			};
+			module.exports = validRange;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/outside.js
+		var require_outside = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const SemVer = require_semver$1();
+			const Comparator = require_comparator();
+			const { ANY } = Comparator;
+			const Range = require_range();
+			const satisfies = require_satisfies();
+			const gt = require_gt();
+			const lt = require_lt();
+			const lte = require_lte();
+			const gte = require_gte();
+			const outside = (version, range, hilo, options) => {
+				version = new SemVer(version, options);
+				range = new Range(range, options);
+				let gtfn, ltefn, ltfn, comp, ecomp;
+				switch (hilo) {
+					case ">":
+						gtfn = gt;
+						ltefn = lte;
+						ltfn = lt;
+						comp = ">";
+						ecomp = ">=";
+						break;
+					case "<":
+						gtfn = lt;
+						ltefn = gte;
+						ltfn = gt;
+						comp = "<";
+						ecomp = "<=";
+						break;
+					default: throw new TypeError("Must provide a hilo val of \"<\" or \">\"");
+				}
+				if (satisfies(version, range, options)) return false;
+				for (let i = 0; i < range.set.length; ++i) {
+					const comparators = range.set[i];
+					let high = null;
+					let low = null;
+					comparators.forEach((comparator) => {
+						if (comparator.semver === ANY) comparator = new Comparator(">=0.0.0");
+						high = high || comparator;
+						low = low || comparator;
+						if (gtfn(comparator.semver, high.semver, options)) high = comparator;
+						else if (ltfn(comparator.semver, low.semver, options)) low = comparator;
+					});
+					if (high.operator === comp || high.operator === ecomp) return false;
+					if ((!low.operator || low.operator === comp) && ltefn(version, low.semver)) return false;
+					else if (low.operator === ecomp && ltfn(version, low.semver)) return false;
+				}
+				return true;
+			};
+			module.exports = outside;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/gtr.js
+		var require_gtr = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const outside = require_outside();
+			const gtr = (version, range, options) => outside(version, range, ">", options);
+			module.exports = gtr;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/ltr.js
+		var require_ltr = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const outside = require_outside();
+			const ltr = (version, range, options) => outside(version, range, "<", options);
+			module.exports = ltr;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/intersects.js
+		var require_intersects = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const Range = require_range();
+			const intersects = (r1, r2, options) => {
+				r1 = new Range(r1, options);
+				r2 = new Range(r2, options);
+				return r1.intersects(r2, options);
+			};
+			module.exports = intersects;
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/simplify.js
+		var require_simplify = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const satisfies = require_satisfies();
+			const compare = require_compare();
+			module.exports = (versions, range, options) => {
+				const set = [];
+				let first = null;
+				let prev = null;
+				const v = versions.sort((a, b) => compare(a, b, options));
+				for (const version of v) if (satisfies(version, range, options)) {
+					prev = version;
+					if (!first) first = version;
+				} else {
+					if (prev) set.push([first, prev]);
+					prev = null;
+					first = null;
+				}
+				if (first) set.push([first, null]);
+				const ranges = [];
+				for (const [min, max] of set) if (min === max) ranges.push(min);
+				else if (!max && min === v[0]) ranges.push("*");
+				else if (!max) ranges.push(`>=${min}`);
+				else if (min === v[0]) ranges.push(`<=${max}`);
+				else ranges.push(`${min} - ${max}`);
+				const simplified = ranges.join(" || ");
+				const original = typeof range.raw === "string" ? range.raw : String(range);
+				return simplified.length < original.length ? simplified : range;
+			};
+		}));
+		//#endregion
+		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/subset.js
+		var require_subset = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const Range = require_range();
+			const Comparator = require_comparator();
+			const { ANY } = Comparator;
+			const satisfies = require_satisfies();
+			const compare = require_compare();
+			const subset = (sub, dom, options = {}) => {
+				if (sub === dom) return true;
+				sub = new Range(sub, options);
+				dom = new Range(dom, options);
+				let sawNonNull = false;
+				OUTER: for (const simpleSub of sub.set) {
+					for (const simpleDom of dom.set) {
+						const isSub = simpleSubset(simpleSub, simpleDom, options);
+						sawNonNull = sawNonNull || isSub !== null;
+						if (isSub) continue OUTER;
+					}
+					if (sawNonNull) return false;
+				}
+				return true;
+			};
+			const minimumVersionWithPreRelease = [new Comparator(">=0.0.0-0")];
+			const minimumVersion = [new Comparator(">=0.0.0")];
+			const simpleSubset = (sub, dom, options) => {
+				if (sub === dom) return true;
+				if (sub.length === 1 && sub[0].semver === ANY) if (dom.length === 1 && dom[0].semver === ANY) return true;
+				else if (options.includePrerelease) sub = minimumVersionWithPreRelease;
+				else sub = minimumVersion;
+				if (dom.length === 1 && dom[0].semver === ANY) if (options.includePrerelease) return true;
+				else dom = minimumVersion;
+				const eqSet = /* @__PURE__ */ new Set();
+				let gt, lt;
+				for (const c of sub) if (c.operator === ">" || c.operator === ">=") gt = higherGT(gt, c, options);
+				else if (c.operator === "<" || c.operator === "<=") lt = lowerLT(lt, c, options);
+				else eqSet.add(c.semver);
+				if (eqSet.size > 1) return null;
+				let gtltComp;
+				if (gt && lt) {
+					gtltComp = compare(gt.semver, lt.semver, options);
+					if (gtltComp > 0) return null;
+					else if (gtltComp === 0 && (gt.operator !== ">=" || lt.operator !== "<=")) return null;
+				}
+				for (const eq of eqSet) {
+					if (gt && !satisfies(eq, String(gt), options)) return null;
+					if (lt && !satisfies(eq, String(lt), options)) return null;
+					for (const c of dom) if (!satisfies(eq, String(c), options)) return false;
+					return true;
+				}
+				let higher, lower;
+				let hasDomLT, hasDomGT;
+				let needDomLTPre = lt && !options.includePrerelease && lt.semver.prerelease.length ? lt.semver : false;
+				let needDomGTPre = gt && !options.includePrerelease && gt.semver.prerelease.length ? gt.semver : false;
+				if (needDomLTPre && needDomLTPre.prerelease.length === 1 && lt.operator === "<" && needDomLTPre.prerelease[0] === 0) needDomLTPre = false;
+				for (const c of dom) {
+					hasDomGT = hasDomGT || c.operator === ">" || c.operator === ">=";
+					hasDomLT = hasDomLT || c.operator === "<" || c.operator === "<=";
+					if (gt) {
+						if (needDomGTPre) {
+							if (c.semver.prerelease && c.semver.prerelease.length && c.semver.major === needDomGTPre.major && c.semver.minor === needDomGTPre.minor && c.semver.patch === needDomGTPre.patch) needDomGTPre = false;
+						}
+						if (c.operator === ">" || c.operator === ">=") {
+							higher = higherGT(gt, c, options);
+							if (higher === c && higher !== gt) return false;
+						} else if (gt.operator === ">=" && !c.test(gt.semver)) return false;
+					}
+					if (lt) {
+						if (needDomLTPre) {
+							if (c.semver.prerelease && c.semver.prerelease.length && c.semver.major === needDomLTPre.major && c.semver.minor === needDomLTPre.minor && c.semver.patch === needDomLTPre.patch) needDomLTPre = false;
+						}
+						if (c.operator === "<" || c.operator === "<=") {
+							lower = lowerLT(lt, c, options);
+							if (lower === c && lower !== lt) return false;
+						} else if (lt.operator === "<=" && !c.test(lt.semver)) return false;
+					}
+					if (!c.operator && (lt || gt) && gtltComp !== 0) return false;
+				}
+				if (gt && hasDomLT && !lt && gtltComp !== 0) return false;
+				if (lt && hasDomGT && !gt && gtltComp !== 0) return false;
+				if (needDomGTPre || needDomLTPre) return false;
+				return true;
+			};
+			const higherGT = (a, b, options) => {
+				if (!a) return b;
+				const comp = compare(a.semver, b.semver, options);
+				return comp > 0 ? a : comp < 0 ? b : b.operator === ">" && a.operator === ">=" ? b : a;
+			};
+			const lowerLT = (a, b, options) => {
+				if (!a) return b;
+				const comp = compare(a.semver, b.semver, options);
+				return comp < 0 ? a : comp > 0 ? b : b.operator === "<" && a.operator === "<=" ? b : a;
+			};
+			module.exports = subset;
+		}));
+		//#endregion
+		//#region src/capabilities.ts
+		var import_semver = (/* @__PURE__ */ __commonJSMin(((exports, module) => {
+			const internalRe = require_re();
+			const constants = require_constants();
+			const SemVer = require_semver$1();
+			const identifiers = require_identifiers();
+			module.exports = {
+				parse: require_parse(),
+				valid: require_valid$1(),
+				clean: require_clean(),
+				inc: require_inc(),
+				diff: require_diff(),
+				major: require_major(),
+				minor: require_minor(),
+				patch: require_patch(),
+				prerelease: require_prerelease(),
+				compare: require_compare(),
+				rcompare: require_rcompare(),
+				compareLoose: require_compare_loose(),
+				compareBuild: require_compare_build(),
+				sort: require_sort(),
+				rsort: require_rsort(),
+				gt: require_gt(),
+				lt: require_lt(),
+				eq: require_eq(),
+				neq: require_neq(),
+				gte: require_gte(),
+				lte: require_lte(),
+				cmp: require_cmp(),
+				coerce: require_coerce(),
+				truncate: require_truncate(),
+				Comparator: require_comparator(),
+				Range: require_range(),
+				satisfies: require_satisfies(),
+				toComparators: require_to_comparators(),
+				maxSatisfying: require_max_satisfying(),
+				minSatisfying: require_min_satisfying(),
+				minVersion: require_min_version(),
+				validRange: require_valid(),
+				outside: require_outside(),
+				gtr: require_gtr(),
+				ltr: require_ltr(),
+				intersects: require_intersects(),
+				simplifyRange: require_simplify(),
+				subset: require_subset(),
+				SemVer,
+				re: internalRe.re,
+				src: internalRe.src,
+				tokens: internalRe.t,
+				SEMVER_SPEC_VERSION: constants.SEMVER_SPEC_VERSION,
+				RELEASE_TYPES: constants.RELEASE_TYPES,
+				compareIdentifiers: identifiers.compareIdentifiers,
+				rcompareIdentifiers: identifiers.rcompareIdentifiers
+			};
+		})))();
+		/**
+		* Check whether a shape module ABI can run here.
+		* @param version - declared shape apiVersion; absent defaults to 1.
+		* @returns true when supported.
+		*/
+		function supportsShapeApiVersion(version) {
+			return (version ?? 1) === 1;
+		}
+		/**
+		* Build the capability registry exposed to other Client plugins.
+		* @returns a registry whose entries disappear when their disposer is called.
+		*/
+		function createShapeCapabilityRegistry() {
+			const entries = /* @__PURE__ */ new Map();
+			const listeners = /* @__PURE__ */ new Set();
+			const keyOf = (plugin, capability) => `${plugin}#${capability}`;
+			const notify = () => {
+				for (const listener of listeners) listener();
+			};
+			return {
+				provide(capability) {
+					if (capability.plugin.trim().length === 0 || capability.capability.trim().length === 0) throw new Error("capability plugin and capability must be non-empty");
+					if (!(0, import_semver.valid)(capability.version)) throw new Error(`invalid capability version: ${capability.version}`);
+					const key = keyOf(capability.plugin, capability.capability);
+					if (entries.has(key)) throw new Error(`capability already provided: ${key}`);
+					entries.set(key, capability);
+					notify();
+					let disposed = false;
+					return () => {
+						if (disposed) return;
+						disposed = true;
+						if (entries.get(key) === capability) entries.delete(key);
+						notify();
+					};
+				},
+				get(plugin, capability) {
+					return entries.get(keyOf(plugin, capability));
+				},
+				list() {
+					return [...entries.values()];
+				},
+				subscribe(listener) {
+					listeners.add(listener);
+					return () => {
+						listeners.delete(listener);
+					};
+				},
+				resolve(requirements) {
+					const capabilities = {};
+					const missing = [];
+					for (const requirement of requirements) {
+						const key = keyOf(requirement.plugin, requirement.capability);
+						if ((0, import_semver.validRange)(requirement.version) === null) {
+							missing.push({
+								...requirement,
+								range: requirement.version,
+								reason: "invalid-range"
+							});
+							continue;
+						}
+						const found = entries.get(key);
+						if (found === void 0) {
+							if (requirement.optional !== true) missing.push({
+								...requirement,
+								range: requirement.version,
+								reason: "missing"
+							});
+							continue;
+						}
+						if (!(0, import_semver.satisfies)(found.version, requirement.version, { includePrerelease: true })) {
+							missing.push({
+								plugin: requirement.plugin,
+								capability: requirement.capability,
+								range: requirement.version,
+								found: found.version,
+								reason: "version-mismatch"
+							});
+							continue;
+						}
+						capabilities[key] = found.api;
+					}
+					return {
+						ok: missing.length === 0,
+						capabilities,
+						missing
+					};
+				}
+			};
+		}
+		//#endregion
 		//#region \0dsh-css:E:\Project\dsh-shape\packages\experimental\dsh-shape-build\src\client\shape-chat-cards.module.css.mjs
 		const css$1 = ".cX5DZa_list{box-sizing:border-box;gap:8px;width:100%;max-width:860px;margin:0 auto 8px;padding:0 16px;display:grid}.cX5DZa_card{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);box-shadow:var(--dsw-elevation-soft,0 6px 18px #00000024);border-radius:12px;align-items:center;gap:12px;padding:12px 14px;display:flex}.cX5DZa_mark{width:32px;height:32px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:9px;flex:none;place-items:center;display:grid}.cX5DZa_markGrid{grid-template-rows:repeat(2,4px);grid-template-columns:repeat(2,4px);gap:2px;display:grid}.cX5DZa_markGrid>span{opacity:.9;background:currentColor;border-radius:1px}.cX5DZa_body{flex:1;min-width:0}.cX5DZa_heading{align-items:baseline;gap:8px;min-width:0;display:flex}.cX5DZa_title{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}.cX5DZa_id{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);flex:none;font-size:10px}.cX5DZa_text{color:var(--dsw-alias-label-secondary,#fff9);margin:2px 0 0;font-size:12px;line-height:1.5}.cX5DZa_greeting{color:var(--dsw-alias-state-success-primary,#7dd3a7);margin:4px 0 0;font-size:12px;line-height:1.5}@media (width<=720px){.cX5DZa_list{padding:0 8px}.cX5DZa_card{flex-wrap:wrap;align-items:flex-start}.cX5DZa_card button{margin-left:44px}}";
 		const tagId$1 = "dsh-shape/shape-chat-cards.module.css";
@@ -59,24 +1535,27 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Render descriptor-driven shape cards above the composer.
+		* @param props.resolveShape - resolves declared capability requirements.
 		* @returns the card list, or null when no shape contributes one.
 		*/
-		function ShapeChatCards() {
+		function ShapeChatCards({ resolveShape }) {
 			const [cards, setCards] = (0, react.useState)([]);
 			const [greetings, setGreetings] = (0, react.useState)({});
 			const load = (0, react.useCallback)(async () => {
 				try {
-					setCards(await readCards());
+					setCards((await readCards()).filter(({ shape }) => supportsShapeApiVersion(shape.shapeApiVersion) && resolveShape(shape.requirements ?? []).ok));
 				} catch {}
-			}, []);
+			}, [resolveShape]);
 			(0, react.useEffect)(() => {
 				load();
 				const reload = () => {
 					load();
 				};
 				window.addEventListener("dsh-shape:refresh", reload);
+				window.addEventListener("dsh-shape:capabilities", reload);
 				return () => {
 					window.removeEventListener("dsh-shape:refresh", reload);
+					window.removeEventListener("dsh-shape:capabilities", reload);
 				};
 			}, [load]);
 			if (cards.length === 0) return null;
@@ -146,7 +1625,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:E:\Project\dsh-shape\packages\experimental\dsh-shape-build\src\client\shape-dialog.module.css.mjs
-		const css = ".g_Pq1W_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_window:focus{outline:none}.g_Pq1W_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.g_Pq1W_heading{align-items:center;gap:12px;min-width:0;display:flex}.g_Pq1W_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.g_Pq1W_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.g_Pq1W_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.g_Pq1W_headingText{min-width:0}.g_Pq1W_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.g_Pq1W_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.g_Pq1W_actions{flex:none;gap:4px;display:flex}.g_Pq1W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.g_Pq1W_iconButton>svg{width:16px;height:16px}@media (hover:hover){.g_Pq1W_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.g_Pq1W_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.g_Pq1W_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_content{flex:1;min-height:0;padding:22px;overflow:auto}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.g_Pq1W_cardShell{min-width:0;position:relative}.g_Pq1W_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.g_Pq1W_card:disabled{cursor:default;opacity:.55}.g_Pq1W_cardShell[data-enabled=false] .g_Pq1W_card{opacity:.55}@media (hover:hover){.g_Pq1W_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.g_Pq1W_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.g_Pq1W_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.g_Pq1W_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.g_Pq1W_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.g_Pq1W_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.g_Pq1W_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch:disabled{cursor:wait;opacity:.5}.g_Pq1W_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.g_Pq1W_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.g_Pq1W_cardIdentity{flex:1;min-width:0}.g_Pq1W_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.g_Pq1W_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.g_Pq1W_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.g_Pq1W_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;display:flex}.g_Pq1W_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.g_Pq1W_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.g_Pq1W_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.g_Pq1W_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.g_Pq1W_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.g_Pq1W_placeholderMessage{max-width:540px;line-height:1.5}.g_Pq1W_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite g_Pq1W_shimmer}.g_Pq1W_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_viewWindow:focus{outline:none}.g_Pq1W_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.g_Pq1W_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.g_Pq1W_viewHeadingText{min-width:0}.g_Pq1W_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.g_Pq1W_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.g_Pq1W_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.g_Pq1W_viewBody .g_Pq1W_placeholder{flex:1;width:100%}.g_Pq1W_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.g_Pq1W_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.g_Pq1W_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.g_Pq1W_footerCount{flex:none}@keyframes g_Pq1W_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes g_Pq1W_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes g_Pq1W_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.g_Pq1W_backdrop{padding:8px}.g_Pq1W_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_header{padding:14px 16px}.g_Pq1W_content{padding:14px}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.g_Pq1W_card{min-height:176px;padding:12px}.g_Pq1W_subtitle{display:none}.g_Pq1W_footer{padding:8px 16px}.g_Pq1W_viewBackdrop{padding:8px}.g_Pq1W_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_viewHeader{padding:12px 14px}.g_Pq1W_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.g_Pq1W_backdrop,.g_Pq1W_window,.g_Pq1W_skeletonCard{animation:none}.g_Pq1W_card{transition:none}}";
+		const css = ".g_Pq1W_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_window:focus{outline:none}.g_Pq1W_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.g_Pq1W_heading{align-items:center;gap:12px;min-width:0;display:flex}.g_Pq1W_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.g_Pq1W_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.g_Pq1W_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.g_Pq1W_headingText{min-width:0}.g_Pq1W_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.g_Pq1W_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.g_Pq1W_actions{flex:none;gap:4px;display:flex}.g_Pq1W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.g_Pq1W_iconButton>svg{width:16px;height:16px}@media (hover:hover){.g_Pq1W_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.g_Pq1W_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.g_Pq1W_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_content{flex:1;min-height:0;padding:22px;overflow:auto}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.g_Pq1W_cardShell{min-width:0;position:relative}.g_Pq1W_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.g_Pq1W_card:disabled{cursor:default;opacity:.55}.g_Pq1W_cardShell[data-enabled=false] .g_Pq1W_card{opacity:.55}@media (hover:hover){.g_Pq1W_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.g_Pq1W_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.g_Pq1W_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.g_Pq1W_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.g_Pq1W_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.g_Pq1W_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.g_Pq1W_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch:disabled{cursor:wait;opacity:.5}.g_Pq1W_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.g_Pq1W_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.g_Pq1W_cardIdentity{flex:1;min-width:0}.g_Pq1W_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.g_Pq1W_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.g_Pq1W_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.g_Pq1W_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;display:flex}.g_Pq1W_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.g_Pq1W_blocked{color:var(--dsw-alias-state-warn-primary,#f0c36a);font-size:11px;line-height:1.4}.g_Pq1W_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.g_Pq1W_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.g_Pq1W_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.g_Pq1W_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.g_Pq1W_placeholderMessage{max-width:540px;line-height:1.5}.g_Pq1W_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite g_Pq1W_shimmer}.g_Pq1W_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_viewWindow:focus{outline:none}.g_Pq1W_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.g_Pq1W_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.g_Pq1W_viewHeadingText{min-width:0}.g_Pq1W_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.g_Pq1W_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.g_Pq1W_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.g_Pq1W_viewBody .g_Pq1W_placeholder{flex:1;width:100%}.g_Pq1W_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.g_Pq1W_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.g_Pq1W_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.g_Pq1W_footerCount{flex:none}@keyframes g_Pq1W_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes g_Pq1W_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes g_Pq1W_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.g_Pq1W_backdrop{padding:8px}.g_Pq1W_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_header{padding:14px 16px}.g_Pq1W_content{padding:14px}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.g_Pq1W_card{min-height:176px;padding:12px}.g_Pq1W_subtitle{display:none}.g_Pq1W_footer{padding:8px 16px}.g_Pq1W_viewBackdrop{padding:8px}.g_Pq1W_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_viewHeader{padding:12px 14px}.g_Pq1W_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.g_Pq1W_backdrop,.g_Pq1W_window,.g_Pq1W_skeletonCard{animation:none}.g_Pq1W_card{transition:none}}";
 		const tagId = "dsh-shape/shape-dialog.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -163,6 +1642,7 @@ window.__ModuleLoader__.load({
 			"backdrop": "g_Pq1W_backdrop",
 			"backdrop-in": "g_Pq1W_backdrop-in",
 			"badge": "g_Pq1W_badge",
+			"blocked": "g_Pq1W_blocked",
 			"card": "g_Pq1W_card",
 			"cardFooter": "g_Pq1W_cardFooter",
 			"cardHead": "g_Pq1W_cardHead",
@@ -208,6 +1688,17 @@ window.__ModuleLoader__.load({
 		//#region src/client/ShapeDialog.tsx
 		/** Shape browser: a large launcher-style window with a responsive app grid. */
 		/**
+		* Format one unresolved capability for the card.
+		* @param item - missing requirement.
+		* @returns compact diagnostic text.
+		*/
+		function describeMissing(item) {
+			const id = `${item.plugin}#${item.capability}`;
+			if (item.reason === "version-mismatch") return `${id} 需要 ${item.range}，当前 ${item.found ?? "未知"}`;
+			if (item.reason === "invalid-range") return `${id} 的版本范围无效：${item.range}`;
+			return `${id} ${item.range}`;
+		}
+		/**
 		* Read the current shape list.
 		* @param refresh - ask the Host to rescan the shape roots first.
 		* @returns the snapshot.
@@ -238,9 +1729,10 @@ window.__ModuleLoader__.load({
 		* Render the read-only grid of registered folder-based shapes.
 		* @param props.open - whether the window is showing.
 		* @param props.onClose - closes the window.
+		* @param props.resolveShape - resolves declared capability requirements.
 		* @returns the window, or null while closed.
 		*/
-		function ShapeDialog({ open, onClose }) {
+		function ShapeDialog({ open, onClose, resolveShape }) {
 			const [status, setStatus] = (0, react.useState)("loading");
 			const [shapes, setShapes] = (0, react.useState)([]);
 			const [roots, setRoots] = (0, react.useState)();
@@ -330,6 +1822,16 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				if (!open) return;
 				load(false);
+			}, [load, open]);
+			(0, react.useEffect)(() => {
+				if (!open) return;
+				const reload = () => {
+					load(false);
+				};
+				window.addEventListener("dsh-shape:capabilities", reload);
+				return () => {
+					window.removeEventListener("dsh-shape:capabilities", reload);
+				};
 			}, [load, open]);
 			(0, react.useEffect)(() => {
 				if (!open) {
@@ -486,9 +1988,17 @@ window.__ModuleLoader__.load({
 									children: shapes.map((shape) => {
 										const initial = Array.from(shape.title.trim())[0] ?? "?";
 										const enabled = shape.enabled !== false;
+										const resolution = resolveShape?.(shape.requirements ?? []) ?? {
+											ok: true,
+											capabilities: {},
+											missing: []
+										};
+										const apiSupported = supportsShapeApiVersion(shape.shapeApiVersion);
+										const blocked = !resolution.ok || !apiSupported;
 										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 											className: shape_dialog_module_css_default.cardShell,
 											"data-enabled": enabled ? "true" : "false",
+											"data-blocked": blocked ? "true" : "false",
 											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
 												type: "button",
 												className: shape_dialog_module_css_default.card,
@@ -496,7 +2006,7 @@ window.__ModuleLoader__.load({
 												"data-shape-id": shape.id,
 												"aria-haspopup": "dialog",
 												"aria-label": `打开 ${shape.title}`,
-												disabled: !enabled,
+												disabled: !enabled || blocked,
 												onClick: () => {
 													openView(shape);
 												},
@@ -523,6 +2033,10 @@ window.__ModuleLoader__.load({
 													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 														className: shape_dialog_module_css_default.description,
 														children: shape.description.length > 0 ? shape.description : "暂无描述"
+													}),
+													blocked && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+														className: shape_dialog_module_css_default.blocked,
+														children: !apiSupported ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(1)}）` : `缺少 ${resolution.missing.map(describeMissing).join("、")}`
 													}),
 													!shape.valid && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 														className: shape_dialog_module_css_default.invalid,
@@ -710,9 +2224,10 @@ window.__ModuleLoader__.load({
 		/** Top-bar action that opens the registered-shape browser. */
 		/**
 		* Render the header action and own the dialog's open state.
+		* @param props.resolveShape - capability resolver injected by the Client entry.
 		* @returns the button plus its dialog.
 		*/
-		function ShapeButton() {
+		function ShapeButton({ resolveShape }) {
 			const [open, setOpen] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				const onKeyDown = (event) => {
@@ -742,24 +2257,40 @@ window.__ModuleLoader__.load({
 				open,
 				onClose: () => {
 					setOpen(false);
-				}
+				},
+				resolveShape
 			})] });
 		}
 		//#endregion
 		//#region src/client/index.ts
-		/** The leading header seat is owned by the conversation client. */
+		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = ["slots"];
 		/**
-		* Register the shape browser button in the always-visible conversation header,
-		* plus shape-owned cards above the composer.
+		* Register shape surfaces and expose the shape capability registry.
 		* @param ctx - client root context.
 		*/
 		function apply(ctx) {
-			ctx.slots.inject("conversation.header.leading", () => ctx.slots.register({ name: "conversation.header.leading" }, ShapeButton));
+			const capabilities = createShapeCapabilityRegistry();
+			ctx.provide("shapeCapabilities", capabilities);
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "core",
+				version: "1.0.0",
+				api: { apiVersion: 1 }
+			}), "dsh-shape: core capability");
+			capabilities.subscribe(() => {
+				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
+			});
+			const resolveShape = (requirements) => capabilities.resolve(requirements);
+			ctx.slots.inject("conversation.header.leading", () => ctx.slots.register({
+				name: "conversation.header.leading",
+				inject: () => ({ resolveShape })
+			}, ShapeButton));
 			ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
 				name: "conversation.input.dock",
 				id: "dsh-shape-chat-cards",
-				order: 20
+				order: 20,
+				inject: () => ({ resolveShape })
 			}, ShapeChatCards));
 		}
 		//#endregion

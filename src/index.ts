@@ -28,6 +28,18 @@ export interface Config {
   dir?: string
 }
 
+/** One capability required by a shape. */
+export interface ShapeRequirement {
+  /** Providing plugin package name. */
+  plugin: string
+  /** Capability name within that plugin. */
+  capability: string
+  /** Semver range for the provider's contract version. */
+  version: string
+  /** Missing capabilities do not block startup when true. */
+  optional?: boolean
+}
+
 /** One discovered shape package. */
 export interface ShapeEntry {
   /** Stable shape id, from `package.json` `id` or `name`. */
@@ -42,6 +54,10 @@ export interface ShapeEntry {
   origin: 'bundled' | 'user'
   /** Absolute folder path. */
   dir: string
+  /** Shape Client module ABI version. */
+  shapeApiVersion: number
+  /** Capability requirements from `package.json` `shape.requires`. */
+  requirements: ShapeRequirement[]
   /** Files under `views/`, relative to that directory. */
   views: string[]
   /** Files under `slots/`, relative to that directory. */
@@ -70,6 +86,7 @@ interface Manifest {
   version?: unknown
   input?: unknown
   output?: unknown
+  shape?: unknown
 }
 
 /** One parsed slot descriptor contributed by a shape. */
@@ -184,6 +201,56 @@ async function readSlotData(dir: string, files: string[]): Promise<ShapeSlotDesc
 }
 
 /**
+ * Parse a shape's optional `shape` manifest object.
+ * @param manifest - raw package manifest.
+ * @returns validated ABI and requirements, or a configuration error.
+ */
+function readShapeConfig(manifest: Manifest): {
+  apiVersion: number
+  requirements: ShapeRequirement[]
+  error?: string
+} {
+  if (manifest.shape === undefined) return { apiVersion: 1, requirements: [] }
+  if (typeof manifest.shape !== 'object' || manifest.shape === null || Array.isArray(manifest.shape)) {
+    return { apiVersion: 1, requirements: [], error: 'shape must be an object' }
+  }
+  const config = manifest.shape as Record<string, unknown>
+  const apiVersion = config.apiVersion ?? 1
+  if (typeof apiVersion !== 'number' || !Number.isInteger(apiVersion) || apiVersion < 1) {
+    return { apiVersion: 1, requirements: [], error: 'shape.apiVersion must be a positive integer' }
+  }
+  const rawRequires = config.requires ?? []
+  if (!Array.isArray(rawRequires)) {
+    return { apiVersion, requirements: [], error: 'shape.requires must be an array' }
+  }
+
+  const requirements: ShapeRequirement[] = []
+  for (const entry of rawRequires) {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+      return { apiVersion, requirements: [], error: 'each shape requirement must be an object' }
+    }
+    const record = entry as Record<string, unknown>
+    const plugin = record.plugin
+    const capability = record.capability
+    const version = record.version
+    const optional = record.optional
+    if (typeof plugin !== 'string' || plugin.trim().length === 0
+      || typeof capability !== 'string' || capability.trim().length === 0
+      || typeof version !== 'string' || version.trim().length === 0
+      || (optional !== undefined && typeof optional !== 'boolean')) {
+      return { apiVersion, requirements: [], error: 'requirement needs plugin, capability, version, and optional boolean' }
+    }
+    requirements.push({
+      plugin: plugin.trim(),
+      capability: capability.trim(),
+      version: version.trim(),
+      ...(optional === true ? { optional: true } : {}),
+    })
+  }
+  return { apiVersion, requirements }
+}
+
+/**
  * Read one shape folder.
  * @param dir - the shape folder.
  * @param origin - which root discovered it.
@@ -205,7 +272,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
   const description = typeof manifest.description === 'string' ? manifest.description : ''
   const version = typeof manifest.version === 'string' ? manifest.version : '0.0.0'
   const output = typeof manifest.output === 'string' ? manifest.output : 'text'
-  const valid = error === undefined && typeof rawId === 'string' && rawId.trim().length > 0
+  const shapeConfig = readShapeConfig(manifest)
+  const valid = error === undefined && shapeConfig.error === undefined && typeof rawId === 'string' && rawId.trim().length > 0
   const slots = await listFiles(path.join(dir, 'slots'))
   const slotData = await readSlotData(path.join(dir, 'slots'), slots)
 
@@ -216,6 +284,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
     version,
     origin,
     dir,
+    shapeApiVersion: shapeConfig.apiVersion,
+    requirements: shapeConfig.requirements,
     views: await listFiles(path.join(dir, 'views')),
     slots,
     slotData,
@@ -224,7 +294,7 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
     output,
     valid,
     enabled: true,
-    ...(error === undefined ? {} : { error }),
+    ...(error !== undefined ? { error } : shapeConfig.error !== undefined ? { error: shapeConfig.error } : {}),
   }
 }
 

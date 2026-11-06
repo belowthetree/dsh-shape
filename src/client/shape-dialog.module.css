@@ -343,6 +343,12 @@
   font-size: 11px;
 }
 
+.blocked {
+  color: var(--dsw-alias-state-warn-primary, #f0c36a);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .toggleError {
   margin-bottom: 12px;
   padding: 8px 10px;

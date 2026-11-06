@@ -7,6 +7,12 @@ import {
   IconCloseOutlineRegular,
   IconRefreshOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {
+  ShapeMissingCapability,
+  ShapeRequirement,
+  ShapeResolverInjected,
+} from '../capabilities.ts'
+import { SHAPE_API_VERSION, supportsShapeApiVersion } from '../capabilities.ts'
 import css from './shape-dialog.module.css'
 
 interface ShapeInfo {
@@ -23,6 +29,8 @@ interface ShapeInfo {
   output: string
   valid: boolean
   enabled?: boolean
+  requirements?: ShapeRequirement[]
+  shapeApiVersion?: number
   error?: string
 }
 
@@ -32,6 +40,18 @@ interface Snapshot {
 }
 
 type Status = 'loading' | 'ready' | 'error'
+
+/**
+ * Format one unresolved capability for the card.
+ * @param item - missing requirement.
+ * @returns compact diagnostic text.
+ */
+function describeMissing(item: ShapeMissingCapability): string {
+  const id = `${item.plugin}#${item.capability}`
+  if (item.reason === 'version-mismatch') return `${id} 需要 ${item.range}，当前 ${item.found ?? '未知'}`
+  if (item.reason === 'invalid-range') return `${id} 的版本范围无效：${item.range}`
+  return `${id} ${item.range}`
+}
 
 /**
  * Read the current shape list.
@@ -66,9 +86,18 @@ async function readShapes(refresh: boolean): Promise<Snapshot> {
  * Render the read-only grid of registered folder-based shapes.
  * @param props.open - whether the window is showing.
  * @param props.onClose - closes the window.
+ * @param props.resolveShape - resolves declared capability requirements.
  * @returns the window, or null while closed.
  */
-export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ShapeDialog({
+  open,
+  onClose,
+  resolveShape,
+}: {
+  open: boolean
+  onClose: () => void
+  resolveShape?: ShapeResolverInjected['resolveShape']
+}) {
   const [status, setStatus] = useState<Status>('loading')
   const [shapes, setShapes] = useState<ShapeInfo[]>([])
   const [roots, setRoots] = useState<Snapshot['roots']>()
@@ -164,6 +193,13 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   useEffect(() => {
     if (!open) return
     void load(false)
+  }, [load, open])
+
+  useEffect(() => {
+    if (!open) return
+    const reload = (): void => { void load(false) }
+    window.addEventListener('dsh-shape:capabilities', reload)
+    return () => { window.removeEventListener('dsh-shape:capabilities', reload) }
   }, [load, open])
 
   useEffect(() => {
@@ -301,11 +337,19 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
               {shapes.map((shape) => {
                 const initial = Array.from(shape.title.trim())[0] ?? '?'
                 const enabled = shape.enabled !== false
+                const resolution = resolveShape?.(shape.requirements ?? []) ?? {
+                  ok: true,
+                  capabilities: {},
+                  missing: [],
+                }
+                const apiSupported = supportsShapeApiVersion(shape.shapeApiVersion)
+                const blocked = !resolution.ok || !apiSupported
                 return (
                   <div
                     className={css.cardShell}
                     key={shape.id}
                     data-enabled={enabled ? 'true' : 'false'}
+                    data-blocked={blocked ? 'true' : 'false'}
                   >
                     <button
                       type="button"
@@ -314,7 +358,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
                       data-shape-id={shape.id}
                       aria-haspopup="dialog"
                       aria-label={`打开 ${shape.title}`}
-                      disabled={!enabled}
+                      disabled={!enabled || blocked}
                       onClick={() => { void openView(shape) }}
                     >
                       <div className={css.cardHead}>
@@ -325,6 +369,13 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
                         </div>
                       </div>
                       <p className={css.description}>{shape.description.length > 0 ? shape.description : '暂无描述'}</p>
+                      {blocked && (
+                        <span className={css.blocked}>
+                          {!apiSupported
+                            ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(SHAPE_API_VERSION)}）`
+                            : `缺少 ${resolution.missing.map(describeMissing).join('、')}`}
+                        </span>
+                      )}
                       {!shape.valid && (
                         <span className={css.invalid}>
                           无效 package.json：{shape.error ?? '缺少 id 或 name'}

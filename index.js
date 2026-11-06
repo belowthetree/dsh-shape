@@ -103,6 +103,63 @@ async function readSlotData(dir, files) {
 	return descriptors;
 }
 /**
+* Parse a shape's optional `shape` manifest object.
+* @param manifest - raw package manifest.
+* @returns validated ABI and requirements, or a configuration error.
+*/
+function readShapeConfig(manifest) {
+	if (manifest.shape === void 0) return {
+		apiVersion: 1,
+		requirements: []
+	};
+	if (typeof manifest.shape !== "object" || manifest.shape === null || Array.isArray(manifest.shape)) return {
+		apiVersion: 1,
+		requirements: [],
+		error: "shape must be an object"
+	};
+	const config = manifest.shape;
+	const apiVersion = config.apiVersion ?? 1;
+	if (typeof apiVersion !== "number" || !Number.isInteger(apiVersion) || apiVersion < 1) return {
+		apiVersion: 1,
+		requirements: [],
+		error: "shape.apiVersion must be a positive integer"
+	};
+	const rawRequires = config.requires ?? [];
+	if (!Array.isArray(rawRequires)) return {
+		apiVersion,
+		requirements: [],
+		error: "shape.requires must be an array"
+	};
+	const requirements = [];
+	for (const entry of rawRequires) {
+		if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return {
+			apiVersion,
+			requirements: [],
+			error: "each shape requirement must be an object"
+		};
+		const record = entry;
+		const plugin = record.plugin;
+		const capability = record.capability;
+		const version = record.version;
+		const optional = record.optional;
+		if (typeof plugin !== "string" || plugin.trim().length === 0 || typeof capability !== "string" || capability.trim().length === 0 || typeof version !== "string" || version.trim().length === 0 || optional !== void 0 && typeof optional !== "boolean") return {
+			apiVersion,
+			requirements: [],
+			error: "requirement needs plugin, capability, version, and optional boolean"
+		};
+		requirements.push({
+			plugin: plugin.trim(),
+			capability: capability.trim(),
+			version: version.trim(),
+			...optional === true ? { optional: true } : {}
+		});
+	}
+	return {
+		apiVersion,
+		requirements
+	};
+}
+/**
 * Read one shape folder.
 * @param dir - the shape folder.
 * @param origin - which root discovered it.
@@ -123,7 +180,8 @@ async function readShape(dir, origin) {
 	const description = typeof manifest.description === "string" ? manifest.description : "";
 	const version = typeof manifest.version === "string" ? manifest.version : "0.0.0";
 	const output = typeof manifest.output === "string" ? manifest.output : "text";
-	const valid = error === void 0 && typeof rawId === "string" && rawId.trim().length > 0;
+	const shapeConfig = readShapeConfig(manifest);
+	const valid = error === void 0 && shapeConfig.error === void 0 && typeof rawId === "string" && rawId.trim().length > 0;
 	const slots = await listFiles(path.join(dir, "slots"));
 	const slotData = await readSlotData(path.join(dir, "slots"), slots);
 	return {
@@ -133,6 +191,8 @@ async function readShape(dir, origin) {
 		version,
 		origin,
 		dir,
+		shapeApiVersion: shapeConfig.apiVersion,
+		requirements: shapeConfig.requirements,
 		views: await listFiles(path.join(dir, "views")),
 		slots,
 		slotData,
@@ -141,7 +201,7 @@ async function readShape(dir, origin) {
 		output,
 		valid,
 		enabled: true,
-		...error === void 0 ? {} : { error }
+		...error !== void 0 ? { error } : shapeConfig.error !== void 0 ? { error: shapeConfig.error } : {}
 	};
 }
 /**

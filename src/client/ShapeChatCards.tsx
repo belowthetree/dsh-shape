@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ShapeRequirement, ShapeResolverInjected } from '../capabilities.ts'
+import { supportsShapeApiVersion } from '../capabilities.ts'
 import css from './shape-chat-cards.module.css'
 
 interface SlotDescriptor {
@@ -17,6 +19,8 @@ interface ShapeInfo {
   title: string
   valid: boolean
   enabled?: boolean
+  requirements?: ShapeRequirement[]
+  shapeApiVersion?: number
   slotData?: SlotDescriptor[]
 }
 
@@ -53,25 +57,34 @@ async function readCards(): Promise<CardEntry[]> {
 
 /**
  * Render descriptor-driven shape cards above the composer.
+ * @param props.resolveShape - resolves declared capability requirements.
  * @returns the card list, or null when no shape contributes one.
  */
-export function ShapeChatCards() {
+export function ShapeChatCards({ resolveShape }: ShapeResolverInjected) {
   const [cards, setCards] = useState<CardEntry[]>([])
   const [greetings, setGreetings] = useState<Record<string, string>>({})
 
   const load = useCallback(async (): Promise<void> => {
     try {
-      setCards(await readCards())
+      const entries = await readCards()
+      setCards(entries.filter(({ shape }) => (
+        supportsShapeApiVersion(shape.shapeApiVersion)
+        && resolveShape(shape.requirements ?? []).ok
+      )))
     } catch {
       // A failed read leaves the composer clean; the shape browser still reports errors.
     }
-  }, [])
+  }, [resolveShape])
 
   useEffect(() => {
     void load()
     const reload = (): void => { void load() }
     window.addEventListener('dsh-shape:refresh', reload)
-    return () => { window.removeEventListener('dsh-shape:refresh', reload) }
+    window.addEventListener('dsh-shape:capabilities', reload)
+    return () => {
+      window.removeEventListener('dsh-shape:refresh', reload)
+      window.removeEventListener('dsh-shape:capabilities', reload)
+    }
   }, [load])
 
   if (cards.length === 0) return null
