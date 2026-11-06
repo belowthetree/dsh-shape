@@ -8,7 +8,7 @@
  * @module @deepseek-ai/dsh-shape
  */
 
-import { mkdir, readFile, readdir } from 'node:fs/promises'
+import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -56,6 +56,8 @@ export interface ShapeEntry {
   output: string
   /** False when the package manifest is missing or invalid. */
   valid: boolean
+  /** Whether this shape's interfaces and logic are enabled. */
+  enabled: boolean
   /** Why the package is invalid, when it is. */
   error?: string
 }
@@ -221,6 +223,7 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
     input: manifest.input ?? [],
     output,
     valid,
+    enabled: true,
     ...(error === undefined ? {} : { error }),
   }
 }
@@ -264,6 +267,24 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /**
+ * Read a small JSON request body.
+ * @param req - incoming request.
+ * @returns the parsed value.
+ */
+async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  const chunks: Buffer[] = []
+  let size = 0
+  for await (const chunk of req) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array)
+    size += buffer.byteLength
+    if (size > 32_768) throw new Error('request body too large')
+    chunks.push(buffer)
+  }
+  if (size === 0) throw new Error('empty request body')
+  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown
+}
+
+/**
  * Mount the shape browser and scan folder-based shapes at boot.
  * @param ctx - host context carrying `webServer`.
  * @param config - optional user shape root.
@@ -273,6 +294,26 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
   const userDir = config.dir === undefined
     ? path.join(process.env.DSH_HOME ?? path.join(homedir(), '.dsh'), 'dsh-shape', 'shapes')
     : path.resolve(config.dir)
+
+  const stateDir = path.join(process.env.DSH_HOME ?? path.join(homedir(), '.dsh'), 'dsh-shape')
+  const stateFile = path.join(stateDir, 'state.json')
+  const enabledById = new Map<string, boolean>()
+  try {
+    const saved = JSON.parse(await readFile(stateFile, 'utf8')) as unknown
+    if (typeof saved === 'object' && saved !== null && !Array.isArray(saved)) {
+      for (const [id, enabled] of Object.entries(saved)) {
+        if (typeof enabled === 'boolean') enabledById.set(id, enabled)
+      }
+    }
+  } catch {
+    // Missing or malformed state starts with every shape enabled.
+  }
+
+  const saveEnabled = async (): Promise<void> => {
+    await mkdir(stateDir, { recursive: true })
+    const state = Object.fromEntries([...enabledById.entries()].sort(([left], [right]) => left.localeCompare(right)))
+    await writeFile(stateFile, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+  }
 
   try {
     await mkdir(userDir, { recursive: true })
@@ -287,7 +328,9 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     const user = await readRoot(userDir, 'user')
     const byId = new Map(bundled.map(shape => [shape.id, shape]))
     for (const shape of user) byId.set(shape.id, shape)
-    shapes = [...byId.values()].sort((left, right) => left.id.localeCompare(right.id))
+    shapes = [...byId.values()]
+      .map(shape => ({ ...shape, enabled: enabledById.get(shape.id) !== false }))
+      .sort((left, right) => left.id.localeCompare(right.id))
     return shapes
   }
 
@@ -314,7 +357,7 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
       return
     }
 
-    const shape = shapes.find(candidate => candidate.id === id && candidate.valid)
+    const shape = shapes.find(candidate => candidate.id === id && candidate.valid && candidate.enabled)
     if (shape === undefined) {
       json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
       return
@@ -373,6 +416,45 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     }
     if (req.method === 'POST' && url.pathname === `${API}/refresh`) {
       await refresh()
+      json(res, 200, snapshot())
+      return
+    }
+    if (req.method === 'POST' && url.pathname === `${API}/toggle`) {
+      let body: unknown
+      try {
+        body = await readJsonBody(req)
+      } catch {
+        json(res, 400, { ok: false, error: { code: 'bad-request', message: 'invalid JSON body' } })
+        return
+      }
+      const record = typeof body === 'object' && body !== null && !Array.isArray(body)
+        ? body as Record<string, unknown>
+        : undefined
+      const id = record?.id
+      const enabled = record?.enabled
+      if (typeof id !== 'string' || typeof enabled !== 'boolean') {
+        json(res, 400, { ok: false, error: { code: 'bad-request', message: 'id and enabled are required' } })
+        return
+      }
+      const shape = shapes.find(candidate => candidate.id === id)
+      if (shape === undefined) {
+        json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+        return
+      }
+      const previous = enabledById.get(id)
+      enabledById.set(id, enabled)
+      try {
+        await saveEnabled()
+      } catch (cause) {
+        if (previous === undefined) enabledById.delete(id)
+        else enabledById.set(id, previous)
+        json(res, 500, {
+          ok: false,
+          error: { code: 'state-write-failed', message: cause instanceof Error ? cause.message : String(cause) },
+        })
+        return
+      }
+      shapes = shapes.map(candidate => candidate.id === id ? { ...candidate, enabled } : candidate)
       json(res, 200, snapshot())
       return
     }

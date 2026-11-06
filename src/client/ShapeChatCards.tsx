@@ -16,6 +16,7 @@ interface ShapeInfo {
   id: string
   title: string
   valid: boolean
+  enabled?: boolean
   slotData?: SlotDescriptor[]
 }
 
@@ -42,7 +43,7 @@ async function readCards(): Promise<CardEntry[]> {
 
   const cards: CardEntry[] = []
   for (const shape of payload.shapes) {
-    if (!shape.valid) continue
+    if (!shape.valid || shape.enabled === false) continue
     for (const card of shape.slotData ?? []) {
       if (card.slot === SLOT) cards.push({ shape, card })
     }

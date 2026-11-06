@@ -10,6 +10,7 @@ dsh-shape 是 DeepSeek Harness 的插件：把 shape 作为可安装的文件夹
 - 展示 shape 的 title、id、description、来源、版本，以及 `views` / `slots` / `tools` 文件数量
 - 点击任意 shape 卡片，在第二个窗口打开它的 `views/` 界面
 - shape 的 `slots/*.json` 可以注入聊天输入区上方的卡片
+- 每张 shape 卡片带开关，停用后隐藏它的聊天卡片并拒绝打开它的 view
 - 支持刷新重扫，新 shape 放进目录后无需重启 DSH
 
 ## Shape 文件夹
@@ -46,6 +47,15 @@ shapes/greeting/
 ```
 
 当前支持 `conversation.input.dock`，卡片显示在输入框上方；点击按钮后显示 `greeting` 文本。
+
+## 开关
+
+每张 shape 卡片右上角的开关控制该 shape 的全部界面和逻辑：
+
+- 关闭后聊天卡片立即消失
+- 无法再从卡片打开它的 view；直接访问 view 路由也返回 404
+- 开关状态保存在 `$DSH_HOME/dsh-shape/state.json`，重启后保持
+- Host 接口：`POST /dsh-shape/api/toggle`，请求体 `{ "id": "greeting", "enabled": false }`
 
 ## 安装
 

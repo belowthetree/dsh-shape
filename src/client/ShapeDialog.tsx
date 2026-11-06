@@ -22,6 +22,7 @@ interface ShapeInfo {
   input: unknown
   output: string
   valid: boolean
+  enabled?: boolean
   error?: string
 }
 
@@ -75,6 +76,8 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [selected, setSelected] = useState<ShapeInfo | null>(null)
   const [viewLoading, setViewLoading] = useState(false)
   const [viewError, setViewError] = useState('')
+  const [busyId, setBusyId] = useState('')
+  const [toggleError, setToggleError] = useState('')
   const windowRef = useRef<HTMLElement>(null)
   const viewRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
@@ -98,6 +101,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   }, [])
 
   const openView = useCallback(async (shape: ShapeInfo): Promise<void> => {
+    if (shape.enabled === false) return
     setSelected(shape)
     setViewError('')
     if (shape.views.length === 0) {
@@ -132,6 +136,29 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
     setSelected(null)
     setViewError('')
     setViewLoading(false)
+  }, [])
+
+  const toggleShape = useCallback(async (shape: ShapeInfo): Promise<void> => {
+    const enabled = shape.enabled === false
+    setBusyId(shape.id)
+    setToggleError('')
+    try {
+      const response = await fetch('/dsh-shape/api/toggle', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ id: shape.id, enabled }),
+      })
+      if (!response.ok) throw new Error(`HTTP ${String(response.status)}`)
+      const payload = await response.json() as { ok?: boolean; shapes?: ShapeInfo[] }
+      if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error('invalid toggle response')
+      setShapes(payload.shapes)
+      window.dispatchEvent(new CustomEvent('dsh-shape:refresh'))
+    } catch (cause) {
+      setToggleError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setBusyId('')
+    }
   }, [])
 
   useEffect(() => {
@@ -235,6 +262,12 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
         </header>
 
         <div className={css.content}>
+          {toggleError !== '' && (
+            <div className={css.toggleError} role="alert">
+              切换 shape 失败：{toggleError}
+            </div>
+          )}
+
           {status === 'loading' && (
             <div className={css.grid} aria-label="正在读取 shape">
               {Array.from({ length: 8 }, (_, index) => (
@@ -267,39 +300,59 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
             <div className={css.grid} data-testid="dsh-shape-grid">
               {shapes.map((shape) => {
                 const initial = Array.from(shape.title.trim())[0] ?? '?'
+                const enabled = shape.enabled !== false
                 return (
-                  <button
-                    type="button"
-                    className={css.card}
+                  <div
+                    className={css.cardShell}
                     key={shape.id}
-                    data-testid="dsh-shape-card"
-                    data-shape-id={shape.id}
-                    aria-haspopup="dialog"
-                    aria-label={`打开 ${shape.title}`}
-                    onClick={() => { void openView(shape) }}
+                    data-enabled={enabled ? 'true' : 'false'}
                   >
-                    <div className={css.cardHead}>
-                      <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>
-                      <div className={css.cardIdentity}>
-                        <h3 className={css.cardTitle} title={shape.title}>{shape.title}</h3>
-                        <code className={css.cardId} title={shape.id}>{shape.id}</code>
+                    <button
+                      type="button"
+                      className={css.card}
+                      data-testid="dsh-shape-card"
+                      data-shape-id={shape.id}
+                      aria-haspopup="dialog"
+                      aria-label={`打开 ${shape.title}`}
+                      disabled={!enabled}
+                      onClick={() => { void openView(shape) }}
+                    >
+                      <div className={css.cardHead}>
+                        <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>
+                        <div className={css.cardIdentity}>
+                          <h3 className={css.cardTitle} title={shape.title}>{shape.title}</h3>
+                          <code className={css.cardId} title={shape.id}>{shape.id}</code>
+                        </div>
                       </div>
-                      <span className={css.origin}>{shape.origin === 'bundled' ? '内置' : '用户'}</span>
-                    </div>
-                    <p className={css.description}>{shape.description.length > 0 ? shape.description : '暂无描述'}</p>
-                    {!shape.valid && (
-                      <span className={css.invalid}>
-                        无效 package.json：{shape.error ?? '缺少 id 或 name'}
-                      </span>
-                    )}
-                    <div className={css.cardFooter}>
-                      <span className={css.badge}>v{shape.version}</span>
-                      <span className={css.badge}>{String(shape.views.length)} views</span>
-                      <span className={css.badge}>{String(shape.slots.length)} slots</span>
-                      <span className={css.badge}>{String(shape.tools.length)} tools</span>
-                      <span className={css.badge}>{shape.output}</span>
-                    </div>
-                  </button>
+                      <p className={css.description}>{shape.description.length > 0 ? shape.description : '暂无描述'}</p>
+                      {!shape.valid && (
+                        <span className={css.invalid}>
+                          无效 package.json：{shape.error ?? '缺少 id 或 name'}
+                        </span>
+                      )}
+                      <div className={css.cardFooter}>
+                        <span className={css.origin}>{shape.origin === 'bundled' ? '内置' : '用户'}</span>
+                        <span className={css.badge}>v{shape.version}</span>
+                        <span className={css.badge}>{String(shape.views.length)} views</span>
+                        <span className={css.badge}>{String(shape.slots.length)} slots</span>
+                        <span className={css.badge}>{String(shape.tools.length)} tools</span>
+                        <span className={css.badge}>{shape.output}</span>
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className={css.switch}
+                      role="switch"
+                      aria-checked={enabled}
+                      aria-busy={busyId === shape.id}
+                      aria-label={`${enabled ? '停用' : '启用'} ${shape.title}`}
+                      title={`${enabled ? '停用' : '启用'} ${shape.title}`}
+                      data-testid="dsh-shape-toggle"
+                      data-toggle-shape-id={shape.id}
+                      disabled={busyId === shape.id}
+                      onClick={() => { void toggleShape(shape) }}
+                    />
+                  </div>
                 )
               })}
             </div>
