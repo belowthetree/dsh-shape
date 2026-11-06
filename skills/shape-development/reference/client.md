@@ -29,18 +29,18 @@ export function activate(api) {
 - `api.capabilities`: object keyed by `plugin#capability`, containing resolved API objects.
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
-- `api.mount(slot, render)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. See [slots.md](slots.md) for the slot list and the container contract.
+- `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
 
 ## Mounts
 
 ```js
 export function activate(api) {
-  return api.mount('conversation.input.left', (container) => {
-    const chip = document.createElement('button')
-    chip.textContent = '构建中'
-    container.append(chip)
-    return () => chip.remove()
-  })
+  return api.mount('conversation.input.overlay', (container) => {
+    const panel = document.createElement('div')
+    panel.textContent = '可以拖动、可以吸附到屏幕边缘'
+    container.append(panel)
+    return () => panel.remove()
+  }, { placement: 'floating', snap: true })
 }
 ```
 

@@ -2,7 +2,7 @@
 
 import type { ShapeCapabilityRegistry, ShapeRequirement } from '../capabilities.ts'
 import { supportsShapeApiVersion } from '../capabilities.ts'
-import { isShapeSlot, registerShapeMount } from './shape-slots.ts'
+import { isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
 
 interface ShapeInfo {
   id: string
@@ -34,9 +34,14 @@ export interface ShapeClientApi {
    * Render into one conversation slot.
    * @param slot - supported slot name; see `SHAPE_SLOTS`.
    * @param render - receives the slot's container; returns an optional cleanup.
+   * @param options - placement for the panel slot: anchored (default) or floating.
    * @returns an idempotent disposer.
    */
-  mount: (slot: string, render: (container: HTMLElement) => (() => void) | void) => () => void
+  mount: (
+    slot: string,
+    render: (container: HTMLElement) => (() => void) | void,
+    options?: ShapePlacementOptions,
+  ) => () => void
   shortcuts: {
     register: (binding: ShapeShortcutBinding) => () => void
   }
@@ -201,9 +206,16 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
           if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`)
           return resolution.capabilities[key]
         },
-        mount(slot, render) {
+        mount(slot, render, options) {
           if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`)
-          const off = registerShapeMount({ slot, shapeId: shape.id, render })
+          const off = registerShapeMount({
+            slot,
+            shapeId: shape.id,
+            title: shape.title,
+            placement: options?.placement === 'floating' ? 'floating' : 'anchored',
+            snap: options?.snap !== false,
+            render,
+          })
           state.mounts.push(off)
           return off
         },

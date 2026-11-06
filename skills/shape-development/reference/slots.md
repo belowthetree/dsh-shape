@@ -14,8 +14,10 @@ Each `slots/*.json` file may contain one object (or an array of them):
 | `button` | no | Action label; reveals `greeting`. Cards default to `打个招呼`, compact slots only show a button when one is declared. |
 | `greeting` | no | Text revealed after pressing the button; defaults to `你好！`. |
 | `icon` | no | SVG path data in a 16×16 view box; compact slots fall back to the title's first letter. |
+| `placement` | no | `anchored` (default) or `floating`; only `conversation.input.overlay` honours it. |
+| `snap` | no | Whether a floating window snaps to the nearest viewport edge when a drag ends; defaults to `true`. |
 
-Files with invalid JSON, non-object content, or a missing/empty `slot` are ignored. Optional fields must be strings when present.
+Files with invalid JSON, non-object content, or a missing/empty `slot` are ignored. Optional fields must be strings when present, except `snap`.
 
 ## Supported slots
 
@@ -52,11 +54,22 @@ export function activate(api) {
 }
 ```
 
-- `api.mount(slot, render)` throws for an unsupported slot, otherwise returns an idempotent disposer.
+- `api.mount(slot, render, options)` throws for an unsupported slot, otherwise returns an idempotent disposer.
+- `options.placement` is `anchored` (default) or `floating`; `options.snap` defaults to `true`. Both apply only to `conversation.input.overlay`.
 - `render` receives the slot's own container element; it runs after mount and again after the slot remounts (session switch, host restart).
 - The returned cleanup runs before the container is dropped; the runtime also disposes every mount when the shape is disabled or the shape list reloads.
 - The container carries the slot's layout chrome: `inline-flex` for chips and strips, full width for cards and panels.
 - Client modules run with page privileges, so a mount can render anything the page can.
+
+## Floating windows
+
+`conversation.input.overlay` entries and mounts may ask for `placement: 'floating'`. The host then renders a window instead of an anchored panel:
+
+- The window is portalled to the document body and positioned `fixed`, so it can leave the composer area and is not clipped.
+- Its bar is the drag handle; the title comes from the descriptor's `title` or the shape title.
+- When a drag ends and `snap` is on, a window within 24px of a viewport edge snaps to that edge with an 8px margin.
+- The position is remembered per slot and shape in `localStorage` under `dsh-shape:float:<slot>:<shape>` and restored on the next mount, clamped into the viewport.
+- A descriptor window carries a dismiss control in its bar. A mounted window has no host control; the shape renders its own close/collapse inside the body.
 
 ## Rendering rules
 

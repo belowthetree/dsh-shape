@@ -1607,7 +1607,13 @@ window.__ModuleLoader__.load({
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeSlotEntries.tsx
 		/** Shape-owned entries and mounts in the conversation slots. */
-		/** Stack positioning of floating entries, anchored at the composer card's top edge. */
+		/** Distance from a viewport edge that snaps a floating window. */
+		const SNAP_DISTANCE = 24;
+		/** Margin kept between a snapped window and the viewport edge. */
+		const SNAP_MARGIN = 8;
+		/** Key prefix for a floating window's remembered position. */
+		const FLOAT_STORAGE_PREFIX = 'dsh-shape:float:';
+		/** Stack positioning of anchored entries, at the composer card's top edge. */
 		const PANEL_STACK = {
 			position: 'absolute',
 			left: 0,
@@ -1618,7 +1624,7 @@ window.__ModuleLoader__.load({
 			maxWidth: 720,
 			margin: '0 auto',
 		};
-		/** Compact entry chrome shared by the strip, inline, and menu-row presentations. */
+		/** Compact entry chrome shared by the strip presentation. */
 		const COMPACT_ENTRY = {
 			gap: 8,
 			padding: '4px 10px',
@@ -1684,6 +1690,118 @@ window.__ModuleLoader__.load({
 			fontSize: 16,
 			lineHeight: '24px',
 		};
+		/** Window chrome of a floating panel. */
+		const FLOAT_WINDOW = {
+			position: 'fixed',
+			zIndex: 60,
+			width: 320,
+			maxWidth: 'min(380px, calc(100vw - 16px))',
+			borderRadius: 10,
+			border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.12))',
+			background: 'var(--dsw-alias-bg-layer-2, #1b1d22)',
+			boxShadow: '0 16px 40px rgba(0, 0, 0, 0.36)',
+			color: 'var(--dsw-alias-label-primary, #e6edf3)',
+			overflow: 'hidden',
+		};
+		/** Drag bar of a floating panel. */
+		const FLOAT_BAR = {
+			display: 'flex',
+			alignItems: 'center',
+			gap: 8,
+			padding: '6px 8px 6px 12px',
+			cursor: 'move',
+			userSelect: 'none',
+			touchAction: 'none',
+			background: 'var(--dsw-alias-bg-layer-3, rgba(255, 255, 255, 0.04))',
+			fontSize: 12,
+			lineHeight: '18px',
+		};
+		/** Body of a floating panel. */
+		const FLOAT_BODY = {
+			padding: '10px 12px 12px',
+			fontSize: 12,
+			lineHeight: 1.6,
+		};
+		/**
+		 * Keep a window inside the viewport.
+		 * @param position - desired top-left corner.
+		 * @param size - window size.
+		 * @param viewport - viewport size.
+		 * @returns the clamped position.
+		 */
+		function clampPosition(position, size, viewport) {
+			return {
+				x: Math.min(Math.max(0, position.x), Math.max(0, viewport.width - size.width)),
+				y: Math.min(Math.max(0, position.y), Math.max(0, viewport.height - size.height)),
+			};
+		}
+		/**
+		 * Snap a released window to the nearest viewport edge.
+		 * @param position - released top-left corner.
+		 * @param size - window size.
+		 * @param viewport - viewport size.
+		 * @param snap - whether snapping is enabled.
+		 * @returns the snapped, clamped position.
+		 */
+		function snapPosition(position, size, viewport, snap) {
+			const clamped = clampPosition(position, size, viewport);
+			if (!snap)
+				return clamped;
+			let { x, y } = clamped;
+			if (x <= SNAP_DISTANCE)
+				x = SNAP_MARGIN;
+			else if (x + size.width >= viewport.width - SNAP_DISTANCE)
+				x = viewport.width - size.width - SNAP_MARGIN;
+			if (y <= SNAP_DISTANCE)
+				y = SNAP_MARGIN;
+			else if (y + size.height >= viewport.height - SNAP_DISTANCE)
+				y = viewport.height - size.height - SNAP_MARGIN;
+			return clampPosition({ x, y }, size, viewport);
+		}
+		/**
+		 * Place a window that has no remembered position above the composer's corner.
+		 * @param size - window size.
+		 * @param viewport - viewport size.
+		 * @returns the default position.
+		 */
+		function defaultPosition(size, viewport) {
+			return clampPosition({
+				x: viewport.width - size.width - SNAP_MARGIN,
+				y: viewport.height - size.height - 160,
+			}, size, viewport);
+		}
+		/**
+		 * Read a remembered window position.
+		 * @param key - storage key.
+		 * @returns the stored position, when one is readable.
+		 */
+		function readStoredPosition(key) {
+			try {
+				const raw = localStorage.getItem(key);
+				if (raw === null)
+					return null;
+				const parsed = JSON.parse(raw);
+				if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number')
+					return null;
+				return { x: parsed.x, y: parsed.y };
+			}
+			catch {
+				return null;
+			}
+		}
+		/**
+		 * Remember a window position.
+		 * @param key - storage key.
+		 * @param position - position to store.
+		 */
+		function storePosition(key, position) {
+			try {
+				localStorage.setItem(key, JSON.stringify(position));
+			}
+			catch {
+				// Private-mode storage can refuse writes; the window still works for this mount.
+			}
+		}
 		/** Wrapper chrome that keeps a mount inside its slot's layout. */
 		function mountStyle(presentation) {
 			return presentation === 'inline' || presentation === 'strip' || presentation === 'menu-row'
@@ -1758,6 +1876,70 @@ window.__ModuleLoader__.load({
 			return react_jsx_runtime.jsx("div", { ref: ref, style: style, "data-shape-mount": mount.shapeId });
 		}
 		/**
+		 * One draggable window portalled to the document body.
+		 * @param props.title - bar label.
+		 * @param props.storageKey - key that remembers the position.
+		 * @param props.snap - whether a released window snaps to viewport edges.
+		 * @param props.onClose - optional dismiss control.
+		 * @param props.children - window body.
+		 * @returns the window.
+		 */
+		function FloatingWindow({ title, storageKey, snap, onClose, children }) {
+			const ref = react.useRef(null);
+			const [position, setPosition] = react.useState(null);
+			const drag = react.useRef(null);
+			react.useEffect(() => {
+				const element = ref.current;
+				if (element === null || position !== null)
+					return;
+				const size = { width: element.offsetWidth, height: element.offsetHeight };
+				const viewport = { width: window.innerWidth, height: window.innerHeight };
+				const stored = readStoredPosition(storageKey);
+				setPosition(stored === null ? defaultPosition(size, viewport) : clampPosition(stored, size, viewport));
+			}, [position, storageKey]);
+			const measure = () => {
+				const element = ref.current;
+				return {
+					size: { width: element?.offsetWidth ?? 0, height: element?.offsetHeight ?? 0 },
+					viewport: { width: window.innerWidth, height: window.innerHeight },
+				};
+			};
+			const onPointerDown = (event) => {
+				if (event.button !== 0)
+					return;
+				const element = ref.current;
+				if (element === null)
+					return;
+				const rect = element.getBoundingClientRect();
+				drag.current = { dx: event.clientX - rect.left, dy: event.clientY - rect.top };
+				event.currentTarget.setPointerCapture(event.pointerId);
+				event.preventDefault();
+			};
+			const onPointerMove = (event) => {
+				if (drag.current === null)
+					return;
+				const { size, viewport } = measure();
+				setPosition(clampPosition({ x: event.clientX - drag.current.dx, y: event.clientY - drag.current.dy }, size, viewport));
+			};
+			const onPointerUp = (event) => {
+				if (drag.current === null)
+					return;
+				drag.current = null;
+				const { size, viewport } = measure();
+				setPosition((current) => {
+					if (current === null)
+						return current;
+					const next = snapPosition(current, size, viewport, snap);
+					storePosition(storageKey, next);
+					return next;
+				});
+				if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+					event.currentTarget.releasePointerCapture(event.pointerId);
+				}
+			};
+			return (react_jsx_runtime.jsxs("div", { ref: ref, style: { ...FLOAT_WINDOW, left: position?.x ?? 0, top: position?.y ?? 0, visibility: position === null ? 'hidden' : 'visible' }, "data-shape-float": storageKey, children: [react_jsx_runtime.jsxs("div", { style: FLOAT_BAR, onPointerDown: onPointerDown, onPointerMove: onPointerMove, onPointerUp: onPointerUp, onPointerCancel: onPointerUp, title: "\u62D6\u52A8", children: [react_jsx_runtime.jsx("span", { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }, children: title }), onClose !== undefined && (react_jsx_runtime.jsx("button", { type: "button", "aria-label": "\u5173\u95ED", "data-testid": "dsh-shape-float-dismiss", style: DISMISS_STYLE, onPointerDown: (event) => { event.stopPropagation(); }, onClick: onClose, children: "\u00D7" }))] }), react_jsx_runtime.jsx("div", { style: FLOAT_BODY, children: children })] }));
+		}
+		/**
 		 * Observe the mounts registered for one slot.
 		 * @param slot - slot to observe.
 		 * @returns current mounts.
@@ -1803,35 +1985,53 @@ window.__ModuleLoader__.load({
 				};
 			}, [load]);
 			const presentation = presentationOf(slot);
-			const rendered = entries
+			const anchored = [];
+			const floating = [];
+			entries
 				.map((entry, index) => ({ entry, key: `${entry.shape.id}:${String(index)}` }))
 				.filter(({ key }) => !dismissed.has(key))
-				.map(({ entry: { shape, card }, key }) => {
+				.forEach(({ entry: { shape, card }, key }) => {
 				const greeting = greetings[key];
 				const title = card.title ?? shape.title;
 				const greet = () => {
 					setGreetings(current => ({ ...current, [key]: card.greeting ?? '你好！' }));
 				};
+				const dismiss = () => {
+					setDismissed(current => new Set(current).add(key));
+				};
 				if (presentation === 'inline') {
-					return (react_jsx_runtime.jsxs("span", { style: INLINE_ENTRY, title: card.text ?? title, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsx("span", { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }, children: title })] }, key));
+					anchored.push(react_jsx_runtime.jsxs("span", { style: INLINE_ENTRY, title: card.text ?? title, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsx("span", { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }, children: title })] }, key));
+					return;
 				}
 				if (presentation === 'menu-row') {
-					return (react_jsx_runtime.jsxs("div", { style: MENU_ROW, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsxs("div", { style: { minWidth: 0, flex: 1 }, children: [react_jsx_runtime.jsx("div", { children: title }), card.text !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.7, fontSize: 12 }, children: card.text }), greeting !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.9, fontSize: 12 }, role: "status", children: greeting })] }), card.button !== undefined && react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: card.button })] }, key));
+					anchored.push(react_jsx_runtime.jsxs("div", { style: MENU_ROW, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsxs("div", { style: { minWidth: 0, flex: 1 }, children: [react_jsx_runtime.jsx("div", { children: title }), card.text !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.7, fontSize: 12 }, children: card.text }), greeting !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.9, fontSize: 12 }, role: "status", children: greeting })] }), card.button !== undefined && react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: card.button })] }, key));
+					return;
 				}
 				const action = card.button ?? (presentation === 'strip' ? undefined : '打个招呼');
-				return (react_jsx_runtime.jsxs("section", { className: shape_chat_cards_module_css_default.card, style: presentation === 'strip' ? COMPACT_ENTRY : presentation === 'panel' ? { boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)' } : undefined, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [presentation !== 'strip' && (react_jsx_runtime.jsx("span", { className: shape_chat_cards_module_css_default.mark, "aria-hidden": "true", children: react_jsx_runtime.jsxs("span", { className: shape_chat_cards_module_css_default.markGrid, children: [react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {})] }) })), react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.body, children: [react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.heading, children: [react_jsx_runtime.jsx("h3", { className: shape_chat_cards_module_css_default.title, children: title }), presentation !== 'strip' && react_jsx_runtime.jsx("code", { className: shape_chat_cards_module_css_default.id, children: shape.id })] }), card.text !== undefined && react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.text, children: card.text }), greeting !== undefined && (react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.greeting, role: "status", children: greeting }))] }), action !== undefined && (react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: action })), presentation === 'panel' && (react_jsx_runtime.jsx("button", { type: "button", "aria-label": "\u5173\u95ED", "data-testid": "dsh-shape-chat-dismiss", style: DISMISS_STYLE, onClick: () => {
-								setDismissed(current => new Set(current).add(key));
-							}, children: "\u00D7" }))] }, key));
+				if (presentation === 'panel' && card.placement === 'floating') {
+					floating.push(react_jsx_runtime.jsxs(FloatingWindow, { title: title, storageKey: `${FLOAT_STORAGE_PREFIX}${slot}:${key}`, snap: card.snap !== false, onClose: dismiss, children: [card.text !== undefined && react_jsx_runtime.jsx("div", { children: card.text }), greeting !== undefined && react_jsx_runtime.jsx("div", { style: { marginTop: 4 }, role: "status", children: greeting }), action !== undefined && (react_jsx_runtime.jsx("div", { style: { marginTop: 8 }, children: react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: action }) }))] }, key));
+					return;
+				}
+				anchored.push(react_jsx_runtime.jsxs("section", { className: shape_chat_cards_module_css_default.card, style: presentation === 'strip' ? COMPACT_ENTRY : presentation === 'panel' ? { boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)' } : undefined, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [presentation !== 'strip' && (react_jsx_runtime.jsx("span", { className: shape_chat_cards_module_css_default.mark, "aria-hidden": "true", children: react_jsx_runtime.jsxs("span", { className: shape_chat_cards_module_css_default.markGrid, children: [react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {})] }) })), react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.body, children: [react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.heading, children: [react_jsx_runtime.jsx("h3", { className: shape_chat_cards_module_css_default.title, children: title }), presentation !== 'strip' && react_jsx_runtime.jsx("code", { className: shape_chat_cards_module_css_default.id, children: shape.id })] }), card.text !== undefined && react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.text, children: card.text }), greeting !== undefined && (react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.greeting, role: "status", children: greeting }))] }), action !== undefined && (react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: action })), presentation === 'panel' && (react_jsx_runtime.jsx("button", { type: "button", "aria-label": "\u5173\u95ED", "data-testid": "dsh-shape-chat-dismiss", style: DISMISS_STYLE, onClick: dismiss, children: "\u00D7" }))] }, key));
 			});
-			const mounted = mounts.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: mountStyle(presentation) }, `mount:${mount.shapeId}`)));
-			const content = [...rendered, ...mounted];
-			if (content.length === 0)
+			for (const mount of mounts) {
+				const floatingMount = presentation === 'panel' && mount.placement === 'floating';
+				if (floatingMount) {
+					floating.push(react_jsx_runtime.jsx(FloatingWindow, { title: mount.title, storageKey: `${FLOAT_STORAGE_PREFIX}${slot}:${mount.shapeId}`, snap: mount.snap, children: react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: { display: 'block', width: '100%' } }) }, `mount:${mount.shapeId}`));
+					continue;
+				}
+				anchored.push(react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: mountStyle(presentation) }, `mount:${mount.shapeId}`));
+			}
+			if (anchored.length === 0 && floating.length === 0)
 				return null;
-			if (presentation === 'panel')
-				return react_jsx_runtime.jsx("div", { style: PANEL_STACK, children: content });
-			if (presentation === 'card')
-				return react_jsx_runtime.jsx("div", { className: shape_chat_cards_module_css_default.list, children: content });
-			return react_jsx_runtime.jsx(react.Fragment, { children: content });
+			const inlineContent = anchored.length === 0
+				? null
+				: presentation === 'panel'
+					? react_jsx_runtime.jsx("div", { style: PANEL_STACK, children: anchored })
+					: presentation === 'card'
+						? react_jsx_runtime.jsx("div", { className: shape_chat_cards_module_css_default.list, children: anchored })
+						: react_jsx_runtime.jsx(react.Fragment, { children: anchored });
+			return (react_jsx_runtime.jsxs(react.Fragment, { children: [inlineContent, floating.map(node => react_dom.createPortal(node, document.body))] }));
 		}
 		//#endregion
 		//#region \0dsh-css:shape-dialog.module.css.mjs
@@ -2701,11 +2901,14 @@ window.__ModuleLoader__.load({
 							if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`);
 							return resolution.capabilities[key];
 						},
-						mount(slot, render) {
+						mount(slot, render, options) {
 							if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`);
 							const off = registerShapeMount({
 								slot,
 								shapeId: shape.id,
+								title: shape.title,
+								placement: options?.placement === "floating" ? "floating" : "anchored",
+								snap: options?.snap !== false,
 								render
 							});
 							state.mounts.push(off);

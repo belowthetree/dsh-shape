@@ -1,6 +1,7 @@
 /** Shape-owned entries and mounts in the conversation slots. */
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ShapeRequirement, ShapeResolverInjected } from '../capabilities.ts'
 import { supportsShapeApiVersion } from '../capabilities.ts'
@@ -21,6 +22,8 @@ interface SlotDescriptor {
   button?: string
   greeting?: string
   icon?: string
+  placement?: string
+  snap?: boolean
 }
 
 interface ShapeInfo {
@@ -38,7 +41,26 @@ interface Entry {
   card: SlotDescriptor
 }
 
-/** Stack positioning of floating entries, anchored at the composer card's top edge. */
+/** A window position in viewport coordinates. */
+interface Point {
+  x: number
+  y: number
+}
+
+/** One measured box. */
+interface Size {
+  width: number
+  height: number
+}
+
+/** Distance from a viewport edge that snaps a floating window. */
+const SNAP_DISTANCE = 24
+/** Margin kept between a snapped window and the viewport edge. */
+const SNAP_MARGIN = 8
+/** Key prefix for a floating window's remembered position. */
+const FLOAT_STORAGE_PREFIX = 'dsh-shape:float:'
+
+/** Stack positioning of anchored entries, at the composer card's top edge. */
 const PANEL_STACK: CSSProperties = {
   position: 'absolute',
   left: 0,
@@ -50,7 +72,7 @@ const PANEL_STACK: CSSProperties = {
   margin: '0 auto',
 }
 
-/** Compact entry chrome shared by the strip, inline, and menu-row presentations. */
+/** Compact entry chrome shared by the strip presentation. */
 const COMPACT_ENTRY: CSSProperties = {
   gap: 8,
   padding: '4px 10px',
@@ -119,6 +141,117 @@ const DISMISS_STYLE: CSSProperties = {
   cursor: 'pointer',
   fontSize: 16,
   lineHeight: '24px',
+}
+
+/** Window chrome of a floating panel. */
+const FLOAT_WINDOW: CSSProperties = {
+  position: 'fixed',
+  zIndex: 60,
+  width: 320,
+  maxWidth: 'min(380px, calc(100vw - 16px))',
+  borderRadius: 10,
+  border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.12))',
+  background: 'var(--dsw-alias-bg-layer-2, #1b1d22)',
+  boxShadow: '0 16px 40px rgba(0, 0, 0, 0.36)',
+  color: 'var(--dsw-alias-label-primary, #e6edf3)',
+  overflow: 'hidden',
+}
+
+/** Drag bar of a floating panel. */
+const FLOAT_BAR: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 8px 6px 12px',
+  cursor: 'move',
+  userSelect: 'none',
+  touchAction: 'none',
+  background: 'var(--dsw-alias-bg-layer-3, rgba(255, 255, 255, 0.04))',
+  fontSize: 12,
+  lineHeight: '18px',
+}
+
+/** Body of a floating panel. */
+const FLOAT_BODY: CSSProperties = {
+  padding: '10px 12px 12px',
+  fontSize: 12,
+  lineHeight: 1.6,
+}
+
+/**
+ * Keep a window inside the viewport.
+ * @param position - desired top-left corner.
+ * @param size - window size.
+ * @param viewport - viewport size.
+ * @returns the clamped position.
+ */
+function clampPosition(position: Point, size: Size, viewport: Size): Point {
+  return {
+    x: Math.min(Math.max(0, position.x), Math.max(0, viewport.width - size.width)),
+    y: Math.min(Math.max(0, position.y), Math.max(0, viewport.height - size.height)),
+  }
+}
+
+/**
+ * Snap a released window to the nearest viewport edge.
+ * @param position - released top-left corner.
+ * @param size - window size.
+ * @param viewport - viewport size.
+ * @param snap - whether snapping is enabled.
+ * @returns the snapped, clamped position.
+ */
+function snapPosition(position: Point, size: Size, viewport: Size, snap: boolean): Point {
+  const clamped = clampPosition(position, size, viewport)
+  if (!snap) return clamped
+  let { x, y } = clamped
+  if (x <= SNAP_DISTANCE) x = SNAP_MARGIN
+  else if (x + size.width >= viewport.width - SNAP_DISTANCE) x = viewport.width - size.width - SNAP_MARGIN
+  if (y <= SNAP_DISTANCE) y = SNAP_MARGIN
+  else if (y + size.height >= viewport.height - SNAP_DISTANCE) y = viewport.height - size.height - SNAP_MARGIN
+  return clampPosition({ x, y }, size, viewport)
+}
+
+/**
+ * Place a window that has no remembered position above the composer's corner.
+ * @param size - window size.
+ * @param viewport - viewport size.
+ * @returns the default position.
+ */
+function defaultPosition(size: Size, viewport: Size): Point {
+  return clampPosition({
+    x: viewport.width - size.width - SNAP_MARGIN,
+    y: viewport.height - size.height - 160,
+  }, size, viewport)
+}
+
+/**
+ * Read a remembered window position.
+ * @param key - storage key.
+ * @returns the stored position, when one is readable.
+ */
+function readStoredPosition(key: string): Point | null {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw === null) return null
+    const parsed = JSON.parse(raw) as { x?: unknown; y?: unknown }
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return null
+    return { x: parsed.x, y: parsed.y }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Remember a window position.
+ * @param key - storage key.
+ * @param position - position to store.
+ */
+function storePosition(key: string, position: Point): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(position))
+  } catch {
+    // Private-mode storage can refuse writes; the window still works for this mount.
+  }
 }
 
 /** Wrapper chrome that keeps a mount inside its slot's layout. */
@@ -197,6 +330,107 @@ function ShapeMountBox({ mount, style }: { mount: ShapeMount; style: CSSProperti
 }
 
 /**
+ * One draggable window portalled to the document body.
+ * @param props.title - bar label.
+ * @param props.storageKey - key that remembers the position.
+ * @param props.snap - whether a released window snaps to viewport edges.
+ * @param props.onClose - optional dismiss control.
+ * @param props.children - window body.
+ * @returns the window.
+ */
+function FloatingWindow({ title, storageKey, snap, onClose, children }: {
+  title: string
+  storageKey: string
+  snap: boolean
+  onClose?: () => void
+  children: ReactNode
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<Point | null>(null)
+  const drag = useRef<{ dx: number; dy: number } | null>(null)
+
+  useEffect(() => {
+    const element = ref.current
+    if (element === null || position !== null) return
+    const size = { width: element.offsetWidth, height: element.offsetHeight }
+    const viewport = { width: window.innerWidth, height: window.innerHeight }
+    const stored = readStoredPosition(storageKey)
+    setPosition(stored === null ? defaultPosition(size, viewport) : clampPosition(stored, size, viewport))
+  }, [position, storageKey])
+
+  const measure = (): { size: Size; viewport: Size } => {
+    const element = ref.current
+    return {
+      size: { width: element?.offsetWidth ?? 0, height: element?.offsetHeight ?? 0 },
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+    }
+  }
+
+  const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0) return
+    const element = ref.current
+    if (element === null) return
+    const rect = element.getBoundingClientRect()
+    drag.current = { dx: event.clientX - rect.left, dy: event.clientY - rect.top }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    event.preventDefault()
+  }
+
+  const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (drag.current === null) return
+    const { size, viewport } = measure()
+    setPosition(clampPosition({ x: event.clientX - drag.current.dx, y: event.clientY - drag.current.dy }, size, viewport))
+  }
+
+  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (drag.current === null) return
+    drag.current = null
+    const { size, viewport } = measure()
+    setPosition((current) => {
+      if (current === null) return current
+      const next = snapPosition(current, size, viewport, snap)
+      storePosition(storageKey, next)
+      return next
+    })
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  return (
+    <div
+      ref={ref}
+      style={{ ...FLOAT_WINDOW, left: position?.x ?? 0, top: position?.y ?? 0, visibility: position === null ? 'hidden' : 'visible' }}
+      data-shape-float={storageKey}
+    >
+      <div
+        style={FLOAT_BAR}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        title="拖动"
+      >
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</span>
+        {onClose !== undefined && (
+          <button
+            type="button"
+            aria-label="关闭"
+            data-testid="dsh-shape-float-dismiss"
+            style={DISMISS_STYLE}
+            onPointerDown={(event) => { event.stopPropagation() }}
+            onClick={onClose}
+          >
+            ×
+          </button>
+        )}
+      </div>
+      <div style={FLOAT_BODY}>{children}</div>
+    </div>
+  )
+}
+
+/**
  * Observe the mounts registered for one slot.
  * @param slot - slot to observe.
  * @returns current mounts.
@@ -247,25 +481,33 @@ export function ShapeSlotEntries({ resolveShape, slot }: ShapeResolverInjected &
   }, [load])
 
   const presentation = presentationOf(slot)
-  const rendered = entries
+  const anchored: ReactNode[] = []
+  const floating: ReactNode[] = []
+
+  entries
     .map((entry, index) => ({ entry, key: `${entry.shape.id}:${String(index)}` }))
     .filter(({ key }) => !dismissed.has(key))
-    .map(({ entry: { shape, card }, key }) => {
+    .forEach(({ entry: { shape, card }, key }) => {
       const greeting = greetings[key]
       const title = card.title ?? shape.title
       const greet = (): void => {
         setGreetings(current => ({ ...current, [key]: card.greeting ?? '你好！' }))
       }
+      const dismiss = (): void => {
+        setDismissed(current => new Set(current).add(key))
+      }
+
       if (presentation === 'inline') {
-        return (
+        anchored.push(
           <span key={key} style={INLINE_ENTRY} title={card.text ?? title} data-testid="dsh-shape-slot-entry" data-shape-id={shape.id} data-slot={slot}>
             <ShapeGlyph icon={card.icon} title={title} />
             <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
-          </span>
+          </span>,
         )
+        return
       }
       if (presentation === 'menu-row') {
-        return (
+        anchored.push(
           <div key={key} style={MENU_ROW} data-testid="dsh-shape-slot-entry" data-shape-id={shape.id} data-slot={slot}>
             <ShapeGlyph icon={card.icon} title={title} />
             <div style={{ minWidth: 0, flex: 1 }}>
@@ -274,11 +516,33 @@ export function ShapeSlotEntries({ resolveShape, slot }: ShapeResolverInjected &
               {greeting !== undefined && <div style={{ opacity: 0.9, fontSize: 12 }} role="status">{greeting}</div>}
             </div>
             {card.button !== undefined && <Button size="sm" variant="outline" data-testid="dsh-shape-chat-greet" onClick={greet}>{card.button}</Button>}
-          </div>
+          </div>,
         )
+        return
       }
+
       const action = card.button ?? (presentation === 'strip' ? undefined : '打个招呼')
-      return (
+      if (presentation === 'panel' && card.placement === 'floating') {
+        floating.push(
+          <FloatingWindow
+            key={key}
+            title={title}
+            storageKey={`${FLOAT_STORAGE_PREFIX}${slot}:${key}`}
+            snap={card.snap !== false}
+            onClose={dismiss}
+          >
+            {card.text !== undefined && <div>{card.text}</div>}
+            {greeting !== undefined && <div style={{ marginTop: 4 }} role="status">{greeting}</div>}
+            {action !== undefined && (
+              <div style={{ marginTop: 8 }}>
+                <Button size="sm" variant="outline" data-testid="dsh-shape-chat-greet" onClick={greet}>{action}</Button>
+              </div>
+            )}
+          </FloatingWindow>,
+        )
+        return
+      }
+      anchored.push(
         <section
           className={css.card}
           style={presentation === 'strip' ? COMPACT_ENTRY : presentation === 'panel' ? { boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)' } : undefined}
@@ -320,23 +584,47 @@ export function ShapeSlotEntries({ resolveShape, slot }: ShapeResolverInjected &
               aria-label="关闭"
               data-testid="dsh-shape-chat-dismiss"
               style={DISMISS_STYLE}
-              onClick={() => {
-                setDismissed(current => new Set(current).add(key))
-              }}
+              onClick={dismiss}
             >
               ×
             </button>
           )}
-        </section>
+        </section>,
       )
     })
 
-  const mounted = mounts.map(mount => (
-    <ShapeMountBox key={`mount:${mount.shapeId}`} mount={mount} style={mountStyle(presentation)} />
-  ))
-  const content = [...rendered, ...mounted]
-  if (content.length === 0) return null
-  if (presentation === 'panel') return <div style={PANEL_STACK}>{content}</div>
-  if (presentation === 'card') return <div className={css.list}>{content}</div>
-  return <>{content}</>
+  for (const mount of mounts) {
+    const floatingMount = presentation === 'panel' && mount.placement === 'floating'
+    if (floatingMount) {
+      floating.push(
+        <FloatingWindow
+          key={`mount:${mount.shapeId}`}
+          title={mount.title}
+          storageKey={`${FLOAT_STORAGE_PREFIX}${slot}:${mount.shapeId}`}
+          snap={mount.snap}
+        >
+          <ShapeMountBox mount={mount} style={{ display: 'block', width: '100%' }} />
+        </FloatingWindow>,
+      )
+      continue
+    }
+    anchored.push(
+      <ShapeMountBox key={`mount:${mount.shapeId}`} mount={mount} style={mountStyle(presentation)} />,
+    )
+  }
+
+  if (anchored.length === 0 && floating.length === 0) return null
+  const inlineContent = anchored.length === 0
+    ? null
+    : presentation === 'panel'
+      ? <div style={PANEL_STACK}>{anchored}</div>
+      : presentation === 'card'
+        ? <div className={css.list}>{anchored}</div>
+        : <>{anchored}</>
+  return (
+    <>
+      {inlineContent}
+      {floating.map(node => createPortal(node, document.body))}
+    </>
+  )
 }

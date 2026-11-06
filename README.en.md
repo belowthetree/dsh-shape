@@ -8,7 +8,7 @@ dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and pa
 
 - **Shape browser**: open an app grid from the conversation header and browse every shape; press `Ctrl + .` to open it quickly
 - **Dedicated views**: click a shape card to show that shape's own interface in a second window
-- **Conversation slots**: nine slots — the card stack above the composer, the info strip below it, the floating panel above it, status chips in the composer tool row and Session header, New Session options, and View menu rows; client modules can also render their own DOM into a supported slot with `api.mount()`
+- **Conversation slots**: nine slots — the card stack above the composer, the info strip below it, the floating panel above it (anchored or free-floating with viewport edge snapping), status chips in the composer tool row and Session header, New Session options, and View menu rows; client modules can also render their own DOM into a supported slot with `api.mount()`
 - **Per-shape switches**: enable or disable each shape independently; turning one off also disables its view, slot entries, and client logic
 - **Client behavior**: shapes can register page-level behavior and shortcuts, and read only the capability APIs they declare
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation

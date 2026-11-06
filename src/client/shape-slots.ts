@@ -60,12 +60,32 @@ export function presentationOf(slot: string): ShapePresentation {
   return SHAPE_SLOTS.find(spec => spec.name === slot)?.presentation ?? 'card'
 }
 
+/** Where a floating-capable entry renders. */
+export type ShapePlacement = 'anchored' | 'floating'
+
+/** Placement a descriptor or mount may request for a panel slot. */
+export interface ShapePlacementOptions {
+  /**
+   * `anchored` keeps the entry in the slot's own stack above the composer;
+   * `floating` turns it into a window the user can drag anywhere.
+   */
+  readonly placement?: ShapePlacement
+  /** Snap a floating window to the nearest viewport edge when a drag ends. */
+  readonly snap?: boolean
+}
+
 /** One DOM region a shape renders into. */
 export interface ShapeMount {
   /** Target slot name. */
   readonly slot: string
   /** Owning shape id. */
   readonly shapeId: string
+  /** Shape title, used as the floating window's bar label. */
+  readonly title: string
+  /** Requested placement; `floating` only applies to the panel slot. */
+  readonly placement: ShapePlacement
+  /** Whether a floating window snaps to viewport edges. */
+  readonly snap: boolean
   /**
    * Render into the provided container.
    * @param container - element owned by the slot host.
