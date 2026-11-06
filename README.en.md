@@ -128,6 +128,66 @@ Before startup dsh-shape checks:
 
 The registry is provided by the dsh-shape Client as the `shapeCapabilities` service. Only one provider may own a given `plugin#capability`.
 
+## Built-in workspace switching
+
+dsh-shape provides a built-in `dsh-shape#workspace` capability:
+
+```js
+api.list()      // workspace order
+api.current()   // current workspace id
+api.next()      // next workspace
+api.previous()  // previous workspace
+```
+
+`shapes/workspace-switch` uses it to register shortcuts:
+
+- `Ctrl + Alt + →`: next workspace
+- `Ctrl + Alt + ←`: previous workspace
+
+Switching opens the most recent Session in the target workspace, or its blank Session when it has none. Turning off the Workspace Switch shape unregisters both shortcuts immediately.
+
+## Shape Client modules
+
+A shape can ship its own client logic at `client/index.js`:
+
+```text
+shapes/workspace-switch/
+  package.json
+  client/index.js
+  views/index.html
+```
+
+After the `apiVersion` and capability checks pass, dsh-shape imports the module and calls:
+
+```js
+export function activate(api) {
+  const workspace = api.require('dsh-shape', 'workspace')
+  const off = api.shortcuts.register({
+    keys: 'Ctrl+Alt+ArrowRight',
+    run: () => workspace.next(),
+  })
+  return () => off()
+}
+```
+
+Available API:
+
+- `api.require(plugin, capability)`: read a declared capability
+- `api.capabilities`: resolved capability set
+- `api.shortcuts.register({ keys, run })`: register a global shortcut and return its unregister function
+- The return value of `activate` runs when the shape is stopped
+
+## Shape Studio preset
+
+Installing dsh-shape adds a **Shape Studio** preset (`id: shape`) to the preset list. It composes the ordinary coding tools and adds two plugins mounted only for this preset:
+
+- `dsh-shape/tools`: `shape_list`, `shape_scaffold`, and `shape_validate`
+- `dsh-shape/skill`: the `shape-development` skill, sourced from `skills/shape-development/SKILL.md`
+
+The tools write to `$DSH_HOME/dsh-shape/shapes/`. Refresh the Shape browser after creating a shape; no DSH restart is needed.
+
+Both registrations belong to the preset scope. Standard, PTC, minimal, Creator, and other presets never see them.
+
 ## Install
 
 ```sh
@@ -143,6 +203,8 @@ Test profile: `dsh-shape-test`, port 3904.
 - `tools/` is registered but not executed
 - Only `conversation.input.dock` slot cards are implemented
 - Views run in a sandboxed iframe
+- `client/index.js` runs with page privileges; only install trusted shapes
+- Shape Studio tools and skills are preset-scoped; the Shapes browser is global UI and remains visible to every preset
 
 ## Development
 

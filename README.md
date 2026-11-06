@@ -128,6 +128,66 @@ export function apply(ctx) {
 
 注册中心由 dsh-shape Client 提供，服务名是 `shapeCapabilities`。同一 `plugin#capability` 只允许一个 provider。
 
+## 内置工作区切换
+
+dsh-shape 内置 `dsh-shape#workspace` 能力，提供：
+
+```js
+api.list()      // 工作区顺序
+api.current()   // 当前工作区 id
+api.next()      // 下一个工作区
+api.previous()  // 上一个工作区
+```
+
+`shapes/workspace-switch` 使用这个能力注册快捷键：
+
+- `Ctrl + Alt + →`：下一个工作区
+- `Ctrl + Alt + ←`：上一个工作区
+
+切换时会打开目标工作区最近的会话；没有会话时打开该工作区的空白会话。关闭 Workspace Switch 开关后，两个快捷键会立即注销。
+
+## Shape Client 模块
+
+Shape 可以在 `client/index.js` 中放自己的客户端逻辑：
+
+```text
+shapes/workspace-switch/
+  package.json
+  client/index.js
+  views/index.html
+```
+
+dsh-shape 先检查 `apiVersion` 和 `capabilities`，满足后才动态 import，并调用：
+
+```js
+export function activate(api) {
+  const workspace = api.require('dsh-shape', 'workspace')
+  const off = api.shortcuts.register({
+    keys: 'Ctrl+Alt+ArrowRight',
+    run: () => workspace.next(),
+  })
+  return () => off()
+}
+```
+
+可用接口：
+
+- `api.require(plugin, capability)`：只允许读取已声明的能力
+- `api.capabilities`：已解析能力的集合
+- `api.shortcuts.register({ keys, run })`：注册全局快捷键，返回注销函数
+- `activate` 的返回值作为 shape 停用时的清理函数
+
+## Shape Studio 预设
+
+dsh-shape 安装后会在预设列表中加入 **Shape Studio**（`id: shape`）。它组合了日常编码工具，并额外挂载两个只属于该预设的插件：
+
+- `dsh-shape/tools`：`shape_list`、`shape_scaffold`、`shape_validate`
+- `dsh-shape/skill`：`shape-development` skill，内容在 `skills/shape-development/SKILL.md`
+
+这些工具的写入目标是 `$DSH_HOME/dsh-shape/shapes/`。新建 shape 后可在 Shape 浏览器里刷新，不需要重启 DSH。
+
+工具和 skill 都在预设作用域内注册。标准、PTC、minimal、创造模式等其他预设不会看到它们。
+
 ## 安装
 
 ```sh
@@ -143,6 +203,8 @@ dsh plugin --profile <profile> add link:E:/Project/dsh-plugins/dsh-shape
 - `tools/` 目前只登记，不执行
 - 仅实现 `conversation.input.dock` 这一种 slot 卡片
 - view 运行在 sandbox iframe 中
+- `client/index.js` 以页面权限运行，只应安装可信 shape
+- Shape Studio 的工具和 skill 按预设隔离；Shapes 浏览器属于全局 UI，目前仍对所有预设可见
 
 ## 开发
 

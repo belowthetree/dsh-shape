@@ -11,6 +11,8 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./tools": "./tools.js",
+    "./skill": "./skill.js",
     "./capabilities": "./src/capabilities.ts",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
@@ -18,9 +20,12 @@
   "files": [
     "index.js",
     "client.js",
+    "tools.js",
+    "skill.js",
     "cordis.patch.yml",
     "src/capabilities.ts",
     "shapes/**",
+    "skills/**",
     "README.md",
     "README.en.md"
   ],

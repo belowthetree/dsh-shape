@@ -2262,9 +2262,268 @@ window.__ModuleLoader__.load({
 			})] });
 		}
 		//#endregion
+		//#region src/client/shape-runtime.ts
+		const KEY_ALIASES = {
+			esc: "Escape",
+			space: " ",
+			period: ".",
+			comma: ",",
+			slash: "/",
+			arrowleft: "ArrowLeft",
+			arrowright: "ArrowRight",
+			arrowup: "ArrowUp",
+			arrowdown: "ArrowDown",
+			enter: "Enter",
+			tab: "Tab"
+		};
+		/**
+		* Normalize one key token.
+		* @param token - raw token from a shortcut string.
+		* @returns browser key or code.
+		*/
+		function normalizeKeyToken(token) {
+			if (token.length === 1) return token.toLowerCase();
+			return KEY_ALIASES[token.toLowerCase()] ?? token;
+		}
+		/**
+		* Parse one shortcut string.
+		* @param spec - combination such as `Ctrl+Alt+ArrowRight`.
+		* @returns normalized modifiers and key.
+		*/
+		function parseShortcut(spec) {
+			const parts = spec.split("+").map((part) => part.trim()).filter((part) => part.length > 0);
+			const key = parts.pop();
+			if (key === void 0) throw new Error(`invalid shortcut: ${spec}`);
+			const parsed = {
+				ctrl: false,
+				alt: false,
+				shift: false,
+				meta: false,
+				key: normalizeKeyToken(key)
+			};
+			for (const modifier of parts) switch (modifier.toLowerCase()) {
+				case "ctrl":
+				case "control":
+					parsed.ctrl = true;
+					break;
+				case "alt":
+					parsed.alt = true;
+					break;
+				case "shift":
+					parsed.shift = true;
+					break;
+				case "meta":
+				case "cmd":
+				case "command":
+					parsed.meta = true;
+					break;
+				default: throw new Error(`unknown shortcut modifier: ${modifier}`);
+			}
+			return parsed;
+		}
+		/**
+		* Check whether a keyboard event matches a parsed shortcut.
+		* @param event - keyboard event.
+		* @param shortcut - parsed combination.
+		* @returns true on an exact modifier and key match.
+		*/
+		function matchesShortcut(event, shortcut) {
+			if (event.ctrlKey !== shortcut.ctrl || event.altKey !== shortcut.alt || event.shiftKey !== shortcut.shift || event.metaKey !== shortcut.meta) return false;
+			return (event.key.length === 1 ? event.key.toLowerCase() : event.key) === shortcut.key || event.code === shortcut.key;
+		}
+		/**
+		* Create the shape Client runtime.
+		* @param capabilities - registry used for startup dependency checks.
+		* @returns a start function returning its disposer.
+		*/
+		function createShapeRuntime(capabilities) {
+			const shortcuts = /* @__PURE__ */ new Map();
+			const active = [];
+			let generation = 0;
+			let started = false;
+			const stopAll = () => {
+				for (const shape of active.splice(0)) shape.dispose();
+				shortcuts.clear();
+			};
+			const onKeyDown = (event) => {
+				if (event.defaultPrevented || event.repeat || event.isComposing) return;
+				for (const shortcut of shortcuts.values()) {
+					if (!matchesShortcut(event, shortcut)) continue;
+					event.preventDefault();
+					try {
+						Promise.resolve(shortcut.run()).catch((cause) => {
+							console.warn("dsh-shape: shortcut failed", cause);
+						});
+					} catch (cause) {
+						console.warn("dsh-shape: shortcut failed", cause);
+					}
+					return;
+				}
+			};
+			const refresh = async () => {
+				const current = ++generation;
+				stopAll();
+				let shapes;
+				try {
+					const response = await fetch("/dsh-shape/api/shapes", {
+						credentials: "same-origin",
+						cache: "no-store"
+					});
+					if (!response.ok) return;
+					const payload = await response.json();
+					if (payload.ok !== true || !Array.isArray(payload.shapes)) return;
+					shapes = payload.shapes;
+				} catch {
+					return;
+				}
+				for (const shape of shapes) {
+					if (current !== generation) return;
+					if (shape.enabled === false || !shape.valid || shape.clientEntry === void 0) continue;
+					if (!supportsShapeApiVersion(shape.shapeApiVersion)) continue;
+					const resolution = capabilities.resolve(shape.requirements ?? []);
+					if (!resolution.ok) continue;
+					const state = {
+						shortcuts: [],
+						cleanup: void 0
+					};
+					const api = {
+						shape: {
+							id: shape.id,
+							title: shape.title,
+							version: shape.version
+						},
+						capabilities: resolution.capabilities,
+						require(plugin, capability) {
+							const key = `${plugin}#${capability}`;
+							if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`);
+							return resolution.capabilities[key];
+						},
+						shortcuts: { register(binding) {
+							const specs = typeof binding.keys === "string" ? [binding.keys] : binding.keys;
+							const disposers = [];
+							for (const spec of specs) {
+								const parsed = parseShortcut(spec);
+								const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`;
+								if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`);
+								const registered = {
+									...parsed,
+									run: binding.run
+								};
+								shortcuts.set(key, registered);
+								const off = () => {
+									if (shortcuts.get(key) === registered) shortcuts.delete(key);
+								};
+								disposers.push(off);
+								state.shortcuts.push(off);
+							}
+							return () => {
+								for (const off of disposers) off();
+							};
+						} }
+					};
+					let url = `/dsh-shape/client/${encodeURIComponent(shape.id)}/${shape.clientEntry}`;
+					url += `?v=${encodeURIComponent(shape.version)}-${String(Date.now())}`;
+					try {
+						const module = await import(
+							/* @vite-ignore */
+							url
+);
+						if (current !== generation) return;
+						if (typeof module.activate !== "function") continue;
+						const result = module.activate(api);
+						if (typeof result === "function") state.cleanup = result;
+						else if (result !== void 0 && typeof result.dispose === "function") state.cleanup = result.dispose;
+						active.push({
+							id: shape.id,
+							dispose: () => {
+								state.cleanup?.();
+								module.deactivate?.();
+								for (const off of state.shortcuts) off();
+							}
+						});
+					} catch (cause) {
+						for (const off of state.shortcuts) off();
+						state.cleanup?.();
+						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
+					}
+				}
+			};
+			const start = () => {
+				if (started) throw new Error("shape runtime already started");
+				started = true;
+				window.addEventListener("keydown", onKeyDown);
+				const reload = () => {
+					refresh();
+				};
+				window.addEventListener("dsh-shape:refresh", reload);
+				window.addEventListener("dsh-shape:capabilities", reload);
+				refresh();
+				return () => {
+					started = false;
+					generation++;
+					stopAll();
+					window.removeEventListener("keydown", onKeyDown);
+					window.removeEventListener("dsh-shape:refresh", reload);
+					window.removeEventListener("dsh-shape:capabilities", reload);
+				};
+			};
+			return { start };
+		}
+		//#endregion
+		//#region src/client/workspace.ts
+		/**
+		* Build the workspace switching capability.
+		* @param ctx - Client context with workspace, session, and navigation services.
+		* @returns the capability API.
+		*/
+		function createWorkspaceSwitch(ctx) {
+			const workspaceSnapshot = () => ctx.workspaces.list.getSnapshot();
+			const sessionSnapshot = () => ctx.sessions.list.getSnapshot();
+			const currentWorkspaceId = () => {
+				const sessions = sessionSnapshot();
+				const current = Object.values(sessions.byId).find((row) => (row.retainedBy.mainView ?? 0) > 0);
+				if (current === void 0) return null;
+				return workspaceSnapshot().items.find((item) => item.sessionIds.includes(current.id))?.workspaceId ?? null;
+			};
+			const switchBy = async (delta) => {
+				const workspace = workspaceSnapshot();
+				const items = workspace.items;
+				if (items.length === 0) return;
+				const current = currentWorkspaceId();
+				if (items.length === 1) return;
+				const index = current === null ? -1 : items.findIndex((item) => item.workspaceId === current);
+				const target = items[index === -1 ? delta === 1 ? 0 : items.length - 1 : (index + delta + items.length) % items.length];
+				if (target === void 0 || target.workspaceId === current) return;
+				const sessions = sessionSnapshot();
+				const archived = new Set(workspace.archivedSessionIds);
+				const targetSession = target.sessionIds.filter((sessionId) => !archived.has(sessionId)).map((sessionId) => sessions.byId[sessionId]).filter((row) => row !== void 0).sort((left, right) => right.updatedAt - left.updatedAt)[0];
+				if (targetSession !== void 0) {
+					ctx.uiWorkspace.openSession(targetSession.id);
+					return;
+				}
+				await ctx.uiWorkspace.openWorkspace(target.workspaceId);
+			};
+			return {
+				list() {
+					return workspaceSnapshot().items.map((item) => ({
+						id: item.workspaceId,
+						title: item.title ?? item.path ?? item.workspaceId
+					}));
+				},
+				current: currentWorkspaceId,
+				next: () => switchBy(1),
+				previous: () => switchBy(-1)
+			};
+		}
+		//#endregion
 		//#region src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
-		const inject = ["slots"];
+		const inject = [
+			"slots",
+			"workspaces",
+			"sessions",
+			"uiWorkspace"
+		];
 		/**
 		* Register shape surfaces and expose the shape capability registry.
 		* @param ctx - client root context.
@@ -2278,9 +2537,17 @@ window.__ModuleLoader__.load({
 				version: "1.0.0",
 				api: { apiVersion: 1 }
 			}), "dsh-shape: core capability");
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "workspace",
+				version: "1.0.0",
+				api: createWorkspaceSwitch(ctx)
+			}), "dsh-shape: workspace capability");
 			capabilities.subscribe(() => {
 				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
 			});
+			const runtime = createShapeRuntime(capabilities);
+			ctx.effect(() => runtime.start(), "dsh-shape: shape client runtime");
 			const resolveShape = (requirements) => capabilities.resolve(requirements);
 			ctx.slots.inject("conversation.header.leading", () => ctx.slots.register({
 				name: "conversation.header.leading",

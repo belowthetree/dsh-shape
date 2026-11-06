@@ -19,6 +19,7 @@ const inject = ["webServer"];
 const ROUTE = "/dsh-shape";
 const API = `${ROUTE}/api`;
 const VIEW = `${ROUTE}/view`;
+const CLIENT = `${ROUTE}/client`;
 const CONTENT_TYPES = {
 	".html": "text/html; charset=utf-8",
 	".htm": "text/html; charset=utf-8",
@@ -184,6 +185,8 @@ async function readShape(dir, origin) {
 	const valid = error === void 0 && shapeConfig.error === void 0 && typeof rawId === "string" && rawId.trim().length > 0;
 	const slots = await listFiles(path.join(dir, "slots"));
 	const slotData = await readSlotData(path.join(dir, "slots"), slots);
+	const clientFiles = await listFiles(path.join(dir, "client"));
+	const clientEntry = clientFiles.includes("index.js") ? "index.js" : void 0;
 	return {
 		id,
 		title,
@@ -194,6 +197,8 @@ async function readShape(dir, origin) {
 		shapeApiVersion: shapeConfig.apiVersion,
 		requirements: shapeConfig.requirements,
 		views: await listFiles(path.join(dir, "views")),
+		clientFiles,
+		...clientEntry === void 0 ? {} : { clientEntry },
 		slots,
 		slotData,
 		tools: await listFiles(path.join(dir, "tools")),
@@ -391,6 +396,88 @@ async function apply(ctx, config = {}) {
 		});
 		res.end(body);
 	};
+	const serveClient = async (url, res) => {
+		const rest = url.pathname.slice(`${CLIENT}/`.length);
+		const separator = rest.indexOf("/");
+		if (separator === -1) {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown client module"
+				}
+			});
+			return;
+		}
+		let id;
+		try {
+			id = decodeURIComponent(rest.slice(0, separator));
+		} catch {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown shape"
+				}
+			});
+			return;
+		}
+		const shape = shapes.find((candidate) => candidate.id === id && candidate.valid && candidate.enabled);
+		if (shape === void 0 || shape.clientFiles.length === 0) {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown shape"
+				}
+			});
+			return;
+		}
+		let requested;
+		try {
+			requested = decodeURIComponent(rest.slice(separator + 1));
+		} catch {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown client module"
+				}
+			});
+			return;
+		}
+		const normalized = path.posix.normalize(requested);
+		if (normalized.startsWith("..") || normalized.startsWith("/") || normalized.includes("\\") || normalized.includes("\0") || !shape.clientFiles.includes(normalized)) {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown client module"
+				}
+			});
+			return;
+		}
+		let body;
+		try {
+			body = await readFile(path.join(shape.dir, "client", normalized));
+		} catch {
+			json(res, 404, {
+				ok: false,
+				error: {
+					code: "not-found",
+					message: "unknown client module"
+				}
+			});
+			return;
+		}
+		res.writeHead(200, {
+			"content-type": CONTENT_TYPES[path.extname(normalized).toLowerCase()] ?? "text/javascript; charset=utf-8",
+			"content-length": body.byteLength,
+			"cache-control": "no-store",
+			"x-content-type-options": "nosniff"
+		});
+		res.end(body);
+	};
 	const handler = async (req, res) => {
 		const url = new URL(req.url ?? "/", "http://dsh.invalid");
 		if (req.method === "GET" && url.pathname === `${API}/shapes`) {
@@ -475,6 +562,10 @@ async function apply(ctx, config = {}) {
 		}
 		if (req.method === "GET" && url.pathname.startsWith(`${VIEW}/`)) {
 			await serveView(url, res);
+			return;
+		}
+		if (req.method === "GET" && url.pathname.startsWith(`${CLIENT}/`)) {
+			await serveClient(url, res);
 			return;
 		}
 		json(res, 404, {

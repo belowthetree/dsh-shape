@@ -14,9 +14,11 @@ import {
 } from '../capabilities.ts'
 import { ShapeChatCards } from './ShapeChatCards.tsx'
 import { ShapeButton } from './ShapeButton.tsx'
+import { createShapeRuntime } from './shape-runtime.ts'
+import { createWorkspaceSwitch } from './workspace.ts'
 
 /** The leading header seat and composer dock are owned by the conversation client. */
-export const inject = ['slots']
+export const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace']
 
 /**
  * Register shape surfaces and expose the shape capability registry.
@@ -32,9 +34,19 @@ export function apply(ctx: Context): void {
     api: { apiVersion: 1 },
   }), 'dsh-shape: core capability')
 
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'workspace',
+    version: '1.0.0',
+    api: createWorkspaceSwitch(ctx),
+  }), 'dsh-shape: workspace capability')
+
   capabilities.subscribe(() => {
     window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'))
   })
+
+  const runtime = createShapeRuntime(capabilities)
+  ctx.effect(() => runtime.start(), 'dsh-shape: shape client runtime')
 
   const resolveShape = (requirements: readonly ShapeRequirement[]): ShapeResolution =>
     capabilities.resolve(requirements)

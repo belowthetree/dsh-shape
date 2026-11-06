@@ -1,0 +1,14 @@
+{
+  "name": "workspace-switch",
+  "version": "0.1.0",
+  "title": "Workspace Switch",
+  "description": "用 Ctrl+Alt+←/→ 在 DSH 工作区之间切换。",
+  "output": "text",
+  "shape": {
+    "apiVersion": 1,
+    "requires": [
+      { "plugin": "dsh-shape", "capability": "core", "version": "^1.0.0" },
+      { "plugin": "dsh-shape", "capability": "workspace", "version": "^1.0.0" }
+    ]
+  }
+}

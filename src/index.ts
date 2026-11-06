@@ -60,6 +60,10 @@ export interface ShapeEntry {
   requirements: ShapeRequirement[]
   /** Files under `views/`, relative to that directory. */
   views: string[]
+  /** Files under `client/`, relative to that directory. */
+  clientFiles: string[]
+  /** Shape Client entry below `client/`, when present. */
+  clientEntry?: string
   /** Files under `slots/`, relative to that directory. */
   slots: string[]
   /** Parsed slot descriptors from `slots/*.json`. */
@@ -106,6 +110,7 @@ export interface ShapeSlotDescriptor {
 const ROUTE = '/dsh-shape'
 const API = `${ROUTE}/api`
 const VIEW = `${ROUTE}/view`
+const CLIENT = `${ROUTE}/client`
 
 const CONTENT_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -276,6 +281,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
   const valid = error === undefined && shapeConfig.error === undefined && typeof rawId === 'string' && rawId.trim().length > 0
   const slots = await listFiles(path.join(dir, 'slots'))
   const slotData = await readSlotData(path.join(dir, 'slots'), slots)
+  const clientFiles = await listFiles(path.join(dir, 'client'))
+  const clientEntry = clientFiles.includes('index.js') ? 'index.js' : undefined
 
   return {
     id,
@@ -287,6 +294,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
     shapeApiVersion: shapeConfig.apiVersion,
     requirements: shapeConfig.requirements,
     views: await listFiles(path.join(dir, 'views')),
+    clientFiles,
+    ...(clientEntry === undefined ? {} : { clientEntry }),
     slots,
     slotData,
     tools: await listFiles(path.join(dir, 'tools')),
@@ -474,6 +483,59 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     res.end(body)
   }
 
+  const serveClient = async (url: URL, res: ServerResponse): Promise<void> => {
+    const rest = url.pathname.slice(`${CLIENT}/`.length)
+    const separator = rest.indexOf('/')
+    if (separator === -1) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown client module' } })
+      return
+    }
+
+    let id: string
+    try {
+      id = decodeURIComponent(rest.slice(0, separator))
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+      return
+    }
+
+    const shape = shapes.find(candidate => candidate.id === id && candidate.valid && candidate.enabled)
+    if (shape === undefined || shape.clientFiles.length === 0) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+      return
+    }
+
+    let requested: string
+    try {
+      requested = decodeURIComponent(rest.slice(separator + 1))
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown client module' } })
+      return
+    }
+    const normalized = path.posix.normalize(requested)
+    if (normalized.startsWith('..') || normalized.startsWith('/') || normalized.includes('\\') || normalized.includes('\0')
+      || !shape.clientFiles.includes(normalized)) {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown client module' } })
+      return
+    }
+
+    let body: Buffer
+    try {
+      body = await readFile(path.join(shape.dir, 'client', normalized))
+    } catch {
+      json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown client module' } })
+      return
+    }
+
+    res.writeHead(200, {
+      'content-type': CONTENT_TYPES[path.extname(normalized).toLowerCase()] ?? 'text/javascript; charset=utf-8',
+      'content-length': body.byteLength,
+      'cache-control': 'no-store',
+      'x-content-type-options': 'nosniff',
+    })
+    res.end(body)
+  }
+
   const handler = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://dsh.invalid')
     if (req.method === 'GET' && url.pathname === `${API}/shapes`) {
@@ -530,6 +592,10 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
     }
     if (req.method === 'GET' && url.pathname.startsWith(`${VIEW}/`)) {
       await serveView(url, res)
+      return
+    }
+    if (req.method === 'GET' && url.pathname.startsWith(`${CLIENT}/`)) {
+      await serveClient(url, res)
       return
     }
     json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown dsh-shape route' } })
