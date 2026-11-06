@@ -9,15 +9,16 @@ dsh-shape 是 DeepSeek Harness 的插件：把 shape 作为可安装的文件夹
 - `Ctrl + .` 可从页面任意位置快速打开
 - 展示 shape 的 title、id、description、来源、版本，以及 `views` / `slots` / `tools` 文件数量
 - 点击任意 shape 卡片，在第二个窗口打开它的 `views/` 界面
+- shape 的 `slots/*.json` 可以注入聊天输入区上方的卡片
 - 支持刷新重扫，新 shape 放进目录后无需重启 DSH
 
 ## Shape 文件夹
 
 ```text
-shapes/hello/
+shapes/greeting/
   package.json
   views/index.html
-  slots/header.json
+  slots/chat-card.json
   tools/greet.js
 ```
 
@@ -28,7 +29,23 @@ shapes/hello/
 - 插件内置的 `shapes/`
 - `$DSH_HOME/dsh-shape/shapes/`
 
-当前版本只做发现和展示：不执行 `tools/`，不渲染 `views/`，也不挂载 `slots/`。
+`views/` 通过第二个模态窗展示；`tools/` 目前只登记、不执行。
+
+## 聊天卡片
+
+`slots/*.json` 可以声明一张聊天气泡卡片：
+
+```json
+{
+  "slot": "conversation.input.dock",
+  "title": "来自 Greeting Shape 的卡片",
+  "text": "这个卡片由 shape 注入到聊天输入区上方。",
+  "button": "打个招呼",
+  "greeting": "你好！👋 这是 Greeting Shape 的问候。"
+}
+```
+
+当前支持 `conversation.input.dock`，卡片显示在输入框上方；点击按钮后显示 `greeting` 文本。
 
 ## 安装
 
@@ -42,8 +59,8 @@ dsh plugin --profile <profile> add link:E:/Project/dsh-plugins/dsh-shape
 
 ## 开发
 
-- `index.js`：Host 入口，负责扫描 shape 文件夹并提供 `/dsh-shape/api`
-- `client.js`：Client 入口，负责顶栏按钮和模态窗
+- `index.js`：Host 入口，负责扫描 shape 文件夹、解析 slot 描述并提供 `/dsh-shape/api`
+- `client.js`：Client 入口，负责顶栏按钮、Shape 浏览器、view 窗口和聊天卡片
 - `src/`：原始 TypeScript 源码
 
 `index.js` 和 `client.js` 是预构建产物；当前没有独立的本地构建脚本，修改源码后需要重新生成这两个入口文件。

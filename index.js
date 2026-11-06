@@ -62,6 +62,47 @@ async function listFiles(dir) {
 	return files.sort();
 }
 /**
+* Read one optional string field from a slot descriptor.
+* @param value - raw JSON value.
+* @returns the string, or undefined.
+*/
+function optionalString(value) {
+	return typeof value === "string" ? value : void 0;
+}
+/**
+* Parse slot descriptors below one shape's `slots/` directory.
+* @param dir - the shape's slots directory.
+* @param files - already listed relative files.
+* @returns valid descriptors; malformed files are ignored.
+*/
+async function readSlotData(dir, files) {
+	const descriptors = [];
+	for (const file of files) {
+		if (!file.toLowerCase().endsWith(".json")) continue;
+		let parsed;
+		try {
+			parsed = JSON.parse(await readFile(path.join(dir, file), "utf8"));
+		} catch {
+			continue;
+		}
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) continue;
+		const record = parsed;
+		if (typeof record.slot !== "string" || record.slot.trim().length === 0) continue;
+		const title = optionalString(record.title);
+		const text = optionalString(record.text);
+		const button = optionalString(record.button);
+		const greeting = optionalString(record.greeting);
+		descriptors.push({
+			slot: record.slot.trim(),
+			...title === void 0 ? {} : { title },
+			...text === void 0 ? {} : { text },
+			...button === void 0 ? {} : { button },
+			...greeting === void 0 ? {} : { greeting }
+		});
+	}
+	return descriptors;
+}
+/**
 * Read one shape folder.
 * @param dir - the shape folder.
 * @param origin - which root discovered it.
@@ -83,6 +124,8 @@ async function readShape(dir, origin) {
 	const version = typeof manifest.version === "string" ? manifest.version : "0.0.0";
 	const output = typeof manifest.output === "string" ? manifest.output : "text";
 	const valid = error === void 0 && typeof rawId === "string" && rawId.trim().length > 0;
+	const slots = await listFiles(path.join(dir, "slots"));
+	const slotData = await readSlotData(path.join(dir, "slots"), slots);
 	return {
 		id,
 		title,
@@ -91,7 +134,8 @@ async function readShape(dir, origin) {
 		origin,
 		dir,
 		views: await listFiles(path.join(dir, "views")),
-		slots: await listFiles(path.join(dir, "slots")),
+		slots,
+		slotData,
 		tools: await listFiles(path.join(dir, "tools")),
 		input: manifest.input ?? [],
 		output,

@@ -1,0 +1,94 @@
+.list {
+  box-sizing: border-box;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto 8px;
+  padding: 0 16px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--dsw-alias-bg-layer-2);
+  border: 1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08));
+  border-radius: 12px;
+  box-shadow: var(--dsw-elevation-soft, 0 6px 18px rgba(0, 0, 0, 0.14));
+}
+
+.mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--dsw-alias-brand-primary-new-colorprimary-new-color, #6ea6ff);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color, #6ea6ff) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color, #6ea6ff) 28%, transparent);
+  border-radius: 9px;
+}
+
+.markGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 4px);
+  grid-template-rows: repeat(2, 4px);
+  gap: 2px;
+}
+
+.markGrid > span {
+  background: currentColor;
+  border-radius: 1px;
+  opacity: 0.9;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.id {
+  flex: none;
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
+  font-family: var(--dsw-font-mono, ui-monospace, SFMono-Regular, Consolas, monospace);
+  font-size: 10px;
+}
+
+.text {
+  margin: 2px 0 0;
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.greeting {
+  margin: 4px 0 0;
+  color: var(--dsw-alias-state-success-primary, #7dd3a7);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .list { padding: 0 8px; }
+  .card { flex-wrap: wrap; align-items: flex-start; }
+  .card button { margin-left: 44px; }
+}

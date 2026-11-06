@@ -1,0 +1,7 @@
+{
+  "slot": "conversation.input.dock",
+  "title": "来自 Greeting Shape 的卡片",
+  "text": "这个卡片由 shape 的 slots/chat-card.json 注入到聊天输入区上方。",
+  "button": "打个招呼",
+  "greeting": "你好！👋 这是 Greeting Shape 的问候。"
+}

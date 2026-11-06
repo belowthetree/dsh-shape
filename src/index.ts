@@ -46,6 +46,8 @@ export interface ShapeEntry {
   views: string[]
   /** Files under `slots/`, relative to that directory. */
   slots: string[]
+  /** Parsed slot descriptors from `slots/*.json`. */
+  slotData: ShapeSlotDescriptor[]
   /** Files under `tools/`, relative to that directory. */
   tools: string[]
   /** Declared input fields, passed through for future execution. */
@@ -66,6 +68,20 @@ interface Manifest {
   version?: unknown
   input?: unknown
   output?: unknown
+}
+
+/** One parsed slot descriptor contributed by a shape. */
+export interface ShapeSlotDescriptor {
+  /** Declared slot name. */
+  slot: string
+  /** Card title. */
+  title?: string
+  /** Card body. */
+  text?: string
+  /** Button label. */
+  button?: string
+  /** Text shown after the button is pressed. */
+  greeting?: string
 }
 
 const ROUTE = '/dsh-shape'
@@ -123,6 +139,49 @@ async function listFiles(dir: string): Promise<string[]> {
 }
 
 /**
+ * Read one optional string field from a slot descriptor.
+ * @param value - raw JSON value.
+ * @returns the string, or undefined.
+ */
+function optionalString(value: unknown): string | undefined {
+  return typeof value === 'string' ? value : undefined
+}
+
+/**
+ * Parse slot descriptors below one shape's `slots/` directory.
+ * @param dir - the shape's slots directory.
+ * @param files - already listed relative files.
+ * @returns valid descriptors; malformed files are ignored.
+ */
+async function readSlotData(dir: string, files: string[]): Promise<ShapeSlotDescriptor[]> {
+  const descriptors: ShapeSlotDescriptor[] = []
+  for (const file of files) {
+    if (!file.toLowerCase().endsWith('.json')) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(await readFile(path.join(dir, file), 'utf8'))
+    } catch {
+      continue
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) continue
+    const record = parsed as Record<string, unknown>
+    if (typeof record.slot !== 'string' || record.slot.trim().length === 0) continue
+    const title = optionalString(record.title)
+    const text = optionalString(record.text)
+    const button = optionalString(record.button)
+    const greeting = optionalString(record.greeting)
+    descriptors.push({
+      slot: record.slot.trim(),
+      ...(title === undefined ? {} : { title }),
+      ...(text === undefined ? {} : { text }),
+      ...(button === undefined ? {} : { button }),
+      ...(greeting === undefined ? {} : { greeting }),
+    })
+  }
+  return descriptors
+}
+
+/**
  * Read one shape folder.
  * @param dir - the shape folder.
  * @param origin - which root discovered it.
@@ -145,6 +204,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
   const version = typeof manifest.version === 'string' ? manifest.version : '0.0.0'
   const output = typeof manifest.output === 'string' ? manifest.output : 'text'
   const valid = error === undefined && typeof rawId === 'string' && rawId.trim().length > 0
+  const slots = await listFiles(path.join(dir, 'slots'))
+  const slotData = await readSlotData(path.join(dir, 'slots'), slots)
 
   return {
     id,
@@ -154,7 +215,8 @@ async function readShape(dir: string, origin: ShapeEntry['origin']): Promise<Sha
     origin,
     dir,
     views: await listFiles(path.join(dir, 'views')),
-    slots: await listFiles(path.join(dir, 'slots')),
+    slots,
+    slotData,
     tools: await listFiles(path.join(dir, 'tools')),
     input: manifest.input ?? [],
     output,

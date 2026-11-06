@@ -81,7 +81,6 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const selectedRef = useRef(selected)
   onCloseRef.current = onClose
   selectedRef.current = selected
-  onCloseRef.current = onClose
 
   const load = useCallback(async (refresh: boolean): Promise<void> => {
     setStatus('loading')
@@ -91,6 +90,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
       setShapes(snapshot.shapes)
       setRoots(snapshot.roots)
       setStatus('ready')
+      window.dispatchEvent(new CustomEvent('dsh-shape:refresh'))
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
       setStatus('error')
