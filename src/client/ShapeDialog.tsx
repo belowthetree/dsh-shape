@@ -6,6 +6,7 @@ import {
   Button,
   IconCloseOutlineRegular,
   IconRefreshOutlineRegular,
+  IconTrashOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type {
   ShapeMissingCapability,
@@ -107,6 +108,8 @@ export function ShapeDialog({
   const [viewError, setViewError] = useState('')
   const [busyId, setBusyId] = useState('')
   const [toggleError, setToggleError] = useState('')
+  const [pendingDelete, setPendingDelete] = useState<ShapeInfo | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const windowRef = useRef<HTMLElement>(null)
   const viewRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
@@ -190,6 +193,37 @@ export function ShapeDialog({
     }
   }, [])
 
+  const deleteShape = useCallback(async (shape: ShapeInfo): Promise<void> => {
+    setBusyId(shape.id)
+    setDeleteError('')
+    try {
+      const response = await fetch('/dsh-shape/api/delete', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ id: shape.id }),
+      })
+      const payload = await response.json().catch(() => null) as {
+        ok?: boolean
+        shapes?: ShapeInfo[]
+        error?: { message?: unknown }
+      } | null
+      if (payload?.ok !== true || !Array.isArray(payload.shapes)) {
+        const message = typeof payload?.error?.message === 'string'
+          ? payload.error.message
+          : `HTTP ${String(response.status)}`
+        throw new Error(message)
+      }
+      setShapes(payload.shapes)
+      setPendingDelete(null)
+      window.dispatchEvent(new CustomEvent('dsh-shape:refresh'))
+    } catch (cause) {
+      setDeleteError(cause instanceof Error ? cause.message : String(cause))
+    } finally {
+      setBusyId('')
+    }
+  }, [])
+
   useEffect(() => {
     if (!open) return
     void load(false)
@@ -207,6 +241,8 @@ export function ShapeDialog({
       setSelected(null)
       setViewError('')
       setViewLoading(false)
+      setPendingDelete(null)
+      setDeleteError('')
     }
   }, [open])
 
@@ -301,6 +337,44 @@ export function ShapeDialog({
           {toggleError !== '' && (
             <div className={css.toggleError} role="alert">
               切换 shape 失败：{toggleError}
+            </div>
+          )}
+
+          {deleteError !== '' && (
+            <div className={css.toggleError} role="alert">
+              删除 shape 失败：{deleteError}
+            </div>
+          )}
+
+          {pendingDelete !== null && (
+            <div className={css.confirmBar} role="group" aria-label={`删除 ${pendingDelete.title}`}>
+              <span className={css.confirmText}>
+                删除「{pendingDelete.title}」？
+                {pendingDelete.origin === 'bundled'
+                  ? '内置 shape 会从插件目录移除，重新安装插件才能恢复。'
+                  : '该 shape 目录会从磁盘移除，无法撤销。'}
+              </span>
+              <div className={css.confirmActions}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setPendingDelete(null)
+                    setDeleteError('')
+                  }}
+                >
+                  取消
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={css.confirmDelete}
+                  disabled={busyId === pendingDelete.id}
+                  onClick={() => { void deleteShape(pendingDelete) }}
+                >
+                  {busyId === pendingDelete.id ? '删除中…' : '删除'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -403,6 +477,21 @@ export function ShapeDialog({
                       disabled={busyId === shape.id}
                       onClick={() => { void toggleShape(shape) }}
                     />
+                    <button
+                      type="button"
+                      className={css.deleteButton}
+                      aria-label={`删除 ${shape.title}`}
+                      title={`删除 ${shape.title}`}
+                      data-testid="dsh-shape-delete"
+                      data-delete-shape-id={shape.id}
+                      disabled={busyId === shape.id}
+                      onClick={() => {
+                        setDeleteError('')
+                        setPendingDelete(shape)
+                      }}
+                    >
+                      <IconTrashOutlineRegular />
+                    </button>
                   </div>
                 )
               })}

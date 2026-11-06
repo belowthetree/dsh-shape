@@ -1,8 +1,8 @@
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-//#region lib/types/index.js
+//#region ../../dsh-plugins/dsh-shape/src/index.ts
 /**
 * dsh-shape Host half: discover folder-based shape packages and expose their
 * public artifacts to the Web client.
@@ -243,6 +243,16 @@ function json(res, status, body) {
 		"content-length": Buffer.byteLength(text)
 	});
 	res.end(text);
+}
+/**
+* Check whether a shape directory sits directly below one shape root.
+* @param root - shape root directory.
+* @param target - shape directory resolved by the scan.
+* @returns true when `target` is strictly inside `root`.
+*/
+function isInsideRoot(root, target) {
+	const relative = path.relative(path.resolve(root), path.resolve(target));
+	return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 /**
 * Validate a Client capability catalog payload.
@@ -640,6 +650,74 @@ async function apply(ctx, config = {}) {
 				...candidate,
 				enabled
 			} : candidate);
+			json(res, 200, snapshot());
+			return;
+		}
+		if (req.method === "POST" && url.pathname === `${API}/delete`) {
+			let body;
+			try {
+				body = await readJsonBody(req);
+			} catch {
+				json(res, 400, {
+					ok: false,
+					error: {
+						code: "bad-request",
+						message: "invalid JSON body"
+					}
+				});
+				return;
+			}
+			const id = (typeof body === "object" && body !== null && !Array.isArray(body) ? body : void 0)?.id;
+			if (typeof id !== "string") {
+				json(res, 400, {
+					ok: false,
+					error: {
+						code: "bad-request",
+						message: "id is required"
+					}
+				});
+				return;
+			}
+			const shape = shapes.find((candidate) => candidate.id === id);
+			if (shape === void 0) {
+				json(res, 404, {
+					ok: false,
+					error: {
+						code: "not-found",
+						message: "unknown shape"
+					}
+				});
+				return;
+			}
+			if (!isInsideRoot(bundledDir, shape.dir) && !isInsideRoot(userDir, shape.dir)) {
+				json(res, 409, {
+					ok: false,
+					error: {
+						code: "outside-roots",
+						message: "shape directory is outside the shape roots"
+					}
+				});
+				return;
+			}
+			try {
+				await rm(shape.dir, {
+					recursive: true,
+					force: true
+				});
+			} catch (cause) {
+				json(res, 500, {
+					ok: false,
+					error: {
+						code: "delete-failed",
+						message: cause instanceof Error ? cause.message : String(cause)
+					}
+				});
+				return;
+			}
+			if (enabledById.delete(id)) try {
+				await saveEnabled();
+			} catch {}
+			await refresh();
 			json(res, 200, snapshot());
 			return;
 		}

@@ -88,7 +88,7 @@ export function apply(ctx: Context): void {
     capability: 'workspace',
     version: '1.0.0',
     description: 'Navigate between DSH workspaces in registry order.',
-    usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists.',
+    usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.',
     api: createWorkspaceSwitch(ctx),
   }), 'dsh-shape: workspace capability')
 

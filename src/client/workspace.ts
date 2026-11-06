@@ -4,6 +4,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import { createWorkspaceReveal } from './workspace-reveal.ts'
 
 /** Public workspace summary. */
 export interface WorkspaceSummary {
@@ -17,9 +18,9 @@ export interface WorkspaceSwitchApi {
   list(): readonly WorkspaceSummary[]
   /** Current workspace id, when a Session is selected. */
   current(): string | null
-  /** Switch to the next workspace, wrapping at the end. */
+  /** Switch to the next workspace, wrapping at the end, and reveal it in the sidebar. */
   next(): Promise<void>
-  /** Switch to the previous workspace, wrapping at the start. */
+  /** Switch to the previous workspace, wrapping at the start, and reveal it in the sidebar. */
   previous(): Promise<void>
 }
 
@@ -31,6 +32,7 @@ export interface WorkspaceSwitchApi {
 export function createWorkspaceSwitch(ctx: Context): WorkspaceSwitchApi {
   const workspaceSnapshot = () => ctx.workspaces.list.getSnapshot()
   const sessionSnapshot = () => ctx.sessions.list.getSnapshot()
+  const reveal = createWorkspaceReveal()
 
   const currentWorkspaceId = (): string | null => {
     const sessions = sessionSnapshot()
@@ -63,9 +65,13 @@ export function createWorkspaceSwitch(ctx: Context): WorkspaceSwitchApi {
 
     if (targetSession !== undefined) {
       ctx.uiWorkspace.openSession(targetSession.id)
+      reveal(items, target.workspaceId)
       return
     }
-    await ctx.uiWorkspace.openWorkspace(target.workspaceId)
+    const opening = ctx.uiWorkspace.openWorkspace(target.workspaceId)
+    // Reveal while a blank Session is created so the sidebar responds immediately.
+    reveal(items, target.workspaceId)
+    await opening
   }
 
   return {

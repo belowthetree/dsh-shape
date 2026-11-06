@@ -30,7 +30,7 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
 }
 ```
 
-Capabilities are identified by `plugin#capability`; never use an unqualified name. Use `optional: true` only when the shape remains useful without the capability. The built-in `dsh-shape#workspace` capability exposes `list()`, `current()`, `next()`, and `previous()`.
+Capabilities are identified by `plugin#capability`; never use an unqualified name. Use `optional: true` only when the shape remains useful without the capability. The built-in `dsh-shape#workspace` capability exposes `list()`, `current()`, `next()`, and `previous()`; switching also expands the target workspace group in the sidebar and scrolls it into view.
 
 6. For a client module, export `activate(api)` and return a cleanup function:
 

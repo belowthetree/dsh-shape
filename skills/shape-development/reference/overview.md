@@ -30,7 +30,7 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 
 ## Existing examples
 
-Use `shape_list` then `shape_inspect` on bundled shapes. `workspace-switch` demonstrates a client module, a required capability, a view, and shortcut cleanup.
+Use `shape_list` then `shape_inspect` on bundled shapes. `hello` is the minimal bundled example: a view, a header-slot declaration, and a tool module.
 
 ## Source access
 

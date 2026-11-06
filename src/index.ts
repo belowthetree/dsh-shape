@@ -8,7 +8,7 @@
  * @module @deepseek-ai/dsh-shape
  */
 
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -363,6 +363,17 @@ function json(res: ServerResponse, status: number, body: unknown): void {
 }
 
 /**
+ * Check whether a shape directory sits directly below one shape root.
+ * @param root - shape root directory.
+ * @param target - shape directory resolved by the scan.
+ * @returns true when `target` is strictly inside `root`.
+ */
+function isInsideRoot(root: string, target: string): boolean {
+  const relative = path.relative(path.resolve(root), path.resolve(target))
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
+}
+
+/**
  * Validate a Client capability catalog payload.
  * @param value - decoded JSON value.
  * @returns validated entries.
@@ -676,6 +687,54 @@ export async function apply(ctx: Context, config: Config = {}): Promise<void> {
         return
       }
       shapes = shapes.map(candidate => candidate.id === id ? { ...candidate, enabled } : candidate)
+      json(res, 200, snapshot())
+      return
+    }
+    if (req.method === 'POST' && url.pathname === `${API}/delete`) {
+      let body: unknown
+      try {
+        body = await readJsonBody(req)
+      } catch {
+        json(res, 400, { ok: false, error: { code: 'bad-request', message: 'invalid JSON body' } })
+        return
+      }
+      const record = typeof body === 'object' && body !== null && !Array.isArray(body)
+        ? body as Record<string, unknown>
+        : undefined
+      const id = record?.id
+      if (typeof id !== 'string') {
+        json(res, 400, { ok: false, error: { code: 'bad-request', message: 'id is required' } })
+        return
+      }
+      const shape = shapes.find(candidate => candidate.id === id)
+      if (shape === undefined) {
+        json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
+        return
+      }
+      if (!isInsideRoot(bundledDir, shape.dir) && !isInsideRoot(userDir, shape.dir)) {
+        json(res, 409, {
+          ok: false,
+          error: { code: 'outside-roots', message: 'shape directory is outside the shape roots' },
+        })
+        return
+      }
+      try {
+        await rm(shape.dir, { recursive: true, force: true })
+      } catch (cause) {
+        json(res, 500, {
+          ok: false,
+          error: { code: 'delete-failed', message: cause instanceof Error ? cause.message : String(cause) },
+        })
+        return
+      }
+      if (enabledById.delete(id)) {
+        try {
+          await saveEnabled()
+        } catch {
+          // The folder is already gone; a stale enable flag is harmless.
+        }
+      }
+      await refresh()
       json(res, 200, snapshot())
       return
     }

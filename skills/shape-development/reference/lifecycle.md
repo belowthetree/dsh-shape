@@ -20,6 +20,13 @@ The Host scans bundled `shapes/` and `$DSH_HOME/dsh-shape/shapes/` at startup. A
 - `POST /dsh-shape/api/toggle` with a shape id and boolean updates state.
 - State write failure rolls back the in-memory switch.
 
+## Deletion
+
+- The Shape browser's card menu offers delete with a confirmation bar.
+- `POST /dsh-shape/api/delete` with a shape id removes the shape folder from its root and drops its persisted enable flag.
+- Only directories directly below the bundled or user root are removable; anything else answers 409.
+- Deletion is permanent: a bundled shape returns only with a plugin reinstall, a user shape only from a copy.
+
 ## Blocking
 
 A shape is blocked when it is invalid, has an unsupported `shape.apiVersion`, or misses a required capability. Blocked shapes remain visible in the browser with a diagnostic, but cannot open a view or render chat cards; their client module is not imported.

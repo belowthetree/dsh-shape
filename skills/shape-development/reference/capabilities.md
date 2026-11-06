@@ -49,7 +49,7 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 ## Built-ins
 
 - `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`; ABI metadata.
-- `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation.
+- `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation. Switching also expands the target workspace group in the sidebar and scrolls it into view.
 
 `shape_capabilities` lists providers with qualified id, contract version, self-description, usage guidance, method names, and non-function field types. It is a discovery catalog, not a signature or validation contract; inspect provider source or use `cordis` for exact service behavior.
 

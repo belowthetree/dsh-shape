@@ -17,6 +17,7 @@
 - Exercise every client shortcut, including the disabled/re-enabled path.
 - Turn the shape off: its cards disappear, its view returns 404, and its shortcuts stop.
 - Turn it back on: cards, view, and shortcuts return.
+- Delete a throwaway user shape: the confirmation bar appears, the card disappears after confirming, and the folder is gone from disk.
 
 ## Debugging
 

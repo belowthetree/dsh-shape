@@ -207,6 +207,7 @@
   top: 12px;
   right: 12px;
   z-index: 2;
+  flex: none;
   width: 32px;
   height: 18px;
   padding: 0;
@@ -247,6 +248,52 @@
 .switch:disabled {
   cursor: wait;
   opacity: 0.5;
+}
+
+.deleteButton {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
+  font-size: 14px;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+  opacity: 0.72;
+}
+
+.deleteButton svg {
+  width: 14px;
+  height: 14px;
+}
+
+.deleteButton:hover:not(:disabled) {
+  color: var(--dsw-alias-state-error-primary, #ff9b9b);
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ff9b9b) 14%, transparent);
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ff9b9b) 32%, transparent);
+}
+
+.deleteButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, #6ea6ff));
+}
+
+.deleteButton:disabled {
+  cursor: wait;
+  opacity: 0.4;
+}
+
+@media (hover: none) {
+  .deleteButton { opacity: 1; }
 }
 
 .cardHead {
@@ -327,6 +374,7 @@
   gap: 4px;
   align-items: center;
   margin-top: auto;
+  padding-right: 34px;
 }
 
 .badge {
@@ -358,6 +406,37 @@
   background: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ff9b9b) 8%, transparent);
   border: 1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, #ff9b9b) 28%, transparent);
   border-radius: 8px;
+}
+
+.confirmBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary, #f0c36a) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary, #f0c36a) 38%, transparent);
+  border-radius: 8px;
+}
+
+.confirmText {
+  min-width: 0;
+}
+
+.confirmActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmDelete {
+  color: var(--dsw-alias-state-error-primary, #ff9b9b);
+  border-color: color-mix(in srgb, var(--dsw-alias-state-error-primary, #ff9b9b) 42%, transparent);
 }
 
 .placeholder {
@@ -553,6 +632,7 @@
   .content { padding: 14px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(152px, 1fr)); gap: 10px; }
   .card { min-height: 176px; padding: 12px; }
+  .confirmBar { flex-wrap: wrap; }
   .subtitle { display: none; }
   .footer { padding: 8px 16px; }
   .viewBackdrop { padding: 8px; }

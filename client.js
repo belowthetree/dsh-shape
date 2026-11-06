@@ -11,7 +11,7 @@ window.__ModuleLoader__.load({
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		let react_jsx_runtime = require("react/jsx-runtime");
 		let react_dom = require("react-dom");
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/constants.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/constants.js
 		var require_constants = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SEMVER_SPEC_VERSION = "2.0.0";
 			const MAX_LENGTH = 256;
@@ -36,12 +36,12 @@ window.__ModuleLoader__.load({
 			};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/debug.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/debug.js
 		var require_debug = /* @__PURE__ */ __commonJSMin(((exports, module) => {
-			module.exports = typeof process === "object" && {}.NODE_DEBUG && /\bsemver\b/i.test({}.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {};
+			module.exports = typeof process === "object" && process.env && process.env.NODE_DEBUG && /\bsemver\b/i.test(process.env.NODE_DEBUG) ? (...args) => console.error("SEMVER", ...args) : () => {};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/re.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/re.js
 		var require_re = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const { MAX_SAFE_COMPONENT_LENGTH, MAX_SAFE_BUILD_LENGTH, MAX_LENGTH } = require_constants();
 			const debug = require_debug();
@@ -120,7 +120,7 @@ window.__ModuleLoader__.load({
 			createToken("GTE0PRE", "^\\s*>=\\s*0\\.0\\.0-0\\s*$");
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/parse-options.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/parse-options.js
 		var require_parse_options = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const looseOption = Object.freeze({ loose: true });
 			const emptyOpts = Object.freeze({});
@@ -132,7 +132,7 @@ window.__ModuleLoader__.load({
 			module.exports = parseOptions;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/identifiers.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/identifiers.js
 		var require_identifiers = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const numeric = /^[0-9]+$/;
 			const compareIdentifiers = (a, b) => {
@@ -152,7 +152,7 @@ window.__ModuleLoader__.load({
 			};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/semver.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/semver.js
 		var require_semver$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const debug = require_debug();
 			const { MAX_LENGTH, MAX_SAFE_INTEGER } = require_constants();
@@ -337,7 +337,7 @@ window.__ModuleLoader__.load({
 			};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/parse.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/parse.js
 		var require_parse = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const parse = (version, options, throwErrors = false) => {
@@ -352,7 +352,7 @@ window.__ModuleLoader__.load({
 			module.exports = parse;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/valid.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/valid.js
 		var require_valid$1 = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const parse = require_parse();
 			const valid = (version, options) => {
@@ -362,7 +362,7 @@ window.__ModuleLoader__.load({
 			module.exports = valid;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/clean.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/clean.js
 		var require_clean = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const parse = require_parse();
 			const clean = (version, options) => {
@@ -372,7 +372,7 @@ window.__ModuleLoader__.load({
 			module.exports = clean;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/inc.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/inc.js
 		var require_inc = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const inc = (version, release, options, identifier, identifierBase) => {
@@ -390,7 +390,7 @@ window.__ModuleLoader__.load({
 			module.exports = inc;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/diff.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/diff.js
 		var require_diff = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const parse = require_parse();
 			const diff = (version1, version2) => {
@@ -418,28 +418,28 @@ window.__ModuleLoader__.load({
 			module.exports = diff;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/major.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/major.js
 		var require_major = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const major = (a, loose) => new SemVer(a, loose).major;
 			module.exports = major;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/minor.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/minor.js
 		var require_minor = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const minor = (a, loose) => new SemVer(a, loose).minor;
 			module.exports = minor;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/patch.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/patch.js
 		var require_patch = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const patch = (a, loose) => new SemVer(a, loose).patch;
 			module.exports = patch;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/prerelease.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/prerelease.js
 		var require_prerelease = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const parse = require_parse();
 			const prerelease = (version, options) => {
@@ -449,28 +449,28 @@ window.__ModuleLoader__.load({
 			module.exports = prerelease;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare.js
 		var require_compare = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const compare = (a, b, loose) => new SemVer(a, loose).compare(new SemVer(b, loose));
 			module.exports = compare;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rcompare.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rcompare.js
 		var require_rcompare = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const rcompare = (a, b, loose) => compare(b, a, loose);
 			module.exports = rcompare;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-loose.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-loose.js
 		var require_compare_loose = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const compareLoose = (a, b) => compare(a, b, true);
 			module.exports = compareLoose;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-build.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/compare-build.js
 		var require_compare_build = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const compareBuild = (a, b, loose) => {
@@ -481,63 +481,63 @@ window.__ModuleLoader__.load({
 			module.exports = compareBuild;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/sort.js
 		var require_sort = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compareBuild = require_compare_build();
 			const sort = (list, loose) => list.sort((a, b) => compareBuild(a, b, loose));
 			module.exports = sort;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/rsort.js
 		var require_rsort = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compareBuild = require_compare_build();
 			const rsort = (list, loose) => list.sort((a, b) => compareBuild(b, a, loose));
 			module.exports = rsort;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gt.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gt.js
 		var require_gt = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const gt = (a, b, loose) => compare(a, b, loose) > 0;
 			module.exports = gt;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lt.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lt.js
 		var require_lt = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const lt = (a, b, loose) => compare(a, b, loose) < 0;
 			module.exports = lt;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/eq.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/eq.js
 		var require_eq = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const eq = (a, b, loose) => compare(a, b, loose) === 0;
 			module.exports = eq;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/neq.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/neq.js
 		var require_neq = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const neq = (a, b, loose) => compare(a, b, loose) !== 0;
 			module.exports = neq;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gte.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/gte.js
 		var require_gte = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const gte = (a, b, loose) => compare(a, b, loose) >= 0;
 			module.exports = gte;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lte.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/lte.js
 		var require_lte = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const compare = require_compare();
 			const lte = (a, b, loose) => compare(a, b, loose) <= 0;
 			module.exports = lte;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/cmp.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/cmp.js
 		var require_cmp = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const eq = require_eq();
 			const neq = require_neq();
@@ -569,7 +569,7 @@ window.__ModuleLoader__.load({
 			module.exports = cmp;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/coerce.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/coerce.js
 		var require_coerce = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const parse = require_parse();
@@ -597,7 +597,7 @@ window.__ModuleLoader__.load({
 			module.exports = coerce;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/truncate.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/truncate.js
 		var require_truncate = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const parse = require_parse();
 			const constants = require_constants();
@@ -630,7 +630,7 @@ window.__ModuleLoader__.load({
 			module.exports = truncate;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/lrucache.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/internal/lrucache.js
 		var require_lrucache = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			var LRUCache = class {
 				constructor() {
@@ -663,7 +663,7 @@ window.__ModuleLoader__.load({
 			module.exports = LRUCache;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/range.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/range.js
 		var require_range = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SPACE_CHARACTERS = /\s+/g;
 			module.exports = class Range {
@@ -940,7 +940,7 @@ window.__ModuleLoader__.load({
 			};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/classes/comparator.js
 		var require_comparator = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const ANY = Symbol("SemVer ANY");
 			module.exports = class Comparator {
@@ -1010,7 +1010,7 @@ window.__ModuleLoader__.load({
 			const Range = require_range();
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/satisfies.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/functions/satisfies.js
 		var require_satisfies = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const Range = require_range();
 			const satisfies = (version, range, options) => {
@@ -1024,14 +1024,14 @@ window.__ModuleLoader__.load({
 			module.exports = satisfies;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/to-comparators.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/to-comparators.js
 		var require_to_comparators = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const Range = require_range();
 			const toComparators = (range, options) => new Range(range, options).set.map((comp) => comp.map((c) => c.value).join(" ").trim().split(" "));
 			module.exports = toComparators;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/max-satisfying.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/max-satisfying.js
 		var require_max_satisfying = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const Range = require_range();
@@ -1057,7 +1057,7 @@ window.__ModuleLoader__.load({
 			module.exports = maxSatisfying;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-satisfying.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-satisfying.js
 		var require_min_satisfying = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const Range = require_range();
@@ -1083,7 +1083,7 @@ window.__ModuleLoader__.load({
 			module.exports = minSatisfying;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-version.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/min-version.js
 		var require_min_version = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const Range = require_range();
@@ -1123,7 +1123,7 @@ window.__ModuleLoader__.load({
 			module.exports = minVersion;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/valid.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/valid.js
 		var require_valid = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const Range = require_range();
 			const validRange = (range, options) => {
@@ -1136,7 +1136,7 @@ window.__ModuleLoader__.load({
 			module.exports = validRange;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/outside.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/outside.js
 		var require_outside = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const SemVer = require_semver$1();
 			const Comparator = require_comparator();
@@ -1189,21 +1189,21 @@ window.__ModuleLoader__.load({
 			module.exports = outside;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/gtr.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/gtr.js
 		var require_gtr = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const outside = require_outside();
 			const gtr = (version, range, options) => outside(version, range, ">", options);
 			module.exports = gtr;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/ltr.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/ltr.js
 		var require_ltr = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const outside = require_outside();
 			const ltr = (version, range, options) => outside(version, range, "<", options);
 			module.exports = ltr;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/intersects.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/intersects.js
 		var require_intersects = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const Range = require_range();
 			const intersects = (r1, r2, options) => {
@@ -1214,7 +1214,7 @@ window.__ModuleLoader__.load({
 			module.exports = intersects;
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/simplify.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/simplify.js
 		var require_simplify = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const satisfies = require_satisfies();
 			const compare = require_compare();
@@ -1244,7 +1244,7 @@ window.__ModuleLoader__.load({
 			};
 		}));
 		//#endregion
-		//#region ../../../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/subset.js
+		//#region ../node_modules/.pnpm/semver@7.8.5/node_modules/semver/ranges/subset.js
 		var require_subset = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const Range = require_range();
 			const Comparator = require_comparator();
@@ -1339,7 +1339,7 @@ window.__ModuleLoader__.load({
 			module.exports = subset;
 		}));
 		//#endregion
-		//#region src/capabilities.ts
+		//#region ../../dsh-plugins/dsh-shape/src/capabilities.ts
 		var import_semver = (/* @__PURE__ */ __commonJSMin(((exports, module) => {
 			const internalRe = require_re();
 			const constants = require_constants();
@@ -1486,8 +1486,8 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
-		//#region \0dsh-css:E:\Project\dsh-shape\packages\experimental\dsh-shape-build\src\client\shape-chat-cards.module.css.mjs
-		const css$1 = ".cX5DZa_list{box-sizing:border-box;gap:8px;width:100%;max-width:860px;margin:0 auto 8px;padding:0 16px;display:grid}.cX5DZa_card{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);box-shadow:var(--dsw-elevation-soft,0 6px 18px #00000024);border-radius:12px;align-items:center;gap:12px;padding:12px 14px;display:flex}.cX5DZa_mark{width:32px;height:32px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:9px;flex:none;place-items:center;display:grid}.cX5DZa_markGrid{grid-template-rows:repeat(2,4px);grid-template-columns:repeat(2,4px);gap:2px;display:grid}.cX5DZa_markGrid>span{opacity:.9;background:currentColor;border-radius:1px}.cX5DZa_body{flex:1;min-width:0}.cX5DZa_heading{align-items:baseline;gap:8px;min-width:0;display:flex}.cX5DZa_title{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}.cX5DZa_id{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);flex:none;font-size:10px}.cX5DZa_text{color:var(--dsw-alias-label-secondary,#fff9);margin:2px 0 0;font-size:12px;line-height:1.5}.cX5DZa_greeting{color:var(--dsw-alias-state-success-primary,#7dd3a7);margin:4px 0 0;font-size:12px;line-height:1.5}@media (width<=720px){.cX5DZa_list{padding:0 8px}.cX5DZa_card{flex-wrap:wrap;align-items:flex-start}.cX5DZa_card button{margin-left:44px}}";
+		//#region \0dsh-css:shape-chat-cards.module.css.mjs
+		const css$1 = ".MQAMYG_list{box-sizing:border-box;gap:8px;width:100%;max-width:860px;margin:0 auto 8px;padding:0 16px;display:grid}.MQAMYG_card{background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);box-shadow:var(--dsw-elevation-soft,0 6px 18px #00000024);border-radius:12px;align-items:center;gap:12px;padding:12px 14px;display:flex}.MQAMYG_mark{width:32px;height:32px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:9px;flex:none;place-items:center;display:grid}.MQAMYG_markGrid{grid-template-rows:repeat(2,4px);grid-template-columns:repeat(2,4px);gap:2px;display:grid}.MQAMYG_markGrid>span{opacity:.9;background:currentColor;border-radius:1px}.MQAMYG_body{flex:1;min-width:0}.MQAMYG_heading{align-items:baseline;gap:8px;min-width:0;display:flex}.MQAMYG_title{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13px;font-weight:500;line-height:18px;overflow:hidden}.MQAMYG_id{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);flex:none;font-size:10px}.MQAMYG_text{color:var(--dsw-alias-label-secondary,#fff9);margin:2px 0 0;font-size:12px;line-height:1.5}.MQAMYG_greeting{color:var(--dsw-alias-state-success-primary,#7dd3a7);margin:4px 0 0;font-size:12px;line-height:1.5}@media (width<=720px){.MQAMYG_list{padding:0 8px}.MQAMYG_card{flex-wrap:wrap;align-items:flex-start}.MQAMYG_card button{margin-left:44px}}";
 		const tagId$1 = "dsh-shape/shape-chat-cards.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId$1) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1497,19 +1497,19 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var shape_chat_cards_module_css_default = {
-			"body": "cX5DZa_body",
-			"card": "cX5DZa_card",
-			"greeting": "cX5DZa_greeting",
-			"heading": "cX5DZa_heading",
-			"id": "cX5DZa_id",
-			"list": "cX5DZa_list",
-			"mark": "cX5DZa_mark",
-			"markGrid": "cX5DZa_markGrid",
-			"text": "cX5DZa_text",
-			"title": "cX5DZa_title"
+			"body": "MQAMYG_body",
+			"card": "MQAMYG_card",
+			"greeting": "MQAMYG_greeting",
+			"heading": "MQAMYG_heading",
+			"id": "MQAMYG_id",
+			"list": "MQAMYG_list",
+			"mark": "MQAMYG_mark",
+			"markGrid": "MQAMYG_markGrid",
+			"text": "MQAMYG_text",
+			"title": "MQAMYG_title"
 		};
 		//#endregion
-		//#region src/client/ShapeChatCards.tsx
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeChatCards.tsx
 		/** Shape-owned cards mounted above the chat composer. */
 		const SLOT = "conversation.input.dock";
 		/**
@@ -1626,8 +1626,8 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
-		//#region \0dsh-css:E:\Project\dsh-shape\packages\experimental\dsh-shape-build\src\client\shape-dialog.module.css.mjs
-		const css = ".g_Pq1W_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_window:focus{outline:none}.g_Pq1W_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.g_Pq1W_heading{align-items:center;gap:12px;min-width:0;display:flex}.g_Pq1W_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.g_Pq1W_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.g_Pq1W_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.g_Pq1W_headingText{min-width:0}.g_Pq1W_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.g_Pq1W_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.g_Pq1W_actions{flex:none;gap:4px;display:flex}.g_Pq1W_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.g_Pq1W_iconButton>svg{width:16px;height:16px}@media (hover:hover){.g_Pq1W_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.g_Pq1W_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.g_Pq1W_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_content{flex:1;min-height:0;padding:22px;overflow:auto}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.g_Pq1W_cardShell{min-width:0;position:relative}.g_Pq1W_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.g_Pq1W_card:disabled{cursor:default;opacity:.55}.g_Pq1W_cardShell[data-enabled=false] .g_Pq1W_card{opacity:.55}@media (hover:hover){.g_Pq1W_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.g_Pq1W_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.g_Pq1W_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.g_Pq1W_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.g_Pq1W_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.g_Pq1W_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.g_Pq1W_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.g_Pq1W_switch:disabled{cursor:wait;opacity:.5}.g_Pq1W_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.g_Pq1W_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.g_Pq1W_cardIdentity{flex:1;min-width:0}.g_Pq1W_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.g_Pq1W_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.g_Pq1W_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.g_Pq1W_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;display:flex}.g_Pq1W_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.g_Pq1W_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.g_Pq1W_blocked{color:var(--dsw-alias-state-warn-primary,#f0c36a);font-size:11px;line-height:1.4}.g_Pq1W_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.g_Pq1W_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.g_Pq1W_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.g_Pq1W_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.g_Pq1W_placeholderMessage{max-width:540px;line-height:1.5}.g_Pq1W_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite g_Pq1W_shimmer}.g_Pq1W_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:g_Pq1W_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.g_Pq1W_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:g_Pq1W_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.g_Pq1W_viewWindow:focus{outline:none}.g_Pq1W_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.g_Pq1W_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.g_Pq1W_viewHeadingText{min-width:0}.g_Pq1W_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.g_Pq1W_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.g_Pq1W_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.g_Pq1W_viewBody .g_Pq1W_placeholder{flex:1;width:100%}.g_Pq1W_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.g_Pq1W_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.g_Pq1W_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.g_Pq1W_footerCount{flex:none}@keyframes g_Pq1W_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes g_Pq1W_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes g_Pq1W_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.g_Pq1W_backdrop{padding:8px}.g_Pq1W_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_header{padding:14px 16px}.g_Pq1W_content{padding:14px}.g_Pq1W_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.g_Pq1W_card{min-height:176px;padding:12px}.g_Pq1W_subtitle{display:none}.g_Pq1W_footer{padding:8px 16px}.g_Pq1W_viewBackdrop{padding:8px}.g_Pq1W_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.g_Pq1W_viewHeader{padding:12px 14px}.g_Pq1W_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.g_Pq1W_backdrop,.g_Pq1W_window,.g_Pq1W_skeletonCard{animation:none}.g_Pq1W_card{transition:none}}";
+		//#region \0dsh-css:shape-dialog.module.css.mjs
+		const css = ".TTllmG_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_window:focus{outline:none}.TTllmG_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.TTllmG_heading{align-items:center;gap:12px;min-width:0;display:flex}.TTllmG_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.TTllmG_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.TTllmG_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.TTllmG_headingText{min-width:0}.TTllmG_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.TTllmG_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.TTllmG_actions{flex:none;gap:4px;display:flex}.TTllmG_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.TTllmG_iconButton>svg{width:16px;height:16px}@media (hover:hover){.TTllmG_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.TTllmG_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.TTllmG_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_content{flex:1;min-height:0;padding:22px;overflow:auto}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.TTllmG_cardShell{min-width:0;position:relative}.TTllmG_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.TTllmG_card:disabled{cursor:default;opacity:.55}.TTllmG_cardShell[data-enabled=false] .TTllmG_card{opacity:.55}@media (hover:hover){.TTllmG_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.TTllmG_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.TTllmG_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;flex:none;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.TTllmG_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.TTllmG_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.TTllmG_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.TTllmG_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch:disabled{cursor:wait;opacity:.5}.TTllmG_deleteButton{z-index:2;width:26px;height:26px;color:var(--dsw-alias-label-secondary,#fff9);cursor:pointer;opacity:.72;background:0 0;border:1px solid #0000;border-radius:8px;place-items:center;padding:0;font-size:14px;line-height:1;transition:color .14s,background .14s,border-color .14s;display:grid;position:absolute;bottom:10px;right:10px}.TTllmG_deleteButton svg{width:14px;height:14px}.TTllmG_deleteButton:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 14%, transparent);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 32%, transparent)}.TTllmG_deleteButton:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_deleteButton:disabled{cursor:wait;opacity:.4}@media (hover:none){.TTllmG_deleteButton{opacity:1}}.TTllmG_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.TTllmG_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.TTllmG_cardIdentity{flex:1;min-width:0}.TTllmG_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.TTllmG_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.TTllmG_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.TTllmG_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;padding-right:34px;display:flex}.TTllmG_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.TTllmG_blocked{color:var(--dsw-alias-state-warn-primary,#f0c36a);font-size:11px;line-height:1.4}.TTllmG_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.TTllmG_confirmBar{color:var(--dsw-alias-label-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 12%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 38%, transparent);border-radius:8px;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;padding:10px 12px;font-size:12px;line-height:1.5;display:flex}.TTllmG_confirmText{min-width:0}.TTllmG_confirmActions{flex:none;align-items:center;gap:8px;display:flex}.TTllmG_confirmDelete{color:var(--dsw-alias-state-error-primary,#ff9b9b);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 42%, transparent)}.TTllmG_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.TTllmG_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.TTllmG_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.TTllmG_placeholderMessage{max-width:540px;line-height:1.5}.TTllmG_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite TTllmG_shimmer}.TTllmG_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_viewWindow:focus{outline:none}.TTllmG_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.TTllmG_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.TTllmG_viewHeadingText{min-width:0}.TTllmG_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.TTllmG_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.TTllmG_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.TTllmG_viewBody .TTllmG_placeholder{flex:1;width:100%}.TTllmG_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.TTllmG_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.TTllmG_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.TTllmG_footerCount{flex:none}@keyframes TTllmG_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes TTllmG_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes TTllmG_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.TTllmG_backdrop{padding:8px}.TTllmG_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_header{padding:14px 16px}.TTllmG_content{padding:14px}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.TTllmG_card{min-height:176px;padding:12px}.TTllmG_confirmBar{flex-wrap:wrap}.TTllmG_subtitle{display:none}.TTllmG_footer{padding:8px 16px}.TTllmG_viewBackdrop{padding:8px}.TTllmG_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_viewHeader{padding:12px 14px}.TTllmG_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.TTllmG_backdrop,.TTllmG_window,.TTllmG_skeletonCard{animation:none}.TTllmG_card{transition:none}}";
 		const tagId = "dsh-shape/shape-dialog.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1637,57 +1637,62 @@ window.__ModuleLoader__.load({
 			document.head.appendChild(tag);
 		}
 		var shape_dialog_module_css_default = {
-			"actions": "g_Pq1W_actions",
-			"appIcon": "g_Pq1W_appIcon",
-			"appMark": "g_Pq1W_appMark",
-			"appMarkGrid": "g_Pq1W_appMarkGrid",
-			"backdrop": "g_Pq1W_backdrop",
-			"backdrop-in": "g_Pq1W_backdrop-in",
-			"badge": "g_Pq1W_badge",
-			"blocked": "g_Pq1W_blocked",
-			"card": "g_Pq1W_card",
-			"cardFooter": "g_Pq1W_cardFooter",
-			"cardHead": "g_Pq1W_cardHead",
-			"cardId": "g_Pq1W_cardId",
-			"cardIdentity": "g_Pq1W_cardIdentity",
-			"cardShell": "g_Pq1W_cardShell",
-			"cardTitle": "g_Pq1W_cardTitle",
-			"content": "g_Pq1W_content",
-			"description": "g_Pq1W_description",
-			"footer": "g_Pq1W_footer",
-			"footerCount": "g_Pq1W_footerCount",
-			"footerPath": "g_Pq1W_footerPath",
-			"grid": "g_Pq1W_grid",
-			"header": "g_Pq1W_header",
-			"heading": "g_Pq1W_heading",
-			"headingText": "g_Pq1W_headingText",
-			"iconButton": "g_Pq1W_iconButton",
-			"invalid": "g_Pq1W_invalid",
-			"origin": "g_Pq1W_origin",
-			"placeholder": "g_Pq1W_placeholder",
-			"placeholderMark": "g_Pq1W_placeholderMark",
-			"placeholderMessage": "g_Pq1W_placeholderMessage",
-			"placeholderPath": "g_Pq1W_placeholderPath",
-			"shimmer": "g_Pq1W_shimmer",
-			"skeletonCard": "g_Pq1W_skeletonCard",
-			"subtitle": "g_Pq1W_subtitle",
-			"switch": "g_Pq1W_switch",
-			"title": "g_Pq1W_title",
-			"toggleError": "g_Pq1W_toggleError",
-			"viewBackdrop": "g_Pq1W_viewBackdrop",
-			"viewBody": "g_Pq1W_viewBody",
-			"viewFrame": "g_Pq1W_viewFrame",
-			"viewHeader": "g_Pq1W_viewHeader",
-			"viewHeading": "g_Pq1W_viewHeading",
-			"viewHeadingText": "g_Pq1W_viewHeadingText",
-			"viewSubtitle": "g_Pq1W_viewSubtitle",
-			"viewTitle": "g_Pq1W_viewTitle",
-			"viewWindow": "g_Pq1W_viewWindow",
-			"window": "g_Pq1W_window",
-			"window-in": "g_Pq1W_window-in"
+			"actions": "TTllmG_actions",
+			"appIcon": "TTllmG_appIcon",
+			"appMark": "TTllmG_appMark",
+			"appMarkGrid": "TTllmG_appMarkGrid",
+			"backdrop": "TTllmG_backdrop",
+			"backdrop-in": "TTllmG_backdrop-in",
+			"badge": "TTllmG_badge",
+			"blocked": "TTllmG_blocked",
+			"card": "TTllmG_card",
+			"cardFooter": "TTllmG_cardFooter",
+			"cardHead": "TTllmG_cardHead",
+			"cardId": "TTllmG_cardId",
+			"cardIdentity": "TTllmG_cardIdentity",
+			"cardShell": "TTllmG_cardShell",
+			"cardTitle": "TTllmG_cardTitle",
+			"confirmActions": "TTllmG_confirmActions",
+			"confirmBar": "TTllmG_confirmBar",
+			"confirmDelete": "TTllmG_confirmDelete",
+			"confirmText": "TTllmG_confirmText",
+			"content": "TTllmG_content",
+			"deleteButton": "TTllmG_deleteButton",
+			"description": "TTllmG_description",
+			"footer": "TTllmG_footer",
+			"footerCount": "TTllmG_footerCount",
+			"footerPath": "TTllmG_footerPath",
+			"grid": "TTllmG_grid",
+			"header": "TTllmG_header",
+			"heading": "TTllmG_heading",
+			"headingText": "TTllmG_headingText",
+			"iconButton": "TTllmG_iconButton",
+			"invalid": "TTllmG_invalid",
+			"origin": "TTllmG_origin",
+			"placeholder": "TTllmG_placeholder",
+			"placeholderMark": "TTllmG_placeholderMark",
+			"placeholderMessage": "TTllmG_placeholderMessage",
+			"placeholderPath": "TTllmG_placeholderPath",
+			"shimmer": "TTllmG_shimmer",
+			"skeletonCard": "TTllmG_skeletonCard",
+			"subtitle": "TTllmG_subtitle",
+			"switch": "TTllmG_switch",
+			"title": "TTllmG_title",
+			"toggleError": "TTllmG_toggleError",
+			"viewBackdrop": "TTllmG_viewBackdrop",
+			"viewBody": "TTllmG_viewBody",
+			"viewFrame": "TTllmG_viewFrame",
+			"viewHeader": "TTllmG_viewHeader",
+			"viewHeading": "TTllmG_viewHeading",
+			"viewHeadingText": "TTllmG_viewHeadingText",
+			"viewSubtitle": "TTllmG_viewSubtitle",
+			"viewTitle": "TTllmG_viewTitle",
+			"viewWindow": "TTllmG_viewWindow",
+			"window": "TTllmG_window",
+			"window-in": "TTllmG_window-in"
 		};
 		//#endregion
-		//#region src/client/ShapeDialog.tsx
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeDialog.tsx
 		/** Shape browser: a large launcher-style window with a responsive app grid. */
 		/**
 		* Format one unresolved capability for the card.
@@ -1744,6 +1749,8 @@ window.__ModuleLoader__.load({
 			const [viewError, setViewError] = (0, react.useState)("");
 			const [busyId, setBusyId] = (0, react.useState)("");
 			const [toggleError, setToggleError] = (0, react.useState)("");
+			const [pendingDelete, setPendingDelete] = (0, react.useState)(null);
+			const [deleteError, setDeleteError] = (0, react.useState)("");
 			const windowRef = (0, react.useRef)(null);
 			const viewRef = (0, react.useRef)(null);
 			const onCloseRef = (0, react.useRef)(onClose);
@@ -1821,6 +1828,33 @@ window.__ModuleLoader__.load({
 					setBusyId("");
 				}
 			}, []);
+			const deleteShape = (0, react.useCallback)(async (shape) => {
+				setBusyId(shape.id);
+				setDeleteError("");
+				try {
+					const response = await fetch("/dsh-shape/api/delete", {
+						method: "POST",
+						credentials: "same-origin",
+						headers: {
+							"content-type": "application/json",
+							accept: "application/json"
+						},
+						body: JSON.stringify({ id: shape.id })
+					});
+					const payload = await response.json().catch(() => null);
+					if (payload?.ok !== true || !Array.isArray(payload.shapes)) {
+						const message = typeof payload?.error?.message === "string" ? payload.error.message : `HTTP ${String(response.status)}`;
+						throw new Error(message);
+					}
+					setShapes(payload.shapes);
+					setPendingDelete(null);
+					window.dispatchEvent(new CustomEvent("dsh-shape:refresh"));
+				} catch (cause) {
+					setDeleteError(cause instanceof Error ? cause.message : String(cause));
+				} finally {
+					setBusyId("");
+				}
+			}, []);
 			(0, react.useEffect)(() => {
 				if (!open) return;
 				load(false);
@@ -1840,6 +1874,8 @@ window.__ModuleLoader__.load({
 					setSelected(null);
 					setViewError("");
 					setViewLoading(false);
+					setPendingDelete(null);
+					setDeleteError("");
 				}
 			}, [open]);
 			(0, react.useEffect)(() => {
@@ -1943,6 +1979,45 @@ window.__ModuleLoader__.load({
 									role: "alert",
 									children: ["切换 shape 失败：", toggleError]
 								}),
+								deleteError !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: shape_dialog_module_css_default.toggleError,
+									role: "alert",
+									children: ["删除 shape 失败：", deleteError]
+								}),
+								pendingDelete !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+									className: shape_dialog_module_css_default.confirmBar,
+									role: "group",
+									"aria-label": `删除 ${pendingDelete.title}`,
+									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+										className: shape_dialog_module_css_default.confirmText,
+										children: [
+											"删除「",
+											pendingDelete.title,
+											"」？",
+											pendingDelete.origin === "bundled" ? "内置 shape 会从插件目录移除，重新安装插件才能恢复。" : "该 shape 目录会从磁盘移除，无法撤销。"
+										]
+									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+										className: shape_dialog_module_css_default.confirmActions,
+										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+											variant: "ghost",
+											size: "sm",
+											onClick: () => {
+												setPendingDelete(null);
+												setDeleteError("");
+											},
+											children: "取消"
+										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
+											variant: "outline",
+											size: "sm",
+											className: shape_dialog_module_css_default.confirmDelete,
+											disabled: busyId === pendingDelete.id,
+											onClick: () => {
+												deleteShape(pendingDelete);
+											},
+											children: busyId === pendingDelete.id ? "删除中…" : "删除"
+										})]
+									})]
+								}),
 								status === "loading" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
 									className: shape_dialog_module_css_default.grid,
 									"aria-label": "正在读取 shape",
@@ -2001,94 +2076,111 @@ window.__ModuleLoader__.load({
 											className: shape_dialog_module_css_default.cardShell,
 											"data-enabled": enabled ? "true" : "false",
 											"data-blocked": blocked ? "true" : "false",
-											children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-												type: "button",
-												className: shape_dialog_module_css_default.card,
-												"data-testid": "dsh-shape-card",
-												"data-shape-id": shape.id,
-												"aria-haspopup": "dialog",
-												"aria-label": `打开 ${shape.title}`,
-												disabled: !enabled || blocked,
-												onClick: () => {
-													openView(shape);
-												},
-												children: [
-													/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-														className: shape_dialog_module_css_default.cardHead,
-														children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-															className: shape_dialog_module_css_default.appIcon,
-															"aria-hidden": "true",
-															children: initial.toLocaleUpperCase()
-														}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-															className: shape_dialog_module_css_default.cardIdentity,
-															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-																className: shape_dialog_module_css_default.cardTitle,
-																title: shape.title,
-																children: shape.title
-															}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-																className: shape_dialog_module_css_default.cardId,
-																title: shape.id,
-																children: shape.id
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
+													type: "button",
+													className: shape_dialog_module_css_default.card,
+													"data-testid": "dsh-shape-card",
+													"data-shape-id": shape.id,
+													"aria-haspopup": "dialog",
+													"aria-label": `打开 ${shape.title}`,
+													disabled: !enabled || blocked,
+													onClick: () => {
+														openView(shape);
+													},
+													children: [
+														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+															className: shape_dialog_module_css_default.cardHead,
+															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																className: shape_dialog_module_css_default.appIcon,
+																"aria-hidden": "true",
+																children: initial.toLocaleUpperCase()
+															}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+																className: shape_dialog_module_css_default.cardIdentity,
+																children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
+																	className: shape_dialog_module_css_default.cardTitle,
+																	title: shape.title,
+																	children: shape.title
+																}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
+																	className: shape_dialog_module_css_default.cardId,
+																	title: shape.id,
+																	children: shape.id
+																})]
 															})]
-														})]
-													}),
-													/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-														className: shape_dialog_module_css_default.description,
-														children: shape.description.length > 0 ? shape.description : "暂无描述"
-													}),
-													blocked && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-														className: shape_dialog_module_css_default.blocked,
-														children: !apiSupported ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(1)}）` : `缺少 ${resolution.missing.map(describeMissing).join("、")}`
-													}),
-													!shape.valid && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-														className: shape_dialog_module_css_default.invalid,
-														children: ["无效 package.json：", shape.error ?? "缺少 id 或 name"]
-													}),
-													/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-														className: shape_dialog_module_css_default.cardFooter,
-														children: [
-															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																className: shape_dialog_module_css_default.origin,
-																children: shape.origin === "bundled" ? "内置" : "用户"
-															}),
-															/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																className: shape_dialog_module_css_default.badge,
-																children: ["v", shape.version]
-															}),
-															/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																className: shape_dialog_module_css_default.badge,
-																children: [String(shape.views.length), " views"]
-															}),
-															/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																className: shape_dialog_module_css_default.badge,
-																children: [String(shape.slots.length), " slots"]
-															}),
-															/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																className: shape_dialog_module_css_default.badge,
-																children: [String(shape.tools.length), " tools"]
-															}),
-															/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																className: shape_dialog_module_css_default.badge,
-																children: shape.output
-															})
-														]
-													})
-												]
-											}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-												type: "button",
-												className: shape_dialog_module_css_default.switch,
-												role: "switch",
-												"aria-checked": enabled,
-												"aria-busy": busyId === shape.id,
-												"aria-label": `${enabled ? "停用" : "启用"} ${shape.title}`,
-												title: `${enabled ? "停用" : "启用"} ${shape.title}`,
-												"data-testid": "dsh-shape-toggle",
-												"data-toggle-shape-id": shape.id,
-												disabled: busyId === shape.id,
-												onClick: () => {
-													toggleShape(shape);
-												}
-											})]
+														}),
+														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+															className: shape_dialog_module_css_default.description,
+															children: shape.description.length > 0 ? shape.description : "暂无描述"
+														}),
+														blocked && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+															className: shape_dialog_module_css_default.blocked,
+															children: !apiSupported ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(1)}）` : `缺少 ${resolution.missing.map(describeMissing).join("、")}`
+														}),
+														!shape.valid && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+															className: shape_dialog_module_css_default.invalid,
+															children: ["无效 package.json：", shape.error ?? "缺少 id 或 name"]
+														}),
+														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
+															className: shape_dialog_module_css_default.cardFooter,
+															children: [
+																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																	className: shape_dialog_module_css_default.origin,
+																	children: shape.origin === "bundled" ? "内置" : "用户"
+																}),
+																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: ["v", shape.version]
+																}),
+																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: [String(shape.views.length), " views"]
+																}),
+																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: [String(shape.slots.length), " slots"]
+																}),
+																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: [String(shape.tools.length), " tools"]
+																}),
+																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: shape.output
+																})
+															]
+														})
+													]
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+													type: "button",
+													className: shape_dialog_module_css_default.switch,
+													role: "switch",
+													"aria-checked": enabled,
+													"aria-busy": busyId === shape.id,
+													"aria-label": `${enabled ? "停用" : "启用"} ${shape.title}`,
+													title: `${enabled ? "停用" : "启用"} ${shape.title}`,
+													"data-testid": "dsh-shape-toggle",
+													"data-toggle-shape-id": shape.id,
+													disabled: busyId === shape.id,
+													onClick: () => {
+														toggleShape(shape);
+													}
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+													type: "button",
+													className: shape_dialog_module_css_default.deleteButton,
+													"aria-label": `删除 ${shape.title}`,
+													title: `删除 ${shape.title}`,
+													"data-testid": "dsh-shape-delete",
+													"data-delete-shape-id": shape.id,
+													disabled: busyId === shape.id,
+													onClick: () => {
+														setDeleteError("");
+														setPendingDelete(shape);
+													},
+													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, {})
+												})
+											]
 										}, shape.id);
 									})
 								})
@@ -2222,7 +2314,7 @@ window.__ModuleLoader__.load({
 			}), document.body);
 		}
 		//#endregion
-		//#region src/client/ShapeButton.tsx
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeButton.tsx
 		/** Top-bar action that opens the registered-shape browser. */
 		/**
 		* Render the header action and own the dialog's open state.
@@ -2264,7 +2356,7 @@ window.__ModuleLoader__.load({
 			})] });
 		}
 		//#endregion
-		//#region src/client/shape-runtime.ts
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-runtime.ts
 		const KEY_ALIASES = {
 			esc: "Escape",
 			space: " ",
@@ -2472,7 +2564,151 @@ window.__ModuleLoader__.load({
 			return { start };
 		}
 		//#endregion
-		//#region src/client/workspace.ts
+		//#region ../../dsh-plugins/dsh-shape/src/client/workspace-reveal.ts
+		/** Sidebar row marker for one Workspace group. */
+		const ROW_KEY_PREFIX = "workspace:";
+		/** Sidebar list viewport; absent while the sidebar is collapsed. */
+		const LIST_AREA_SELECTOR = "[data-sidebar-list-area]";
+		/** Upper bound on animation frames spent waiting for a row to mount. */
+		const MAX_REVEAL_FRAMES = 20;
+		/** Normalize one Workspace directory for nesting comparison. */
+		function folderPath(path) {
+			return (/^[A-Za-z]:[/\\]/.test(path) || path.startsWith("\\\\") ? path.replaceAll("\\", "/") : path).replace(/\/+$/, "");
+		}
+		/**
+		* Find the nearest registered Workspace directory containing `path`.
+		* Mirrors the browser's tree nesting so the same ancestors open.
+		* @param path - Workspace directory to place.
+		* @param candidates - every registered Workspace directory.
+		* @returns the nearest containing directory, when one is registered.
+		*/
+		function parentFolder(path, candidates) {
+			const child = folderPath(path);
+			let owner;
+			let length = -1;
+			for (const candidate of candidates) {
+				const root = folderPath(candidate);
+				if (root.length > length && child !== root && child.startsWith(`${root}/`)) {
+					owner = candidate;
+					length = root.length;
+				}
+			}
+			return owner;
+		}
+		/**
+		* Workspace ids from the outermost registered ancestor down to `workspaceId`.
+		* @param workspaces - Workspace registry snapshot.
+		* @param workspaceId - target Workspace.
+		* @returns ancestors in tree order, excluding the target itself.
+		*/
+		function ancestorIds(workspaces, workspaceId) {
+			const idByPath = new Map(workspaces.map((workspace) => [workspace.path, workspace.workspaceId]));
+			const paths = [...idByPath.keys()];
+			const workspaceById = new Map(workspaces.map((workspace) => [workspace.workspaceId, workspace]));
+			const chain = [];
+			const seen = new Set([workspaceId]);
+			let current = workspaceById.get(workspaceId);
+			while (current !== void 0) {
+				const path = parentFolder(current.path, paths);
+				const parentId = path === void 0 ? void 0 : idByPath.get(path);
+				if (parentId === void 0 || seen.has(parentId)) break;
+				seen.add(parentId);
+				chain.unshift(parentId);
+				current = workspaceById.get(parentId);
+			}
+			return chain;
+		}
+		/**
+		* Find the sidebar row of one Workspace group, preferring a mounted copy over
+		* a hidden one when the shell renders more than one sidebar surface.
+		*/
+		function findWorkspaceRow(workspaceId) {
+			const key = `${ROW_KEY_PREFIX}${workspaceId}`;
+			let hidden;
+			for (const area of document.querySelectorAll(LIST_AREA_SELECTOR)) for (const row of area.querySelectorAll("[data-row-key]")) {
+				if (row.dataset.rowKey !== key) continue;
+				if (row.offsetParent !== null) return row;
+				hidden ??= row;
+			}
+			return hidden;
+		}
+		/** Wait one animation frame, or a timer where `requestAnimationFrame` is unavailable. */
+		function nextFrame() {
+			return new Promise((resolve) => {
+				if (typeof requestAnimationFrame === "function") requestAnimationFrame(() => {
+					resolve();
+				});
+				else setTimeout(resolve, 16);
+			});
+		}
+		/**
+		* Wait a bounded number of frames for a Workspace row to mount.
+		* @param workspaceId - row to find.
+		* @param frames - frames to wait before giving up.
+		* @param cancelled - whether a later reveal superseded this one.
+		* @returns the row, or undefined when it did not mount in time.
+		*/
+		async function rowWithin(workspaceId, frames, cancelled) {
+			for (let frame = 0; frame < frames; frame++) {
+				if (cancelled()) return void 0;
+				const row = findWorkspaceRow(workspaceId);
+				if (row !== void 0) return row;
+				await nextFrame();
+			}
+		}
+		/**
+		* Scroll the row just into view. `scrollIntoView` moves every scrollable
+		* ancestor the sidebar's hand-off may be using, matching the browser's own
+		* Session-row reveal.
+		*/
+		function scrollRowIntoView(row) {
+			row.scrollIntoView({
+				block: "nearest",
+				inline: "nearest"
+			});
+		}
+		/**
+		* Create the post-navigation sidebar reveal.
+		*
+		* Expanding through the rendered row keeps the browser's own persisted view
+		* state and row animations authoritative; a later call supersedes any pending
+		* frames from an earlier one.
+		* @returns a function that expands and scrolls one Workspace group.
+		*/
+		function createWorkspaceReveal() {
+			let generation = 0;
+			return (workspaces, workspaceId) => {
+				if (typeof document === "undefined") return;
+				if (document.querySelector(`${LIST_AREA_SELECTOR} [data-row-key^="workspace:"]`) === null) return;
+				const current = ++generation;
+				const cancelled = () => current !== generation;
+				(async () => {
+					let target = await rowWithin(workspaceId, 2, cancelled);
+					if (target === void 0) {
+						for (const ancestorId of ancestorIds(workspaces, workspaceId)) {
+							const row = await rowWithin(ancestorId, MAX_REVEAL_FRAMES, cancelled);
+							if (row === void 0) return;
+							if (row.getAttribute("aria-expanded") !== "false") continue;
+							row.click();
+							await nextFrame();
+							if (cancelled()) return;
+						}
+						target = await rowWithin(workspaceId, MAX_REVEAL_FRAMES, cancelled);
+					}
+					if (target === void 0) return;
+					if (target.getAttribute("aria-expanded") === "false") {
+						target.click();
+						await nextFrame();
+						if (cancelled()) return;
+					}
+					scrollRowIntoView(findWorkspaceRow(workspaceId) ?? target);
+				})().catch((error) => {
+					console.warn("dsh-shape: workspace reveal failed", error);
+				});
+			};
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/workspace.ts
 		/**
 		* Build the workspace switching capability.
 		* @param ctx - Client context with workspace, session, and navigation services.
@@ -2481,6 +2717,7 @@ window.__ModuleLoader__.load({
 		function createWorkspaceSwitch(ctx) {
 			const workspaceSnapshot = () => ctx.workspaces.list.getSnapshot();
 			const sessionSnapshot = () => ctx.sessions.list.getSnapshot();
+			const reveal = createWorkspaceReveal();
 			const currentWorkspaceId = () => {
 				const sessions = sessionSnapshot();
 				const current = Object.values(sessions.byId).find((row) => (row.retainedBy.mainView ?? 0) > 0);
@@ -2501,9 +2738,12 @@ window.__ModuleLoader__.load({
 				const targetSession = target.sessionIds.filter((sessionId) => !archived.has(sessionId)).map((sessionId) => sessions.byId[sessionId]).filter((row) => row !== void 0).sort((left, right) => right.updatedAt - left.updatedAt)[0];
 				if (targetSession !== void 0) {
 					ctx.uiWorkspace.openSession(targetSession.id);
+					reveal(items, target.workspaceId);
 					return;
 				}
-				await ctx.uiWorkspace.openWorkspace(target.workspaceId);
+				const opening = ctx.uiWorkspace.openWorkspace(target.workspaceId);
+				reveal(items, target.workspaceId);
+				await opening;
 			};
 			return {
 				list() {
@@ -2518,7 +2758,7 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
-		//#region src/client/index.ts
+		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
 			"slots",
@@ -2589,7 +2829,7 @@ window.__ModuleLoader__.load({
 				capability: "workspace",
 				version: "1.0.0",
 				description: "Navigate between DSH workspaces in registry order.",
-				usage: "Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace's most recent Session, or its blank Session when none exists.",
+				usage: "Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace's most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.",
 				api: createWorkspaceSwitch(ctx)
 			}), "dsh-shape: workspace capability");
 			capabilities.subscribe(() => {
