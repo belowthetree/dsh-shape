@@ -1,0 +1,15 @@
+{
+  "name": "hello",
+  "version": "0.1.0",
+  "title": "Hello Shape",
+  "description": "A minimal folder-based shape: one view, one header-slot declaration, and one tool module.",
+  "input": [
+    {
+      "name": "name",
+      "type": "string",
+      "required": false,
+      "default": "world"
+    }
+  ],
+  "output": "text"
+}
