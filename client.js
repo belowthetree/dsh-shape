@@ -2567,10 +2567,16 @@ window.__ModuleLoader__.load({
 		//#region ../../dsh-plugins/dsh-shape/src/client/workspace-reveal.ts
 		/** Sidebar row marker for one Workspace group. */
 		const ROW_KEY_PREFIX = "workspace:";
-		/** Sidebar list viewport; absent while the sidebar is collapsed. */
-		const LIST_AREA_SELECTOR = "[data-sidebar-list-area]";
+		/** Sidebar row identity carried by every rendered Workspace group. */
+		const WORKSPACE_ROW_SELECTOR = '[data-row-key^="workspace:"]';
 		/** Upper bound on animation frames spent waiting for a row to mount. */
 		const MAX_REVEAL_FRAMES = 20;
+		/** Clearance kept between the revealed row and the lowest uncovered line. */
+		const REVEAL_BOTTOM_GAP = 40;
+		/** How far an overlay may reach up from the scroller's bottom edge. */
+		const OVERLAY_PROBE_DEPTH = 240;
+		/** Vertical step of the overlay probe. */
+		const OVERLAY_PROBE_STEP = 4;
 		/** Normalize one Workspace directory for nesting comparison. */
 		function folderPath(path) {
 			return (/^[A-Za-z]:[/\\]/.test(path) || path.startsWith("\\\\") ? path.replaceAll("\\", "/") : path).replace(/\/+$/, "");
@@ -2621,11 +2627,15 @@ window.__ModuleLoader__.load({
 		/**
 		* Find the sidebar row of one Workspace group, preferring a mounted copy over
 		* a hidden one when the shell renders more than one sidebar surface.
+		*
+		* Only the session sidebar renders `workspace:` rows, and the list viewport
+		* itself has no marker every supported DSH build carries, so the search spans
+		* the document.
 		*/
 		function findWorkspaceRow(workspaceId) {
 			const key = `${ROW_KEY_PREFIX}${workspaceId}`;
 			let hidden;
-			for (const area of document.querySelectorAll(LIST_AREA_SELECTOR)) for (const row of area.querySelectorAll("[data-row-key]")) {
+			for (const row of document.querySelectorAll(WORKSPACE_ROW_SELECTOR)) {
 				if (row.dataset.rowKey !== key) continue;
 				if (row.offsetParent !== null) return row;
 				hidden ??= row;
@@ -2657,15 +2667,56 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/**
-		* Scroll the row just into view. `scrollIntoView` moves every scrollable
-		* ancestor the sidebar's hand-off may be using, matching the browser's own
-		* Session-row reveal.
+		* Nearest ancestor that scrolls vertically.
+		* @param row - revealed row.
+		* @returns the scroll container holding the row, when there is one.
+		*/
+		function scrollParent(row) {
+			for (let node = row.parentElement; node !== null; node = node.parentElement) {
+				if (node.scrollHeight <= node.clientHeight) continue;
+				const overflowY = getComputedStyle(node).overflowY;
+				if (overflowY === "auto" || overflowY === "scroll" || overflowY === "overlay") return node;
+			}
+		}
+		/**
+		* Lowest line of one scroller that the sidebar does not cover.
+		*
+		* The shell paints its bottom fade and its footer buttons over the list, and
+		* `scrollIntoView` aligns to the scrollport, so a revealed row lands underneath
+		* them. Hit-testing upward from the bottom finds where the list still shows.
+		* @param scroller - scroll container holding the revealed row.
+		* @returns the viewport coordinate of the lowest uncovered line.
+		*/
+		function uncoveredBottom(scroller) {
+			const rect = scroller.getBoundingClientRect();
+			const x = rect.left + rect.width / 2;
+			const floor = Math.max(rect.top, rect.bottom - OVERLAY_PROBE_DEPTH);
+			for (let y = rect.bottom - 1; y > floor; y -= OVERLAY_PROBE_STEP) {
+				const hit = document.elementFromPoint(x, y);
+				if (hit !== null && scroller.contains(hit)) return y + 1;
+			}
+			return floor;
+		}
+		/**
+		* Scroll one row fully into view, clear of the sidebar footer that overlays the
+		* list. The uncovered line decides where the row lands, so a reveal never hides
+		* the row under the footer buttons.
+		* @param row - revealed row.
 		*/
 		function scrollRowIntoView(row) {
-			row.scrollIntoView({
-				block: "nearest",
-				inline: "nearest"
-			});
+			const scroller = scrollParent(row);
+			if (scroller === void 0) {
+				row.scrollIntoView({
+					block: "nearest",
+					inline: "nearest"
+				});
+				return;
+			}
+			const rowRect = row.getBoundingClientRect();
+			const viewRect = scroller.getBoundingClientRect();
+			const bottom = Math.min(viewRect.bottom, uncoveredBottom(scroller)) - REVEAL_BOTTOM_GAP;
+			if (rowRect.bottom > bottom) scroller.scrollTop += rowRect.bottom - bottom;
+			else if (rowRect.top < viewRect.top) scroller.scrollTop += rowRect.top - viewRect.top;
 		}
 		/**
 		* Create the post-navigation sidebar reveal.
@@ -2679,7 +2730,7 @@ window.__ModuleLoader__.load({
 			let generation = 0;
 			return (workspaces, workspaceId) => {
 				if (typeof document === "undefined") return;
-				if (document.querySelector(`${LIST_AREA_SELECTOR} [data-row-key^="workspace:"]`) === null) return;
+				if (document.querySelector(WORKSPACE_ROW_SELECTOR) === null) return;
 				const current = ++generation;
 				const cancelled = () => current !== generation;
 				(async () => {

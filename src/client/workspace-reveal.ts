@@ -4,10 +4,16 @@ import type { WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-workspace-
 
 /** Sidebar row marker for one Workspace group. */
 const ROW_KEY_PREFIX = 'workspace:'
-/** Sidebar list viewport; absent while the sidebar is collapsed. */
-const LIST_AREA_SELECTOR = '[data-sidebar-list-area]'
+/** Sidebar row identity carried by every rendered Workspace group. */
+const WORKSPACE_ROW_SELECTOR = '[data-row-key^="workspace:"]'
 /** Upper bound on animation frames spent waiting for a row to mount. */
 const MAX_REVEAL_FRAMES = 20
+/** Clearance kept between the revealed row and the lowest uncovered line. */
+const REVEAL_BOTTOM_GAP = 40
+/** How far an overlay may reach up from the scroller's bottom edge. */
+const OVERLAY_PROBE_DEPTH = 240
+/** Vertical step of the overlay probe. */
+const OVERLAY_PROBE_STEP = 4
 
 /** Normalize one Workspace directory for nesting comparison. */
 function folderPath(path: string): string {
@@ -63,16 +69,18 @@ function ancestorIds(workspaces: readonly WorkspaceView[], workspaceId: Workspac
 /**
  * Find the sidebar row of one Workspace group, preferring a mounted copy over
  * a hidden one when the shell renders more than one sidebar surface.
+ *
+ * Only the session sidebar renders `workspace:` rows, and the list viewport
+ * itself has no marker every supported DSH build carries, so the search spans
+ * the document.
  */
 function findWorkspaceRow(workspaceId: WorkspaceId): HTMLElement | undefined {
   const key = `${ROW_KEY_PREFIX}${workspaceId}`
   let hidden: HTMLElement | undefined
-  for (const area of document.querySelectorAll(LIST_AREA_SELECTOR)) {
-    for (const row of area.querySelectorAll<HTMLElement>('[data-row-key]')) {
-      if (row.dataset.rowKey !== key) continue
-      if (row.offsetParent !== null) return row
-      hidden ??= row
-    }
+  for (const row of document.querySelectorAll<HTMLElement>(WORKSPACE_ROW_SELECTOR)) {
+    if (row.dataset.rowKey !== key) continue
+    if (row.offsetParent !== null) return row
+    hidden ??= row
   }
   return hidden
 }
@@ -107,12 +115,56 @@ async function rowWithin(
 }
 
 /**
- * Scroll the row just into view. `scrollIntoView` moves every scrollable
- * ancestor the sidebar's hand-off may be using, matching the browser's own
- * Session-row reveal.
+ * Nearest ancestor that scrolls vertically.
+ * @param row - revealed row.
+ * @returns the scroll container holding the row, when there is one.
+ */
+function scrollParent(row: HTMLElement): HTMLElement | undefined {
+  for (let node = row.parentElement; node !== null; node = node.parentElement) {
+    if (node.scrollHeight <= node.clientHeight) continue
+    const overflowY = getComputedStyle(node).overflowY
+    if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') return node
+  }
+  return undefined
+}
+
+/**
+ * Lowest line of one scroller that the sidebar does not cover.
+ *
+ * The shell paints its bottom fade and its footer buttons over the list, and
+ * `scrollIntoView` aligns to the scrollport, so a revealed row lands underneath
+ * them. Hit-testing upward from the bottom finds where the list still shows.
+ * @param scroller - scroll container holding the revealed row.
+ * @returns the viewport coordinate of the lowest uncovered line.
+ */
+function uncoveredBottom(scroller: HTMLElement): number {
+  const rect = scroller.getBoundingClientRect()
+  const x = rect.left + rect.width / 2
+  const floor = Math.max(rect.top, rect.bottom - OVERLAY_PROBE_DEPTH)
+  for (let y = rect.bottom - 1; y > floor; y -= OVERLAY_PROBE_STEP) {
+    const hit = document.elementFromPoint(x, y)
+    if (hit !== null && scroller.contains(hit)) return y + 1
+  }
+  return floor
+}
+
+/**
+ * Scroll one row fully into view, clear of the sidebar footer that overlays the
+ * list. The uncovered line decides where the row lands, so a reveal never hides
+ * the row under the footer buttons.
+ * @param row - revealed row.
  */
 function scrollRowIntoView(row: HTMLElement): void {
-  row.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  const scroller = scrollParent(row)
+  if (scroller === undefined) {
+    row.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    return
+  }
+  const rowRect = row.getBoundingClientRect()
+  const viewRect = scroller.getBoundingClientRect()
+  const bottom = Math.min(viewRect.bottom, uncoveredBottom(scroller)) - REVEAL_BOTTOM_GAP
+  if (rowRect.bottom > bottom) scroller.scrollTop += rowRect.bottom - bottom
+  else if (rowRect.top < viewRect.top) scroller.scrollTop += rowRect.top - viewRect.top
 }
 
 /**
@@ -127,9 +179,9 @@ export function createWorkspaceReveal(): (workspaces: readonly WorkspaceView[], 
   let generation = 0
   return (workspaces, workspaceId) => {
     if (typeof document === 'undefined') return
-    // No list area means the sidebar is collapsed or this surface is not mounted;
-    // no Workspace row means the browser shows the flat or search result list.
-    if (document.querySelector(`${LIST_AREA_SELECTOR} [data-row-key^="workspace:"]`) === null) return
+    // No Workspace row means the sidebar is collapsed, or the browser shows the
+    // flat or search result list; there is no group to expand.
+    if (document.querySelector(WORKSPACE_ROW_SELECTOR) === null) return
     const current = ++generation
     const cancelled = (): boolean => current !== generation
     void (async () => {
