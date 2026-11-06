@@ -2,7 +2,17 @@
 
 [中文](README.md) | [English](README.en.md)
 
-dsh-shape 用于快速自定义 DeepSeek Harness 的功能：一个 shape 就是一个文件夹，可以带自己的界面、聊天卡片和工具入口。把文件夹放进 `shapes/`，在 Shape 浏览器里刷新即可生效，不需要重启 DSH。
+dsh-shape 是一个 DeepSeek Harness 插件，为 DSH 增加快速自定义界面和功能的能力：一个 shape 文件夹可以即时添加一个窗口、修改聊天 UI，或新增工具扩展。放进 `shapes/` 后刷新即可生效，不需要重启 DSH。
+
+## 可以添加什么
+
+| 扩展 | 目录 | 效果 |
+|---|---|---|
+| 窗口 | `views/` | 在第二个窗口展示 shape 自己的界面 |
+| UI | `slots/` | 向聊天界面注入卡片等界面元素 |
+| 工具 | `tools/` | 声明该 shape 的工具模块与入口 |
+
+当前已可用的是窗口和 `conversation.input.dock` 聊天卡片；工具会被发现和登记，执行运行时还在接入中。
 
 ## 能力
 

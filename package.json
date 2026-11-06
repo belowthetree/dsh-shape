@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Folder-based shapes for DeepSeek Harness: a top-bar Shape browser and a folder format with views, slots, and tools.",
+  "description": "A DeepSeek Harness plugin for rapidly customizing DSH UI and functionality with folder-based shapes.",
   "license": "MIT",
   "engines": {
     "dsh": ">=0.2.2-rc.1"

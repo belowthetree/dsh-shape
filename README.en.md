@@ -2,7 +2,17 @@
 
 [English](README.en.md) | [中文](README.md)
 
-dsh-shape lets you customize DeepSeek Harness features quickly. A shape is a folder that can carry its own view, chat card, and tool entry. Drop it under `shapes/`, refresh the Shape browser, and it takes effect without restarting DSH.
+dsh-shape is a DeepSeek Harness plugin that adds a fast way to customize DSH's UI and functionality: a shape folder can instantly add a window, change the chat UI, or add a tool extension. Drop it under `shapes/`, refresh, and it applies without restarting DSH.
+
+## What can a shape add?
+
+| Extension | Directory | Result |
+|---|---|---|
+| Window | `views/` | Show the shape's own interface in a second window |
+| UI | `slots/` | Inject cards and other elements into the chat UI |
+| Tool | `tools/` | Declare the shape's tool modules and entrypoints |
+
+Windows and `conversation.input.dock` chat cards are available today. Tools are discovered and registered; their execution runtime is still being wired up.
 
 ## Features
 
