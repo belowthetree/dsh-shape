@@ -28,6 +28,10 @@
   animation: window-in var(--ds-transition-duration, 160ms) var(--ds-ease-in-out, ease-out);
 }
 
+.window:focus {
+  outline: none;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -95,6 +99,41 @@
   display: flex;
   flex: none;
   gap: 4px;
+}
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));
+  background: transparent;
+  border: 0;
+  border-radius: var(--dsw-radius-sm, 8px);
+  cursor: pointer;
+}
+
+.iconButton > svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (hover: hover) {
+  .iconButton:hover {
+    color: var(--dsw-alias-label-primary);
+    background: var(--dsw-alias-interactive-bg-hover);
+  }
+}
+
+.iconButton:active {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.iconButton:focus-visible {
+  outline: none;
+  color: var(--dsw-alias-label-primary);
+  box-shadow: 0 0 0 2px var(--dsw-focus-ring-color, var(--dsw-alias-state-business-primary, #6ea6ff));
 }
 
 .content {

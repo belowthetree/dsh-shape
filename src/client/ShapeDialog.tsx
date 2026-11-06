@@ -72,7 +72,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
   const [shapes, setShapes] = useState<ShapeInfo[]>([])
   const [roots, setRoots] = useState<Snapshot['roots']>()
   const [error, setError] = useState('')
-  const closeRef = useRef<HTMLButtonElement>(null)
+  const windowRef = useRef<HTMLElement>(null)
   const onCloseRef = useRef(onClose)
   onCloseRef.current = onClose
 
@@ -106,7 +106,7 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
       onCloseRef.current()
     }
     document.addEventListener('keydown', onKeyDown)
-    closeRef.current?.focus()
+    windowRef.current?.focus()
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.body.style.overflow = previousOverflow
@@ -129,6 +129,8 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
       onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
     >
       <section
+        ref={windowRef}
+        tabIndex={-1}
         className={css.window}
         role="dialog"
         aria-modal="true"
@@ -148,25 +150,26 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
             </div>
           </div>
           <div className={css.actions}>
-            <Button
-              variant="ghost"
-              size="sm"
-              icon={<IconRefreshOutlineRegular />}
+            <button
+              type="button"
+              className={css.iconButton}
               aria-label="刷新"
               title="刷新"
               data-testid="dsh-shape-refresh"
               onClick={() => { void load(true) }}
-            />
-            <Button
-              ref={closeRef}
-              variant="ghost"
-              size="sm"
-              icon={<IconCloseOutlineRegular />}
+            >
+              <IconRefreshOutlineRegular />
+            </button>
+            <button
+              type="button"
+              className={css.iconButton}
               aria-label="关闭"
               title="关闭"
               data-testid="dsh-shape-close"
               onClick={onClose}
-            />
+            >
+              <IconCloseOutlineRegular />
+            </button>
           </div>
         </header>
 
