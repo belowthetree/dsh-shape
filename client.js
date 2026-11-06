@@ -341,12 +341,26 @@ window.__ModuleLoader__.load({
 		*/
 		function ShapeButton() {
 			const [open, setOpen] = (0, react.useState)(false);
+			(0, react.useEffect)(() => {
+				const onKeyDown = (event) => {
+					if (event.defaultPrevented || event.repeat || event.isComposing) return;
+					if (!event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+					if (event.key !== "." && event.code !== "Period") return;
+					event.preventDefault();
+					setOpen(true);
+				};
+				window.addEventListener("keydown", onKeyDown);
+				return () => {
+					window.removeEventListener("keydown", onKeyDown);
+				};
+			}, []);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				"data-testid": "dsh-shape-open",
 				size: "sm",
 				variant: "ghost",
-				title: "Shapes",
+				title: "Shapes (Ctrl+.)",
 				"aria-haspopup": "dialog",
+				"aria-keyshortcuts": "Control+.",
 				onClick: () => {
 					setOpen(true);
 				},
