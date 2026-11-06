@@ -1,8 +1,13 @@
-/** Shape browser dialog: the Host's folder-based registry, read-only. */
+/** Shape browser: a large launcher-style window with a responsive app grid. */
 
-import { useCallback, useEffect, useState } from 'react'
-import type { CSSProperties } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import {
+  Button,
+  IconCloseOutlineRegular,
+  IconRefreshOutlineRegular,
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import css from './shape-dialog.module.css'
 
 interface ShapeInfo {
   id: string
@@ -26,58 +31,6 @@ interface Snapshot {
 }
 
 type Status = 'loading' | 'ready' | 'error'
-
-const panel: CSSProperties = {
-  display: 'grid',
-  gap: '12px',
-  width: '100%',
-  maxHeight: '62vh',
-  overflow: 'auto',
-  paddingRight: '4px',
-}
-
-const toolbar: CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: '12px',
-}
-
-const card: CSSProperties = {
-  display: 'grid',
-  gap: '8px',
-  padding: '12px 14px',
-  border: '1px solid var(--dsw-alias-border-secondary, rgba(120, 200, 170, 0.22))',
-  borderRadius: '10px',
-  background: 'var(--dsw-alias-bg-layer-3, #16261f)',
-}
-
-const line: CSSProperties = {
-  display: 'flex',
-  alignItems: 'baseline',
-  justifyContent: 'space-between',
-  gap: '12px',
-}
-
-const muted: CSSProperties = {
-  color: 'var(--dsw-alias-label-secondary, rgba(220, 240, 232, 0.66))',
-  fontSize: '12px',
-  lineHeight: 1.5,
-}
-
-const badges: CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '6px',
-  fontSize: '11px',
-}
-
-const badge: CSSProperties = {
-  padding: '2px 7px',
-  borderRadius: '999px',
-  border: '1px solid var(--dsw-alias-border-secondary, rgba(120, 200, 170, 0.2))',
-  color: 'var(--dsw-alias-label-secondary, rgba(220, 240, 232, 0.66))',
-}
 
 /**
  * Read the current shape list.
@@ -109,16 +62,19 @@ async function readShapes(refresh: boolean): Promise<Snapshot> {
 }
 
 /**
- * Render the read-only list of registered folder-based shapes.
- * @param props.open - whether the dialog is showing.
- * @param props.onClose - closes the dialog.
- * @returns the dialog, or null while closed.
+ * Render the read-only grid of registered folder-based shapes.
+ * @param props.open - whether the window is showing.
+ * @param props.onClose - closes the window.
+ * @returns the window, or null while closed.
  */
 export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [status, setStatus] = useState<Status>('loading')
   const [shapes, setShapes] = useState<ShapeInfo[]>([])
   const [roots, setRoots] = useState<Snapshot['roots']>()
   const [error, setError] = useState('')
+  const closeRef = useRef<HTMLButtonElement>(null)
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   const load = useCallback(async (refresh: boolean): Promise<void> => {
     setStatus('loading')
@@ -139,70 +95,156 @@ export function ShapeDialog({ open, onClose }: { open: boolean; onClose: () => v
     void load(false)
   }, [load, open])
 
-  return (
-    <Modal open={open} onClose={onClose} title="Shapes" closeLabel="关闭">
-      <div style={panel} data-testid="dsh-shape-dialog">
-        <div style={toolbar}>
-          <span style={muted}>
-            {status === 'ready'
-              ? `${String(shapes.length)} 个已注册 shape`
-              : status === 'loading' ? '正在读取 shape…' : '读取失败'}
-          </span>
-          <Button size="sm" variant="outline" data-testid="dsh-shape-refresh" onClick={() => { void load(true) }}>
-            刷新
-          </Button>
+  useEffect(() => {
+    if (!open) return
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      onCloseRef.current()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    closeRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.style.overflow = previousOverflow
+      previous?.focus()
+    }
+  }, [open])
+
+  if (!open) return null
+
+  const subtitle = status === 'loading'
+    ? '正在读取 shape…'
+    : status === 'error'
+      ? '读取失败'
+      : `${String(shapes.length)} 个 shape`
+
+  return createPortal((
+    <div
+      className={css.backdrop}
+      role="presentation"
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
+      <section
+        className={css.window}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dsh-shape-title"
+        data-testid="dsh-shape-dialog"
+      >
+        <header className={css.header}>
+          <div className={css.heading}>
+            <span className={css.appMark} aria-hidden="true">
+              <span className={css.appMarkGrid}>
+                <span /><span /><span /><span />
+              </span>
+            </span>
+            <div className={css.headingText}>
+              <h2 className={css.title} id="dsh-shape-title">Shapes</h2>
+              <p className={css.subtitle}>{subtitle}</p>
+            </div>
+          </div>
+          <div className={css.actions}>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon={<IconRefreshOutlineRegular />}
+              aria-label="刷新"
+              title="刷新"
+              data-testid="dsh-shape-refresh"
+              onClick={() => { void load(true) }}
+            />
+            <Button
+              ref={closeRef}
+              variant="ghost"
+              size="sm"
+              icon={<IconCloseOutlineRegular />}
+              aria-label="关闭"
+              title="关闭"
+              data-testid="dsh-shape-close"
+              onClick={onClose}
+            />
+          </div>
+        </header>
+
+        <div className={css.content}>
+          {status === 'loading' && (
+            <div className={css.grid} aria-label="正在读取 shape">
+              {Array.from({ length: 8 }, (_, index) => (
+                <div className={css.skeletonCard} key={index} />
+              ))}
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className={css.placeholder}>
+              <span className={css.placeholderMark} aria-hidden="true">!</span>
+              <strong>无法读取 shape</strong>
+              <span>{error}</span>
+              <Button variant="outline" size="sm" onClick={() => { void load(false) }}>
+                重试
+              </Button>
+            </div>
+          )}
+
+          {status === 'ready' && shapes.length === 0 && (
+            <div className={css.placeholder}>
+              <span className={css.placeholderMark} aria-hidden="true">＋</span>
+              <strong>还没有 shape</strong>
+              <span>把 shape 文件夹放进用户目录，然后点刷新。</span>
+              {roots !== undefined && <code className={css.placeholderPath}>{roots.user}</code>}
+            </div>
+          )}
+
+          {status === 'ready' && shapes.length > 0 && (
+            <div className={css.grid} data-testid="dsh-shape-grid">
+              {shapes.map((shape) => {
+                const initial = Array.from(shape.title.trim())[0] ?? '?'
+                return (
+                  <article
+                    className={css.card}
+                    key={shape.id}
+                    data-testid="dsh-shape-card"
+                    data-shape-id={shape.id}
+                  >
+                    <div className={css.cardHead}>
+                      <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>
+                      <div className={css.cardIdentity}>
+                        <h3 className={css.cardTitle} title={shape.title}>{shape.title}</h3>
+                        <code className={css.cardId} title={shape.id}>{shape.id}</code>
+                      </div>
+                      <span className={css.origin}>{shape.origin === 'bundled' ? '内置' : '用户'}</span>
+                    </div>
+                    <p className={css.description}>{shape.description.length > 0 ? shape.description : '暂无描述'}</p>
+                    {!shape.valid && (
+                      <span className={css.invalid}>
+                        无效 package.json：{shape.error ?? '缺少 id 或 name'}
+                      </span>
+                    )}
+                    <div className={css.cardFooter}>
+                      <span className={css.badge}>v{shape.version}</span>
+                      <span className={css.badge}>{String(shape.views.length)} views</span>
+                      <span className={css.badge}>{String(shape.slots.length)} slots</span>
+                      <span className={css.badge}>{String(shape.tools.length)} tools</span>
+                      <span className={css.badge}>{shape.output}</span>
+                    </div>
+                  </article>
+                )
+              })}
+            </div>
+          )}
         </div>
 
-        {status === 'error' && (
-          <div style={{ ...card, borderColor: 'rgba(255, 120, 120, 0.4)' }}>
-            <strong>无法读取 shape</strong>
-            <span style={muted}>{error}</span>
-            <Button size="sm" variant="outline" onClick={() => { void load(false) }}>重试</Button>
-          </div>
-        )}
-
-        {status === 'loading' && <span style={muted}>扫描 `package.json`、`views/`、`slots/`、`tools/`…</span>}
-
-        {status === 'ready' && shapes.length === 0 && (
-          <div style={card}>
-            <strong>还没有 shape</strong>
-            <span style={muted}>把 shape 文件夹放进用户目录，然后点刷新。</span>
-            {roots !== undefined && <code style={muted}>{roots.user}</code>}
-          </div>
-        )}
-
-        {status === 'ready' && shapes.map(shape => (
-          <div key={shape.id} style={card} data-testid="dsh-shape-card" data-shape-id={shape.id}>
-            <div style={line}>
-              <strong>{shape.title}</strong>
-              <code style={muted}>{shape.id}</code>
-            </div>
-            {shape.description.length > 0 && <span style={muted}>{shape.description}</span>}
-            <div style={badges}>
-              <span style={badge}>{shape.origin === 'bundled' ? '内置' : '用户'}</span>
-              <span style={badge}>v{shape.version}</span>
-              <span style={badge}>views {String(shape.views.length)}</span>
-              <span style={badge}>slots {String(shape.slots.length)}</span>
-              <span style={badge}>tools {String(shape.tools.length)}</span>
-              <span style={badge}>{shape.output}</span>
-            </div>
-            {!shape.valid && (
-              <span style={{ ...muted, color: 'var(--dsw-alias-label-error, #ff9b9b)' }}>
-                无效 package.json：{shape.error ?? '缺少 id 或 name'}
-              </span>
-            )}
-            <code style={{ ...muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {shape.dir}
-            </code>
-          </div>
-        ))}
-
-        {roots !== undefined && status === 'ready' && shapes.length > 0 && (
-          <span style={{ ...muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            用户目录：{roots.user}
+        <footer className={css.footer}>
+          <span className={css.footerPath} title={roots?.user}>
+            {roots?.user ?? 'shape 目录'}
           </span>
-        )}
-      </div>
-    </Modal>
-  )
+          <span className={css.footerCount}>{String(shapes.length)} registered</span>
+        </footer>
+      </section>
+    </div>
+  ), document.body)
 }
