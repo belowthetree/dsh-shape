@@ -6,12 +6,15 @@
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 export const name = 'dsh-shape-tools'
 export const inject = ['tools']
 
 const SHAPE_ID = /^[a-z0-9][a-z0-9-]*$/
 const VERSION_RANGE = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
+const BUNDLED_ROOT = fileURLToPath(new URL('./shapes/', import.meta.url))
+const CLIENT_CODE_LIMIT = 16000
 
 /**
  * Resolve the writable shape directory.
@@ -37,16 +40,37 @@ async function readManifest(dir) {
 }
 
 /**
+ * List regular files in a directory.
+ * @param dir - directory to read.
+ * @returns sorted file names, or an empty list when absent.
+ */
+async function listFiles(dir) {
+  try {
+    const entries = await readdir(dir, { withFileTypes: true })
+    return entries.filter(entry => entry.isFile()).map(entry => entry.name).sort()
+  } catch {
+    return []
+  }
+}
+
+/**
  * Inspect one shape directory without relying on the dsh-shape host scanner.
  * @param dir - shape directory.
+ * @param origin - source root label.
  * @returns compact metadata and validation messages.
  */
-async function inspectShape(dir) {
+async function inspectShape(dir, origin) {
   const id = path.basename(dir)
   const manifest = await readManifest(dir)
-  if (typeof manifest === 'string') return { id, valid: false, errors: [manifest], warnings: [] }
+  if (typeof manifest === 'string') {
+    return { id, origin, valid: false, errors: [manifest], warnings: [], views: [], slots: [], tools: [] }
+  }
   const files = await readdir(dir, { withFileTypes: true }).catch(() => [])
   const subdirs = new Set(files.filter(entry => entry.isDirectory()).map(entry => entry.name))
+  const views = await listFiles(path.join(dir, 'views'))
+  const slots = await listFiles(path.join(dir, 'slots'))
+  const tools = await listFiles(path.join(dir, 'tools'))
+  const client = await listFiles(path.join(dir, 'client'))
   const shape = manifest.shape
   const errors = []
   const warnings = []
@@ -69,34 +93,120 @@ async function inspectShape(dir) {
   if (!subdirs.has('slots')) warnings.push('no slots/ directory')
   return {
     id,
+    origin,
     valid: errors.length === 0,
     errors,
     warnings,
+    views,
+    slots,
+    tools,
     ...(typeof manifest.title === 'string' ? { title: manifest.title } : {}),
     ...(typeof manifest.version === 'string' ? { version: manifest.version } : {}),
     ...(Array.isArray(shape?.requires) ? { requirements: shape.requires } : {}),
-    ...(subdirs.has('client') ? { clientEntry: 'client/index.js' } : {}),
+    ...(client.includes('index.js') ? { clientEntry: 'client/index.js' } : {}),
   }
 }
 
 /**
- * List shape directories.
- * @param root - shape root.
+ * List shape directories from user and bundled roots.
+ * @param roots - source roots in precedence order.
  * @returns shape metadata.
  */
-async function listShapes(root) {
-  let entries
-  try {
-    entries = await readdir(root, { withFileTypes: true })
-  } catch {
-    return []
-  }
+async function listShapes(roots) {
   const shapes = []
-  for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name.startsWith('.')) continue
-    shapes.push(await inspectShape(path.join(root, entry.name)))
+  const seen = new Set()
+  for (const source of roots) {
+    let entries
+    try {
+      entries = await readdir(source.dir, { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.') || seen.has(entry.name)) continue
+      seen.add(entry.name)
+      shapes.push(await inspectShape(path.join(source.dir, entry.name), source.origin))
+    }
   }
   return shapes.sort((left, right) => left.id.localeCompare(right.id))
+}
+
+/**
+ * Find one shape directory.
+ * @param id - shape id.
+ * @param roots - source roots in precedence order.
+ * @returns directory and origin, or undefined.
+ */
+async function findShape(id, roots) {
+  for (const source of roots) {
+    const dir = path.join(source.dir, id)
+    try {
+      await stat(path.join(dir, 'package.json'))
+      return { dir, origin: source.origin }
+    } catch {
+      // A missing candidate falls through to the next root.
+    }
+  }
+  return undefined
+}
+
+/**
+ * Read one existing shape's public interface and attached files.
+ * @param id - shape id.
+ * @param roots - source roots in precedence order.
+ * @returns manifest, slot descriptors, client entry, and file inventory.
+ */
+async function inspectShapeInterface(id, roots) {
+  const found = await findShape(id, roots)
+  if (found === undefined) throw new Error(`shape not found: ${id}`)
+  const manifest = await readManifest(found.dir)
+  if (typeof manifest === 'string') throw new Error(`invalid ${id}/package.json: ${manifest}`)
+  const metadata = await inspectShape(found.dir, found.origin)
+  const warnings = [...(metadata.warnings ?? [])]
+  const slots = []
+  for (const file of (metadata.slots ?? []).filter(name => name.endsWith('.json'))) {
+    try {
+      const parsed = JSON.parse(await readFile(path.join(found.dir, 'slots', file), 'utf8'))
+      if (Array.isArray(parsed)) slots.push(...parsed)
+      else slots.push(parsed)
+    } catch (cause) {
+      warnings.push(`cannot read slots/${file}: ${cause instanceof Error ? cause.message : String(cause)}`)
+    }
+  }
+
+  let client
+  if (metadata.clientEntry !== undefined) {
+    try {
+      let code = await readFile(path.join(found.dir, metadata.clientEntry), 'utf8')
+      let truncated = false
+      if (code.length > CLIENT_CODE_LIMIT) {
+        code = code.slice(0, CLIENT_CODE_LIMIT)
+        truncated = true
+      }
+      client = { entry: metadata.clientEntry, code, ...(truncated ? { truncated } : {}) }
+    } catch (cause) {
+      warnings.push(`cannot read client/${metadata.clientEntry}: ${cause instanceof Error ? cause.message : String(cause)}`)
+    }
+  }
+
+  return {
+    id,
+    origin: found.origin,
+    dir: found.dir,
+    ...(metadata.clientEntry === undefined ? {} : { clientEntry: metadata.clientEntry }),
+    manifest,
+    interface: {
+      apiVersion: typeof manifest.shape?.apiVersion === 'number' ? manifest.shape.apiVersion : 0,
+      requirements: metadata.requirements ?? [],
+      views: metadata.views ?? [],
+      slots,
+      tools: metadata.tools ?? [],
+      ...(client === undefined ? {} : { client }),
+    },
+    valid: metadata.valid,
+    errors: metadata.errors ?? [],
+    warnings,
+  }
 }
 
 /**
@@ -156,12 +266,14 @@ async function scaffold(args, root) {
 /**
  * Validate a shape directory.
  * @param id - shape id.
- * @param root - shape root.
+ * @param roots - source roots in precedence order.
  * @returns validation result.
  */
-async function validate(id, root) {
+async function validate(id, roots) {
   if (!SHAPE_ID.test(id)) throw new Error('shape id must be lowercase letters, digits, and hyphens')
-  const result = await inspectShape(path.join(root, id))
+  const found = await findShape(id, roots)
+  if (found === undefined) throw new Error(`shape not found: ${id}`)
+  const result = await inspectShape(found.dir, found.origin)
   return {
     valid: result.valid,
     errors: result.errors ?? [],
@@ -177,32 +289,41 @@ async function validate(id, root) {
  */
 export function apply(ctx, config) {
   const root = shapeRoot(config)
+  const roots = [
+    { dir: root, origin: 'user' },
+    { dir: BUNDLED_ROOT, origin: 'bundled' },
+  ]
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_list',
-    description: 'List dsh-shape shapes, their capability requirements, and validation warnings.',
+    description: 'List user and bundled dsh-shape shapes with their origin, capability requirements, and file inventory.',
     parameters: { type: 'object', additionalProperties: false, properties: {} },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
-        required: ['root', 'shapes'],
+        required: ['root', 'bundledRoot', 'shapes'],
         properties: {
           root: { type: 'string' },
+          bundledRoot: { type: 'string' },
           shapes: {
             type: 'array',
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['id', 'valid', 'errors', 'warnings'],
+              required: ['id', 'origin', 'valid', 'errors', 'warnings', 'views', 'slots', 'tools'],
               properties: {
                 id: { type: 'string' },
+                origin: { type: 'string', enum: ['user', 'bundled'] },
                 title: { type: 'string' },
                 version: { type: 'string' },
                 valid: { type: 'boolean' },
                 errors: { type: 'array', items: { type: 'string' } },
                 warnings: { type: 'array', items: { type: 'string' } },
                 requirements: { type: 'array', items: { type: 'object', additionalProperties: true } },
+                views: { type: 'array', items: { type: 'string' } },
+                slots: { type: 'array', items: { type: 'string' } },
+                tools: { type: 'array', items: { type: 'string' } },
                 clientEntry: { type: 'string' },
               },
             },
@@ -212,14 +333,83 @@ export function apply(ctx, config) {
       render: (_args, value) => [{
         type: 'text',
         text: value.shapes.length === 0
-          ? `No shapes in ${value.root}.`
-          : `${value.shapes.length} shape(s) in ${value.root}:\n${value.shapes.map(shape => `- ${shape.id}${shape.valid ? '' : ' (invalid)'}${shape.errors.length ? `: ${shape.errors.join('; ')}` : ''}`).join('\n')}`,
+          ? `No shapes in ${value.root} or ${value.bundledRoot}.`
+          : `${value.shapes.length} shape(s):\n${value.shapes.map(shape => `- ${shape.id} [${shape.origin}]${shape.valid ? '' : ' (invalid)'}${shape.clientEntry ? ' client' : ''}${shape.errors.length ? `: ${shape.errors.join('; ')}` : ''}`).join('\n')}`,
       }],
     },
     async execute() {
-      return { root, shapes: await listShapes(root) }
+      return { root, bundledRoot: BUNDLED_ROOT, shapes: await listShapes(roots) }
     },
   }), 'dsh-shape: shape_list tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_inspect',
+    description: 'Read an existing shape interface: manifest, capability requirements, slot descriptors, client code, and the views/slots/tools inventory.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'Shape id to inspect.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['id', 'origin', 'dir', 'manifest', 'interface', 'valid', 'errors', 'warnings'],
+        properties: {
+          id: { type: 'string' },
+          origin: { type: 'string', enum: ['user', 'bundled'] },
+          dir: { type: 'string' },
+          clientEntry: { type: 'string' },
+          manifest: { type: 'object', additionalProperties: true },
+          interface: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['apiVersion', 'requirements', 'views', 'slots', 'tools'],
+            properties: {
+              apiVersion: { type: 'integer' },
+              requirements: { type: 'array', items: { type: 'object', additionalProperties: true } },
+              views: { type: 'array', items: { type: 'string' } },
+              slots: { type: 'array', items: { type: 'object', additionalProperties: true } },
+              tools: { type: 'array', items: { type: 'string' } },
+              client: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['entry', 'code'],
+                properties: {
+                  entry: { type: 'string' },
+                  code: { type: 'string' },
+                  truncated: { type: 'boolean' },
+                },
+              },
+            },
+          },
+          valid: { type: 'boolean' },
+          errors: { type: 'array', items: { type: 'string' } },
+          warnings: { type: 'array', items: { type: 'string' } },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: JSON.stringify({
+          id: value.id,
+          origin: value.origin,
+          dir: value.dir,
+          clientEntry: value.clientEntry ?? null,
+          valid: value.valid,
+          errors: value.errors,
+          warnings: value.warnings,
+          manifest: value.manifest,
+          interface: value.interface,
+        }, null, 2),
+      }],
+    },
+    async execute(args) {
+      return inspectShapeInterface(args.id, roots)
+    },
+  }), 'dsh-shape: shape_inspect tool')
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_scaffold',
@@ -286,7 +476,7 @@ export function apply(ctx, config) {
       }],
     },
     async execute(args) {
-      return validate(args.id, root)
+      return validate(args.id, roots)
     },
   }), 'dsh-shape: shape_validate tool')
 }

@@ -4,14 +4,15 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
 
 ## Workflow
 
-1. Inspect existing shapes with `shape_list`. Reuse their conventions before creating another shape.
-2. Decide what the shape contributes:
+1. Inspect existing shapes with `shape_list`. It reports both `user` and `bundled` origins. Reuse their conventions before creating another shape.
+2. Read an existing shape's interface with `shape_inspect` before changing it or building a compatible shape. It returns the manifest, qualified capability requirements, slot descriptors, view/slot/tool inventory, and the client entry code.
+3. Decide what the shape contributes:
    - `views/index.html`: content rendered in the Shape browser's second modal.
    - `slots/chat-card.json`: a card above the chat composer.
    - `client/index.js`: page-level behavior such as shortcuts, using declared capabilities.
    - `tools/`: metadata only today; do not assume these tools execute.
-3. Scaffold a new shape with `shape_scaffold`, then edit the generated files.
-4. Declare dependencies in `package.json`:
+4. Scaffold a new shape with `shape_scaffold`, then edit the generated files.
+5. Declare dependencies in `package.json`:
 
 ```json
 {
@@ -31,7 +32,7 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
 
 Capabilities are identified by `plugin#capability`; never use an unqualified name. Use `optional: true` only when the shape remains useful without the capability. The built-in `dsh-shape#workspace` capability exposes `list()`, `current()`, `next()`, and `previous()`.
 
-5. For a client module, export `activate(api)` and return a cleanup function:
+6. For a client module, export `activate(api)` and return a cleanup function:
 
 ```js
 export function activate(api) {
@@ -46,8 +47,19 @@ export function activate(api) {
 
 Use `api.shape`, `api.capabilities`, `api.require(plugin, capability)`, and `api.shortcuts.register(...)`. A shape whose requirements or `apiVersion` are not satisfied is never imported.
 
-6. Run `shape_validate` and fix every error before testing.
-7. Test in the app: open Shapes with `Ctrl+.`, open the shape's view, exercise its chat card and shortcuts, and toggle it off to confirm all client registrations are removed.
+7. Run `shape_validate` and fix every error before testing.
+8. Test in the app: open Shapes with `Ctrl+.`, open the shape's view, exercise its chat card and shortcuts, and toggle it off to confirm all client registrations are removed.
+
+## Extension plugins
+
+When a shape needs a new capability provider, or the task expands into a DSH extension plugin:
+
+1. Load `cordis-plugin-development` for the plugin procedure and `cordis-composition-reference` when editing a preset or patch.
+2. Use `cordis` to inspect live service definitions, tool schemas, and entry configuration before writing against them.
+3. Keep the provider in its own package and register a qualified capability ID such as `my-plugin#workspace`.
+4. Test the provider from a shape that requires it; install or inspect profile rows with `plugin_manager` when needed.
+
+Do not fold a general extension plugin into `dsh-shape`; use the normal DSH plugin package and bundle-patch path.
 
 ## Rules
 

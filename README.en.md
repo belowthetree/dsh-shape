@@ -2,214 +2,36 @@
 
 [English](README.en.md) | [中文](README.md)
 
-dsh-shape is a DeepSeek Harness plugin that adds a fast way to customize DSH's UI and functionality: a shape folder can instantly add a window, change the chat UI, or add a tool extension. Drop it under `shapes/`, refresh, and it applies without restarting DSH.
+dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and workspace shortcuts through shape folders.
 
-## What can a shape add?
+## What it can do
 
-| Extension | Directory | Result |
-|---|---|---|
-| Window | `views/` | Show the shape's own interface in a second window |
-| UI | `slots/` | Inject cards and other elements into the chat UI |
-| Tool | `tools/` | Declare the shape's tool modules and entrypoints |
-
-Windows and `conversation.input.dock` chat cards are available today. Tools are discovered and registered; their execution runtime is still being wired up.
-
-## Features
-
-- Open the **Shapes** browser from the conversation header and see every shape in an app grid
-- `Ctrl + .` opens it from anywhere
-- Click a shape card to show its `views/` interface in a second window
-- Inject cards above the chat composer through `slots/*.json`
-- Each shape has a persisted switch; turning it off disables its interfaces, chat cards, and logic
-- Add or edit a shape folder, refresh, and it applies without restarting DSH
-
-## Shape folder
-
-```text
-shapes/greeting/
-  package.json
-  views/index.html
-  slots/chat-card.json
-  tools/greet.js
-```
-
-`package.json` currently reads `name` (shape id), `version`, `title`, `description`, `input`, and `output`.
-
-Scan roots:
-
-- the plugin's bundled `shapes/`
-- `$DSH_HOME/dsh-shape/shapes/`
-
-## Chat cards
-
-A `slots/*.json` file can declare a card:
-
-```json
-{
-  "slot": "conversation.input.dock",
-  "title": "A card from Greeting Shape",
-  "text": "This card is injected above the chat composer by a shape.",
-  "button": "Say hello",
-  "greeting": "Hello! 👋 This greeting comes from Greeting Shape."
-}
-```
-
-`conversation.input.dock` is the supported slot today. The card appears above the composer, and the button reveals its `greeting` text.
-
-## Switch
-
-The switch in each card's top-right corner controls all interfaces and logic for that shape:
-
-- Turning it off immediately hides its chat cards
-- Its view can no longer be opened from the card, and the view route returns 404
-- The state is stored in `$DSH_HOME/dsh-shape/state.json` and survives restarts
-- Host API: `POST /dsh-shape/api/toggle` with `{ "id": "greeting", "enabled": false }`
-
-## Instant updates
-
-Shape folder changes do not require a DSH restart:
-
-- New shape: put it under `shapes/` and refresh once
-- Edited `slots/*.json`: chat cards update after refresh
-- Edited `views/`: the next view open reads the new content
-- Switch state: applied immediately and persisted
-
-> Changing dsh-shape's own Host or Client code still requires rebuilding and restarting DSH.
-
-## Capability requirements
-
-Shapes can require capabilities provided by plugins. Capabilities use a `plugin + capability` compound ID so equal short names in different plugins cannot collide:
-
-```json
-{
-  "shape": {
-    "apiVersion": 1,
-    "requires": [
-      {
-        "plugin": "dsh-shape-workspace",
-        "capability": "workspace",
-        "version": "^1.0.0"
-      },
-      {
-        "plugin": "dsh-shape-toast",
-        "capability": "toast",
-        "version": "^1.0.0",
-        "optional": true
-      }
-    ]
-  }
-}
-```
-
-A provider is a normal DSH Client plugin:
-
-```ts
-export const inject = ['shapeCapabilities']
-
-export function apply(ctx) {
-  ctx.effect(() => ctx.shapeCapabilities.provide({
-    plugin: 'dsh-shape-workspace',
-    capability: 'workspace',
-    version: '1.0.0',
-    api: {
-      snapshot: () => ctx.workspaces.list.getSnapshot(),
-      openSession: id => ctx.uiWorkspace.openSession(id),
-    },
-  }), 'workspace capability')
-}
-```
-
-Before startup dsh-shape checks:
-
-- the `plugin#capability` exists
-- the provider's contract version satisfies the shape's semver range
-- `shape.apiVersion` matches the supported ABI
-- a missing required capability blocks the card and suppresses its chat cards
-
-The registry is provided by the dsh-shape Client as the `shapeCapabilities` service. Only one provider may own a given `plugin#capability`.
-
-## Built-in workspace switching
-
-dsh-shape provides a built-in `dsh-shape#workspace` capability:
-
-```js
-api.list()      // workspace order
-api.current()   // current workspace id
-api.next()      // next workspace
-api.previous()  // previous workspace
-```
-
-`shapes/workspace-switch` uses it to register shortcuts:
-
-- `Ctrl + Alt + →`: next workspace
-- `Ctrl + Alt + ←`: previous workspace
-
-Switching opens the most recent Session in the target workspace, or its blank Session when it has none. Turning off the Workspace Switch shape unregisters both shortcuts immediately.
-
-## Shape Client modules
-
-A shape can ship its own client logic at `client/index.js`:
-
-```text
-shapes/workspace-switch/
-  package.json
-  client/index.js
-  views/index.html
-```
-
-After the `apiVersion` and capability checks pass, dsh-shape imports the module and calls:
-
-```js
-export function activate(api) {
-  const workspace = api.require('dsh-shape', 'workspace')
-  const off = api.shortcuts.register({
-    keys: 'Ctrl+Alt+ArrowRight',
-    run: () => workspace.next(),
-  })
-  return () => off()
-}
-```
-
-Available API:
-
-- `api.require(plugin, capability)`: read a declared capability
-- `api.capabilities`: resolved capability set
-- `api.shortcuts.register({ keys, run })`: register a global shortcut and return its unregister function
-- The return value of `activate` runs when the shape is stopped
+- **Shape browser**: open an app grid from the conversation header and browse every shape; press `Ctrl + .` to open it quickly
+- **Dedicated views**: click a shape card to show that shape's own interface in a second window
+- **Chat cards**: inject shape-provided cards above the chat composer, with buttons that reveal greetings or prompts
+- **Per-shape switches**: enable or disable each shape independently; turning one off also disables its view, chat cards, and client logic
+- **Client behavior**: shapes can register page-level behavior and shortcuts, and read only the capability APIs they declare
+- **Workspace switching**: built-in previous/next workspace shortcuts, `Ctrl + Alt + ←` and `Ctrl + Alt + →`
+- **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their chat cards
+- **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
 
 ## Shape Studio preset
 
-Installing dsh-shape adds a **Shape Studio** preset (`id: shape`) to the preset list. It composes the ordinary coding tools and adds two plugins mounted only for this preset:
+Installation adds the **Shape Studio** preset for developing shapes and extension plugins:
 
-- `dsh-shape/tools`: `shape_list`, `shape_scaffold`, and `shape_validate`
-- `dsh-shape/skill`: the `shape-development` skill, sourced from `skills/shape-development/SKILL.md`
+- Tools to list, inspect, scaffold, and validate shapes
+- A shape-development skill
+- Cordis inspection, plugin installation/management, and the plugin market
+- Skills for plugin development and preset editing
 
-The tools write to `$DSH_HOME/dsh-shape/shapes/`. Refresh the Shape browser after creating a shape; no DSH restart is needed.
-
-Both registrations belong to the preset scope. Standard, PTC, minimal, Creator, and other presets never see them.
+These tools and skills are visible only in Shape Studio; other presets never see them.
 
 ## Install
 
-```sh
-dsh plugin --profile <profile> add link:E:/Project/dsh-plugins/dsh-shape
-```
+- CLI: `dsh plugin --profile <profile> add github:belowthetree/dsh-shape`
+- Local development: `dsh plugin --profile <profile> add link:/path/to/dsh-shape`
+- Or install the GitHub repository `belowthetree/dsh-shape` from DSH's plugin manager
 
-Start the profile and click **Shapes** in the conversation header. The plugin requires `dsh >= 0.2.2-rc.1`.
+Restart the target DSH profile after installation. Requires DSH `>= 0.2.2-rc.1`.
 
-Test profile: `dsh-shape-test`, port 3904.
-
-## Current scope
-
-- `tools/` is registered but not executed
-- Only `conversation.input.dock` slot cards are implemented
-- Views run in a sandboxed iframe
-- `client/index.js` runs with page privileges; only install trusted shapes
-- Shape Studio tools and skills are preset-scoped; the Shapes browser is global UI and remains visible to every preset
-
-## Development
-
-- `index.js`: Host entry for scanning shape folders, parsing slot descriptors, the API, and view routes
-- `client.js`: Client entry for the header button, Shape browser, view window, and chat cards
-- `src/`: original TypeScript source
-
-`index.js` and `client.js` are prebuilt artifacts. There is no standalone local build script yet; regenerate these two entrypoints after changing the source.
+After startup, click **Shapes** in the conversation header or press `Ctrl + .`.
