@@ -19,7 +19,8 @@
     "client.js",
     "cordis.patch.yml",
     "shapes/**",
-    "README.md"
+    "README.md",
+    "README.en.md"
   ],
   "dsh": {
     "bundle": {

@@ -1,17 +1,17 @@
 # dsh-shape
 
-dsh-shape 是 DeepSeek Harness 的插件：把 shape 作为可安装的文件夹管理，并在对话顶栏提供 Shape 浏览器。
+[中文](README.md) | [English](README.en.md)
+
+dsh-shape 用于快速自定义 DeepSeek Harness 的功能：一个 shape 就是一个文件夹，可以带自己的界面、聊天卡片和工具入口。把文件夹放进 `shapes/`，在 Shape 浏览器里刷新即可生效，不需要重启 DSH。
 
 ## 能力
 
-- 扫描内置和用户 shape 文件夹
-- 在对话顶栏显示 **Shapes** 按钮，点击打开大窗口，以应用网格展示所有 shape
-- `Ctrl + .` 可从页面任意位置快速打开
-- 展示 shape 的 title、id、description、来源、版本，以及 `views` / `slots` / `tools` 文件数量
-- 点击任意 shape 卡片，在第二个窗口打开它的 `views/` 界面
-- shape 的 `slots/*.json` 可以注入聊天输入区上方的卡片
-- 每张 shape 卡片带开关，停用后隐藏它的聊天卡片并拒绝打开它的 view
-- 支持刷新重扫，新 shape 放进目录后无需重启 DSH
+- 在对话顶栏打开 **Shapes** 浏览器，以应用网格查看所有 shape
+- `Ctrl + .` 快速打开
+- 点击 shape 卡片，在第二个窗口展示它的 `views/` 界面
+- 通过 `slots/*.json` 向聊天输入区上方注入卡片
+- 每个 shape 带持久开关，停用后关闭它的界面、聊天卡片和逻辑
+- 新增或修改 shape 文件夹后，刷新即可生效，无需重启 DSH
 
 ## Shape 文件夹
 
@@ -29,8 +29,6 @@ shapes/greeting/
 
 - 插件内置的 `shapes/`
 - `$DSH_HOME/dsh-shape/shapes/`
-
-`views/` 通过第二个模态窗展示；`tools/` 目前只登记、不执行。
 
 ## 聊天卡片
 
@@ -57,6 +55,17 @@ shapes/greeting/
 - 开关状态保存在 `$DSH_HOME/dsh-shape/state.json`，重启后保持
 - Host 接口：`POST /dsh-shape/api/toggle`，请求体 `{ "id": "greeting", "enabled": false }`
 
+## 即时生效
+
+shape 文件夹的改动不需要重启 DSH：
+
+- 新增 shape：放进 `shapes/` 后点一次刷新
+- 修改 `slots/*.json`：刷新后聊天卡片同步更新
+- 修改 `views/`：下次打开 view 时读取新内容
+- 开关状态：切换后立即生效并持久化
+
+> 修改 dsh-shape 插件自身的 Host / Client 代码仍需重新构建并重启 DSH。
+
 ## 安装
 
 ```sh
@@ -67,9 +76,15 @@ dsh plugin --profile <profile> add link:E:/Project/dsh-plugins/dsh-shape
 
 测试 profile：`dsh-shape-test`，端口 3904。
 
+## 当前边界
+
+- `tools/` 目前只登记，不执行
+- 仅实现 `conversation.input.dock` 这一种 slot 卡片
+- view 运行在 sandbox iframe 中
+
 ## 开发
 
-- `index.js`：Host 入口，负责扫描 shape 文件夹、解析 slot 描述并提供 `/dsh-shape/api`
+- `index.js`：Host 入口，负责扫描 shape 文件夹、解析 slot 描述、提供 API 和 view 路由
 - `client.js`：Client 入口，负责顶栏按钮、Shape 浏览器、view 窗口和聊天卡片
 - `src/`：原始 TypeScript 源码
 
