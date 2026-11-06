@@ -2,6 +2,7 @@
 
 import type { ShapeCapabilityRegistry, ShapeRequirement } from '../capabilities.ts'
 import { supportsShapeApiVersion } from '../capabilities.ts'
+import { isShapeSlot, registerShapeMount } from './shape-slots.ts'
 
 interface ShapeInfo {
   id: string
@@ -29,6 +30,13 @@ export interface ShapeClientApi {
   shape: Readonly<{ id: string; title: string; version: string }>
   capabilities: Readonly<Record<string, unknown>>
   require: (plugin: string, capability: string) => unknown
+  /**
+   * Render into one conversation slot.
+   * @param slot - supported slot name; see `SHAPE_SLOTS`.
+   * @param render - receives the slot's container; returns an optional cleanup.
+   * @returns an idempotent disposer.
+   */
+  mount: (slot: string, render: (container: HTMLElement) => (() => void) | void) => () => void
   shortcuts: {
     register: (binding: ShapeShortcutBinding) => () => void
   }
@@ -182,6 +190,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
 
       const state = {
         shortcuts: [] as Array<() => void>,
+        mounts: [] as Array<() => void>,
         cleanup: undefined as (() => void) | undefined,
       }
       const api: ShapeClientApi = {
@@ -191,6 +200,12 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
           const key = `${plugin}#${capability}`
           if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`)
           return resolution.capabilities[key]
+        },
+        mount(slot, render) {
+          if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`)
+          const off = registerShapeMount({ slot, shapeId: shape.id, render })
+          state.mounts.push(off)
+          return off
         },
         shortcuts: {
           register(binding) {
@@ -227,10 +242,12 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
           dispose: () => {
             state.cleanup?.()
             module.deactivate?.()
+            for (const off of state.mounts) off()
             for (const off of state.shortcuts) off()
           },
         })
       } catch (cause) {
+        for (const off of state.mounts) off()
         for (const off of state.shortcuts) off()
         state.cleanup?.()
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)

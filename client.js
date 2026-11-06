@@ -1509,121 +1509,329 @@ window.__ModuleLoader__.load({
 			"title": "MQAMYG_title"
 		};
 		//#endregion
-		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeChatCards.tsx
-		/** Shape-owned cards mounted above the chat composer. */
-		const SLOT = "conversation.input.dock";
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-slots.ts
+		/** Conversation slots a shape may target, and the mounts shapes register into them. */
 		/**
-		* Read shape slot descriptors for the chat input dock.
-		* @returns cards contributed by valid shapes.
-		*/
-		async function readCards() {
-			const response = await fetch("/dsh-shape/api/shapes", {
-				credentials: "same-origin",
-				cache: "no-store",
-				headers: { accept: "application/json" }
-			});
-			if (!response.ok) return [];
-			const payload = await response.json();
-			if (payload.ok !== true || !Array.isArray(payload.shapes)) return [];
-			const cards = [];
-			for (const shape of payload.shapes) {
-				if (!shape.valid || shape.enabled === false) continue;
-				for (const card of shape.slotData ?? []) if (card.slot === SLOT) cards.push({
-					shape,
-					card
-				});
-			}
-			return cards;
+		 * Supported slots, in registration order.
+		 *
+		 * `conversation.view` is deliberately absent: its entries are tabs that must
+		 * render the whole Session body, which neither a descriptor nor a bare mount
+		 * container can satisfy.
+		 */
+		const SHAPE_SLOTS = [
+			{ name: 'conversation.input.dock', presentation: 'card' },
+			{ name: 'conversation.input.overlay', presentation: 'panel' },
+			{ name: 'conversation.composer.dock', presentation: 'strip' },
+			{ name: 'conversation.input.left', presentation: 'inline' },
+			{ name: 'conversation.input.right', presentation: 'inline' },
+			{ name: 'conversation.session.header.actions', presentation: 'inline' },
+			{ name: 'conversation.session.header.utilities', presentation: 'inline' },
+			{ name: 'conversation.hero.options', presentation: 'inline' },
+			{ name: 'conversation.session.header.views.actions', presentation: 'menu-row' },
+		];
+		/**
+		 * Check whether a name is a supported slot.
+		 * @param slot - candidate slot name.
+		 * @returns true when shapes may target it.
+		 */
+		function isShapeSlot(slot) {
+			return SHAPE_SLOTS.some(spec => spec.name === slot);
 		}
 		/**
-		* Render descriptor-driven shape cards above the composer.
-		* @param props.resolveShape - resolves declared capability requirements.
-		* @returns the card list, or null when no shape contributes one.
-		*/
-		function ShapeChatCards({ resolveShape }) {
-			const [cards, setCards] = (0, react.useState)([]);
-			const [greetings, setGreetings] = (0, react.useState)({});
-			const load = (0, react.useCallback)(async () => {
+		 * Presentation of one slot.
+		 * @param slot - supported slot name.
+		 * @returns the declared presentation.
+		 */
+		function presentationOf(slot) {
+			return SHAPE_SLOTS.find(spec => spec.name === slot)?.presentation ?? 'card';
+		}
+		const mounts = new Map();
+		const listeners = new Map();
+		/**
+		 * Notify every listener of one slot.
+		 * @param slot - slot whose mounts changed.
+		 */
+		function notify(slot) {
+			for (const listener of listeners.get(slot) ?? [])
+				listener();
+		}
+		/**
+		 * Register one mount.
+		 * @param mount - slot, owner, and render callback.
+		 * @returns an idempotent disposer.
+		 */
+		function registerShapeMount(mount) {
+			let set = mounts.get(mount.slot);
+			if (set === undefined) {
+				set = new Set();
+				mounts.set(mount.slot, set);
+			}
+			set.add(mount);
+			notify(mount.slot);
+			let disposed = false;
+			return () => {
+				if (disposed)
+					return;
+				disposed = true;
+				set.delete(mount);
+				notify(mount.slot);
+			};
+		}
+		/**
+		 * Read the mounts of one slot.
+		 * @param slot - slot to read.
+		 * @returns a stable-ordered snapshot.
+		 */
+		function shapeMounts(slot) {
+			return [...(mounts.get(slot) ?? [])];
+		}
+		/**
+		 * Observe mount changes of one slot.
+		 * @param slot - slot to observe.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeMounts(slot, listener) {
+			let set = listeners.get(slot);
+			if (set === undefined) {
+				set = new Set();
+				listeners.set(slot, set);
+			}
+			set.add(listener);
+			return () => {
+				set.delete(listener);
+				if (set.size === 0)
+					listeners.delete(slot);
+			};
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeSlotEntries.tsx
+		/** Shape-owned entries and mounts in the conversation slots. */
+		/** Stack positioning of floating entries, anchored at the composer card's top edge. */
+		const PANEL_STACK = {
+			position: 'absolute',
+			left: 0,
+			right: 0,
+			bottom: 'calc(100% + 8px)',
+			display: 'grid',
+			gap: 6,
+			maxWidth: 720,
+			margin: '0 auto',
+		};
+		/** Compact entry chrome shared by the strip, inline, and menu-row presentations. */
+		const COMPACT_ENTRY = {
+			gap: 8,
+			padding: '4px 10px',
+			borderRadius: 999,
+			boxShadow: 'none',
+		};
+		/** One informational chip for the compact tool rows. */
+		const INLINE_ENTRY = {
+			display: 'inline-flex',
+			alignItems: 'center',
+			gap: 6,
+			minWidth: 0,
+			maxWidth: 240,
+			height: 24,
+			padding: '0 8px',
+			borderRadius: 6,
+			border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))',
+			background: 'var(--dsw-alias-bg-layer-2, transparent)',
+			color: 'var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6))',
+			fontSize: 12,
+			lineHeight: '20px',
+			whiteSpace: 'nowrap',
+			overflow: 'hidden',
+			textOverflow: 'ellipsis',
+		};
+		/** One row inside a menu. */
+		const MENU_ROW = {
+			display: 'flex',
+			alignItems: 'center',
+			gap: 8,
+			width: '100%',
+			minWidth: 0,
+			padding: '6px 10px',
+			borderRadius: 6,
+			fontSize: 13,
+			lineHeight: '18px',
+			textAlign: 'left',
+		};
+		/** Glyph fallback when a descriptor declares no icon path. */
+		const GLYPH_FALLBACK = {
+			display: 'grid',
+			flex: 'none',
+			placeItems: 'center',
+			width: 14,
+			height: 14,
+			borderRadius: 3,
+			background: 'color-mix(in srgb, currentColor 16%, transparent)',
+			fontSize: 9,
+			lineHeight: 1,
+			textTransform: 'uppercase',
+		};
+		/** Dismiss control of one floating entry. */
+		const DISMISS_STYLE = {
+			flex: 'none',
+			width: 24,
+			height: 24,
+			padding: 0,
+			border: 0,
+			borderRadius: 6,
+			background: 'transparent',
+			color: 'var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6))',
+			cursor: 'pointer',
+			fontSize: 16,
+			lineHeight: '24px',
+		};
+		/** Wrapper chrome that keeps a mount inside its slot's layout. */
+		function mountStyle(presentation) {
+			return presentation === 'inline' || presentation === 'strip' || presentation === 'menu-row'
+				? { display: 'inline-flex', alignItems: 'center', minWidth: 0 }
+				: { display: 'block', width: '100%' };
+		}
+		/**
+		 * Read shape descriptors targeting one slot.
+		 * @param slot - conversation slot to collect.
+		 * @returns entries contributed by valid shapes.
+		 */
+		async function readEntries(slot) {
+			const response = await fetch('/dsh-shape/api/shapes', {
+				credentials: 'same-origin',
+				cache: 'no-store',
+				headers: { accept: 'application/json' },
+			});
+			if (!response.ok)
+				return [];
+			const payload = await response.json();
+			if (payload.ok !== true || !Array.isArray(payload.shapes))
+				return [];
+			const entries = [];
+			for (const shape of payload.shapes) {
+				if (!shape.valid || shape.enabled === false)
+					continue;
+				for (const card of shape.slotData ?? []) {
+					if (card.slot === slot)
+						entries.push({ shape, card });
+				}
+			}
+			return entries;
+		}
+		/**
+		 * Render one descriptor glyph.
+		 * @param props.icon - SVG path data in a 16×16 view box.
+		 * @param props.title - fallback letter source.
+		 * @returns the glyph.
+		 */
+		function ShapeGlyph({ icon, title }) {
+			if (icon !== undefined) {
+				return (react_jsx_runtime.jsx("svg", { viewBox: "0 0 16 16", width: "14", height: "14", "aria-hidden": "true", children: react_jsx_runtime.jsx("path", { d: icon, fill: "currentColor" }) }));
+			}
+			return react_jsx_runtime.jsx("span", { style: GLYPH_FALLBACK, "aria-hidden": "true", children: Array.from(title.trim())[0] ?? '?' });
+		}
+		/**
+		 * Render one mount into a container the slot host owns.
+		 * @param props.mount - registered mount.
+		 * @param props.style - wrapper chrome for the slot's layout.
+		 * @returns the container element.
+		 */
+		function ShapeMountBox({ mount, style }) {
+			const ref = react.useRef(null);
+			react.useEffect(() => {
+				const container = ref.current;
+				if (container === null)
+					return;
+				let cleanup;
 				try {
-					setCards((await readCards()).filter(({ shape }) => supportsShapeApiVersion(shape.shapeApiVersion) && resolveShape(shape.requirements ?? []).ok));
-				} catch {}
-			}, [resolveShape]);
-			(0, react.useEffect)(() => {
-				load();
-				const reload = () => {
-					load();
-				};
-				window.addEventListener("dsh-shape:refresh", reload);
-				window.addEventListener("dsh-shape:capabilities", reload);
+					const result = mount.render(container);
+					if (typeof result === 'function')
+						cleanup = result;
+				}
+				catch (cause) {
+					console.warn('dsh-shape: slot mount failed', cause);
+				}
 				return () => {
-					window.removeEventListener("dsh-shape:refresh", reload);
-					window.removeEventListener("dsh-shape:capabilities", reload);
+					cleanup?.();
+					container.replaceChildren();
+				};
+			}, [mount]);
+			return react_jsx_runtime.jsx("div", { ref: ref, style: style, "data-shape-mount": mount.shapeId });
+		}
+		/**
+		 * Observe the mounts registered for one slot.
+		 * @param slot - slot to observe.
+		 * @returns current mounts.
+		 */
+		function useShapeMounts(slot) {
+			const [list, setList] = react.useState(() => shapeMounts(slot));
+			react.useEffect(() => {
+				const sync = () => { setList(shapeMounts(slot)); };
+				sync();
+				return subscribeShapeMounts(slot, sync);
+			}, [slot]);
+			return list;
+		}
+		/**
+		 * Render the descriptors and mounts one conversation slot receives.
+		 * @param props.resolveShape - resolves declared capability requirements.
+		 * @param props.slot - conversation slot this host is registered for.
+		 * @returns the slot content, or null when nothing contributes.
+		 */
+		function ShapeSlotEntries({ resolveShape, slot }) {
+			const [entries, setEntries] = react.useState([]);
+			const [greetings, setGreetings] = react.useState({});
+			const [dismissed, setDismissed] = react.useState(() => new Set());
+			const mounts = useShapeMounts(slot);
+			const load = react.useCallback(async () => {
+				try {
+					const read = await readEntries(slot);
+					setEntries(read.filter(({ shape }) => (supportsShapeApiVersion(shape.shapeApiVersion)
+						&& resolveShape(shape.requirements ?? []).ok)));
+				}
+				catch {
+					// A failed read leaves the slot empty; the shape browser still reports errors.
+				}
+			}, [resolveShape, slot]);
+			react.useEffect(() => {
+				void load();
+				const reload = () => { void load(); };
+				window.addEventListener('dsh-shape:refresh', reload);
+				window.addEventListener('dsh-shape:capabilities', reload);
+				return () => {
+					window.removeEventListener('dsh-shape:refresh', reload);
+					window.removeEventListener('dsh-shape:capabilities', reload);
 				};
 			}, [load]);
-			if (cards.length === 0) return null;
-			return /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-				className: shape_chat_cards_module_css_default.list,
-				children: cards.map(({ shape, card }, index) => {
-					const key = `${shape.id}:${String(index)}`;
-					const greeting = greetings[key];
-					return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						className: shape_chat_cards_module_css_default.card,
-						"data-testid": "dsh-shape-chat-card",
-						"data-shape-id": shape.id,
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: shape_chat_cards_module_css_default.mark,
-								"aria-hidden": "true",
-								children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-									className: shape_chat_cards_module_css_default.markGrid,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
-									]
-								})
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: shape_chat_cards_module_css_default.body,
-								children: [
-									/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: shape_chat_cards_module_css_default.heading,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-											className: shape_chat_cards_module_css_default.title,
-											children: card.title ?? shape.title
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-											className: shape_chat_cards_module_css_default.id,
-											children: shape.id
-										})]
-									}),
-									card.text !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-										className: shape_chat_cards_module_css_default.text,
-										children: card.text
-									}),
-									greeting !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-										className: shape_chat_cards_module_css_default.greeting,
-										role: "status",
-										children: greeting
-									})
-								]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-								size: "sm",
-								variant: "outline",
-								"data-testid": "dsh-shape-chat-greet",
-								onClick: () => {
-									setGreetings((current) => ({
-										...current,
-										[key]: card.greeting ?? "你好！"
-									}));
-								},
-								children: card.button ?? "打个招呼"
-							})
-						]
-					}, key);
-				})
+			const presentation = presentationOf(slot);
+			const rendered = entries
+				.map((entry, index) => ({ entry, key: `${entry.shape.id}:${String(index)}` }))
+				.filter(({ key }) => !dismissed.has(key))
+				.map(({ entry: { shape, card }, key }) => {
+				const greeting = greetings[key];
+				const title = card.title ?? shape.title;
+				const greet = () => {
+					setGreetings(current => ({ ...current, [key]: card.greeting ?? '你好！' }));
+				};
+				if (presentation === 'inline') {
+					return (react_jsx_runtime.jsxs("span", { style: INLINE_ENTRY, title: card.text ?? title, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsx("span", { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }, children: title })] }, key));
+				}
+				if (presentation === 'menu-row') {
+					return (react_jsx_runtime.jsxs("div", { style: MENU_ROW, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [react_jsx_runtime.jsx(ShapeGlyph, { icon: card.icon, title: title }), react_jsx_runtime.jsxs("div", { style: { minWidth: 0, flex: 1 }, children: [react_jsx_runtime.jsx("div", { children: title }), card.text !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.7, fontSize: 12 }, children: card.text }), greeting !== undefined && react_jsx_runtime.jsx("div", { style: { opacity: 0.9, fontSize: 12 }, role: "status", children: greeting })] }), card.button !== undefined && react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: card.button })] }, key));
+				}
+				const action = card.button ?? (presentation === 'strip' ? undefined : '打个招呼');
+				return (react_jsx_runtime.jsxs("section", { className: shape_chat_cards_module_css_default.card, style: presentation === 'strip' ? COMPACT_ENTRY : presentation === 'panel' ? { boxShadow: '0 10px 28px rgba(0, 0, 0, 0.28)' } : undefined, "data-testid": "dsh-shape-slot-entry", "data-shape-id": shape.id, "data-slot": slot, children: [presentation !== 'strip' && (react_jsx_runtime.jsx("span", { className: shape_chat_cards_module_css_default.mark, "aria-hidden": "true", children: react_jsx_runtime.jsxs("span", { className: shape_chat_cards_module_css_default.markGrid, children: [react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {}), react_jsx_runtime.jsx("span", {})] }) })), react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.body, children: [react_jsx_runtime.jsxs("div", { className: shape_chat_cards_module_css_default.heading, children: [react_jsx_runtime.jsx("h3", { className: shape_chat_cards_module_css_default.title, children: title }), presentation !== 'strip' && react_jsx_runtime.jsx("code", { className: shape_chat_cards_module_css_default.id, children: shape.id })] }), card.text !== undefined && react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.text, children: card.text }), greeting !== undefined && (react_jsx_runtime.jsx("p", { className: shape_chat_cards_module_css_default.greeting, role: "status", children: greeting }))] }), action !== undefined && (react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.Button, { size: "sm", variant: "outline", "data-testid": "dsh-shape-chat-greet", onClick: greet, children: action })), presentation === 'panel' && (react_jsx_runtime.jsx("button", { type: "button", "aria-label": "\u5173\u95ED", "data-testid": "dsh-shape-chat-dismiss", style: DISMISS_STYLE, onClick: () => {
+								setDismissed(current => new Set(current).add(key));
+							}, children: "\u00D7" }))] }, key));
 			});
+			const mounted = mounts.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: mountStyle(presentation) }, `mount:${mount.shapeId}`)));
+			const content = [...rendered, ...mounted];
+			if (content.length === 0)
+				return null;
+			if (presentation === 'panel')
+				return react_jsx_runtime.jsx("div", { style: PANEL_STACK, children: content });
+			if (presentation === 'card')
+				return react_jsx_runtime.jsx("div", { className: shape_chat_cards_module_css_default.list, children: content });
+			return react_jsx_runtime.jsx(react.Fragment, { children: content });
 		}
 		//#endregion
 		//#region \0dsh-css:shape-dialog.module.css.mjs
@@ -2478,6 +2686,7 @@ window.__ModuleLoader__.load({
 					if (!resolution.ok) continue;
 					const state = {
 						shortcuts: [],
+						mounts: [],
 						cleanup: void 0
 					};
 					const api = {
@@ -2491,6 +2700,16 @@ window.__ModuleLoader__.load({
 							const key = `${plugin}#${capability}`;
 							if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`);
 							return resolution.capabilities[key];
+						},
+						mount(slot, render) {
+							if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`);
+							const off = registerShapeMount({
+								slot,
+								shapeId: shape.id,
+								render
+							});
+							state.mounts.push(off);
+							return off;
 						},
 						shortcuts: { register(binding) {
 							const specs = typeof binding.keys === "string" ? [binding.keys] : binding.keys;
@@ -2532,10 +2751,12 @@ window.__ModuleLoader__.load({
 							dispose: () => {
 								state.cleanup?.();
 								module.deactivate?.();
+								for (const off of state.mounts) off();
 								for (const off of state.shortcuts) off();
 							}
 						});
 					} catch (cause) {
+						for (const off of state.mounts) off();
 						for (const off of state.shortcuts) off();
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
@@ -2895,12 +3116,12 @@ window.__ModuleLoader__.load({
 				name: "conversation.header.leading",
 				inject: () => ({ resolveShape })
 			}, ShapeButton));
-			ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
-				name: "conversation.input.dock",
-				id: "dsh-shape-chat-cards",
+			for (const spec of SHAPE_SLOTS) ctx.slots.inject(spec.name, () => ctx.slots.register({
+				name: spec.name,
+				id: `dsh-shape-${spec.name.replaceAll(".", "-")}`,
 				order: 20,
-				inject: () => ({ resolveShape })
-			}, ShapeChatCards));
+				inject: () => ({ resolveShape, slot: spec.name })
+			}, ShapeSlotEntries));
 		}
 		//#endregion
 		exports.apply = apply;

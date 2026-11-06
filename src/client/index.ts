@@ -13,7 +13,8 @@ import {
   type ShapeRequirement,
   type ShapeResolution,
 } from '../capabilities.ts'
-import { ShapeChatCards } from './ShapeChatCards.tsx'
+import { SHAPE_SLOTS } from './shape-slots.ts'
+import { ShapeSlotEntries } from './ShapeSlotEntries.tsx'
 import { ShapeButton } from './ShapeButton.tsx'
 import { createShapeRuntime } from './shape-runtime.ts'
 import { createWorkspaceSwitch } from './workspace.ts'
@@ -108,10 +109,15 @@ export function apply(ctx: Context): void {
     name: 'conversation.header.leading',
     inject: () => ({ resolveShape }),
   }, ShapeButton))
-  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
-    name: 'conversation.input.dock',
-    id: 'dsh-shape-chat-cards',
-    order: 20,
-    inject: () => ({ resolveShape }),
-  }, ShapeChatCards))
+  // One bridge per conversation slot a shape descriptor or mount may target:
+  // the composer dock, its statistics row and floating anchor, the compact
+  // tool rows, the Session header, and the New Session options.
+  for (const spec of SHAPE_SLOTS) {
+    ctx.slots.inject(spec.name, () => ctx.slots.register({
+      name: spec.name,
+      id: `dsh-shape-${spec.name.replaceAll('.', '-')}`,
+      order: 20,
+      inject: () => ({ resolveShape, slot: spec.name }),
+    }, ShapeSlotEntries))
+  }
 }

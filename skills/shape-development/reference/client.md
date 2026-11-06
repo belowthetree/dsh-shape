@@ -29,6 +29,22 @@ export function activate(api) {
 - `api.capabilities`: object keyed by `plugin#capability`, containing resolved API objects.
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
+- `api.mount(slot, render)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. See [slots.md](slots.md) for the slot list and the container contract.
+
+## Mounts
+
+```js
+export function activate(api) {
+  return api.mount('conversation.input.left', (container) => {
+    const chip = document.createElement('button')
+    chip.textContent = '构建中'
+    container.append(chip)
+    return () => chip.remove()
+  })
+}
+```
+
+`render` receives the slot's own container and re-runs after the slot remounts; the returned cleanup runs before the container is dropped, and the runtime disposes every mount when the shape is disabled or reloaded.
 
 ## Shortcuts
 
