@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import {
   createShapeCapabilityRegistry,
+  type ShapeCapabilityRegistry,
   type ShapeRequirement,
   type ShapeResolution,
 } from '../capabilities.ts'
@@ -19,6 +20,50 @@ import { createWorkspaceSwitch } from './workspace.ts'
 
 /** The leading header seat and composer dock are owned by the conversation client. */
 export const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace']
+
+/**
+ * Describe one capability API without serializing its values.
+ * @param api - provider API object.
+ * @returns method names and typed field names.
+ */
+function describeApi(api: unknown): { methods: string[], fields: string[] } {
+  const record = typeof api === 'object' && api !== null ? api as Record<string, unknown> : {}
+  const methods: string[] = []
+  const fields: string[] = []
+  for (const [key, value] of Object.entries(record)) {
+    if (typeof value === 'function') methods.push(key)
+    else fields.push(`${key}:${typeof value}`)
+  }
+  return { methods: methods.sort(), fields: fields.sort() }
+}
+
+/**
+ * Mirror the Client capability registry to the Host so shape tools can list it.
+ * @param registry - live client registry.
+ * @returns nothing.
+ */
+async function syncCapabilities(registry: ShapeCapabilityRegistry): Promise<void> {
+  const capabilities = registry.list().map((entry) => {
+    const { methods, fields } = describeApi(entry.api)
+    return {
+      plugin: entry.plugin,
+      capability: entry.capability,
+      version: entry.version,
+      methods,
+      fields,
+    }
+  })
+  try {
+    await fetch('/dsh-shape/api/capabilities', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ capabilities }),
+    })
+  } catch {
+    // The host may not have the mirror route yet; shapes still resolve locally.
+  }
+}
 
 /**
  * Register shape surfaces and expose the shape capability registry.
@@ -43,7 +88,9 @@ export function apply(ctx: Context): void {
 
   capabilities.subscribe(() => {
     window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'))
+    void syncCapabilities(capabilities)
   })
+  void syncCapabilities(capabilities)
 
   const runtime = createShapeRuntime(capabilities)
   ctx.effect(() => runtime.start(), 'dsh-shape: shape client runtime')

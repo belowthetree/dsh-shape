@@ -4,8 +4,8 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
 
 ## Workflow
 
-1. Inspect existing shapes with `shape_list`. It reports both `user` and `bundled` origins. Reuse their conventions before creating another shape.
-2. Read an existing shape's interface with `shape_inspect` before changing it or building a compatible shape. It returns the manifest, qualified capability requirements, slot descriptors, view/slot/tool inventory, and the client entry code.
+1. Read `shape_spec` for the exact contract before relying on memory: start with `overview`, then `manifest`, `client`, `slots`, `views`, `capabilities`, `lifecycle`, `testing`, or `plugin` as needed. Inspect existing shapes with `shape_list`; it reports both `user` and `bundled` origins. Reuse their conventions before creating another shape.
+2. Check available capability APIs with `shape_capabilities`. It lists the provider's qualified id, contract version, API method names, and data fields. Read an existing shape's interface with `shape_inspect` before changing it or building a compatible shape; it returns the manifest, capability requirements, slot descriptors, file inventory, and client entry code.
 3. Decide what the shape contributes:
    - `views/index.html`: content rendered in the Shape browser's second modal.
    - `slots/chat-card.json`: a card above the chat composer.

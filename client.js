@@ -2525,6 +2525,47 @@ window.__ModuleLoader__.load({
 			"uiWorkspace"
 		];
 		/**
+		* Describe one capability API without serializing its values.
+		* @param api - provider API object.
+		* @returns method names and typed field names.
+		*/
+		function describeApi(api) {
+			const record = typeof api === "object" && api !== null ? api : {};
+			const methods = [];
+			const fields = [];
+			for (const [key, value] of Object.entries(record)) if (typeof value === "function") methods.push(key);
+			else fields.push(`${key}:${typeof value}`);
+			return {
+				methods: methods.sort(),
+				fields: fields.sort()
+			};
+		}
+		/**
+		* Mirror the Client capability registry to the Host so shape tools can list it.
+		* @param registry - live client registry.
+		* @returns nothing.
+		*/
+		async function syncCapabilities(registry) {
+			const capabilities = registry.list().map((entry) => {
+				const { methods, fields } = describeApi(entry.api);
+				return {
+					plugin: entry.plugin,
+					capability: entry.capability,
+					version: entry.version,
+					methods,
+					fields
+				};
+			});
+			try {
+				await fetch("/dsh-shape/api/capabilities", {
+					method: "POST",
+					credentials: "same-origin",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ capabilities })
+				});
+			} catch {}
+		}
+		/**
 		* Register shape surfaces and expose the shape capability registry.
 		* @param ctx - client root context.
 		*/
@@ -2545,7 +2586,9 @@ window.__ModuleLoader__.load({
 			}), "dsh-shape: workspace capability");
 			capabilities.subscribe(() => {
 				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
+				syncCapabilities(capabilities);
 			});
+			syncCapabilities(capabilities);
 			const runtime = createShapeRuntime(capabilities);
 			ctx.effect(() => runtime.start(), "dsh-shape: shape client runtime");
 			const resolveShape = (requirements) => capabilities.resolve(requirements);

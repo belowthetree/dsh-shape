@@ -14,6 +14,24 @@ export const inject = ['tools']
 const SHAPE_ID = /^[a-z0-9][a-z0-9-]*$/
 const VERSION_RANGE = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const BUNDLED_ROOT = fileURLToPath(new URL('./shapes/', import.meta.url))
+const PACKAGE_ROOT = fileURLToPath(new URL('./', import.meta.url))
+const REFERENCE_ROOT = fileURLToPath(new URL('./skills/shape-development/reference/', import.meta.url))
+const SPEC_TOPICS = [
+  'overview',
+  'manifest',
+  'capabilities',
+  'client',
+  'slots',
+  'views',
+  'lifecycle',
+  'testing',
+  'plugin',
+]
+const CAPABILITY_FILE = path.join(
+  process.env.DSH_HOME ?? path.join(homedir(), '.dsh'),
+  'dsh-shape',
+  'capabilities.json',
+)
 const CLIENT_CODE_LIMIT = 16000
 
 /**
@@ -210,6 +228,37 @@ async function inspectShapeInterface(id, roots) {
 }
 
 /**
+ * Read one shape specification topic.
+ * @param topic - reference file name without extension.
+ * @returns markdown text.
+ */
+async function readSpec(topic) {
+  if (!SPEC_TOPICS.includes(topic)) throw new Error(`unknown shape spec topic: ${topic}`)
+  return readFile(path.join(REFERENCE_ROOT, `${topic}.md`), 'utf8')
+}
+
+/**
+ * Read the Client capability catalog mirrored to disk.
+ * @returns available capability providers.
+ */
+async function readCapabilityCatalog() {
+  try {
+    const value = JSON.parse(await readFile(CAPABILITY_FILE, 'utf8'))
+    if (!Array.isArray(value)) return []
+    return value.filter(entry => (
+      typeof entry === 'object' && entry !== null
+      && typeof entry.plugin === 'string'
+      && typeof entry.capability === 'string'
+      && typeof entry.version === 'string'
+      && Array.isArray(entry.methods)
+      && Array.isArray(entry.fields)
+    ))
+  } catch {
+    return []
+  }
+}
+
+/**
  * Build a minimal shape package.
  * @param args - validated tool arguments.
  * @param root - shape root.
@@ -341,6 +390,85 @@ export function apply(ctx, config) {
       return { root, bundledRoot: BUNDLED_ROOT, shapes: await listShapes(roots) }
     },
   }), 'dsh-shape: shape_list tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_capabilities',
+    description: 'List capability providers available to shapes, with contract versions and API method names.',
+    parameters: { type: 'object', additionalProperties: false, properties: {} },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['capabilities'],
+        properties: {
+          capabilities: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['plugin', 'capability', 'version', 'methods', 'fields'],
+              properties: {
+                plugin: { type: 'string' },
+                capability: { type: 'string' },
+                version: { type: 'string' },
+                methods: { type: 'array', items: { type: 'string' } },
+                fields: { type: 'array', items: { type: 'string' } },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: value.capabilities.length === 0
+          ? 'No capability catalog is available. The dsh-shape Client publishes it after startup; restart DSH if this is a fresh install.'
+          : `Available shape capabilities:\n${value.capabilities.map(entry => `- ${entry.plugin}#${entry.capability} v${entry.version}${entry.methods.length ? `; methods: ${entry.methods.join(', ')}` : ''}${entry.fields.length ? `; fields: ${entry.fields.join(', ')}` : ''}`).join('\n')}`,
+      }],
+    },
+    async execute() {
+      return { capabilities: await readCapabilityCatalog() }
+    },
+  }), 'dsh-shape: shape_capabilities tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_spec',
+    description: 'Read the bundled dsh-shape specification for one topic: manifest, client API, slots, views, capabilities, lifecycle, testing, or extension plugins.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        topic: { type: 'string', enum: SPEC_TOPICS, description: 'Specification topic; defaults to overview.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['topic', 'topics', 'markdown', 'packageRoot', 'referenceRoot'],
+        properties: {
+          topic: { type: 'string' },
+          topics: { type: 'array', items: { type: 'string' } },
+          markdown: { type: 'string' },
+          packageRoot: { type: 'string' },
+          referenceRoot: { type: 'string' },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `${value.markdown}\n\n---\nReference: ${value.referenceRoot}\nPackage: ${value.packageRoot}`,
+      }],
+    },
+    async execute(args) {
+      const topic = typeof args.topic === 'string' ? args.topic : 'overview'
+      return {
+        topic,
+        topics: SPEC_TOPICS,
+        markdown: await readSpec(topic),
+        packageRoot: PACKAGE_ROOT,
+        referenceRoot: REFERENCE_ROOT,
+      }
+    },
+  }), 'dsh-shape: shape_spec tool')
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_inspect',

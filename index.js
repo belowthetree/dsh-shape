@@ -245,6 +245,35 @@ function json(res, status, body) {
 	res.end(text);
 }
 /**
+* Validate a Client capability catalog payload.
+* @param value - decoded JSON value.
+* @returns validated entries.
+*/
+function readCapabilityCatalog(value) {
+	if (!Array.isArray(value) || value.length > 256) throw new Error("capabilities must be an array");
+	return value.map((entry) => {
+		if (typeof entry !== "object" || entry === null || Array.isArray(entry)) throw new Error("invalid capability entry");
+		const record = entry;
+		const plugin = record.plugin;
+		const capability = record.capability;
+		const version = record.version;
+		const methods = record.methods;
+		const fields = record.fields;
+		if (typeof plugin !== "string" || plugin.length === 0 || plugin.length > 200) throw new Error("invalid capability plugin");
+		if (typeof capability !== "string" || capability.length === 0 || capability.length > 200) throw new Error("invalid capability name");
+		if (typeof version !== "string" || version.length === 0 || version.length > 100) throw new Error("invalid capability version");
+		if (!Array.isArray(methods) || methods.some((item) => typeof item !== "string" || item.length > 200)) throw new Error("invalid capability methods");
+		if (!Array.isArray(fields) || fields.some((item) => typeof item !== "string" || item.length > 300)) throw new Error("invalid capability fields");
+		return {
+			plugin,
+			capability,
+			version,
+			methods,
+			fields
+		};
+	});
+}
+/**
 * Read a small JSON request body.
 * @param req - incoming request.
 * @returns the parsed value.
@@ -271,6 +300,11 @@ async function apply(ctx, config = {}) {
 	const userDir = config.dir === void 0 ? path.join(process.env.DSH_HOME ?? path.join(homedir(), ".dsh"), "dsh-shape", "shapes") : path.resolve(config.dir);
 	const stateDir = path.join(process.env.DSH_HOME ?? path.join(homedir(), ".dsh"), "dsh-shape");
 	const stateFile = path.join(stateDir, "state.json");
+	const capabilityFile = path.join(stateDir, "capabilities.json");
+	let capabilityCatalog = [];
+	try {
+		capabilityCatalog = readCapabilityCatalog(JSON.parse(await readFile(capabilityFile, "utf8")));
+	} catch {}
 	const enabledById = /* @__PURE__ */ new Map();
 	try {
 		const saved = JSON.parse(await readFile(stateFile, "utf8"));
@@ -488,11 +522,54 @@ async function apply(ctx, config = {}) {
 			json(res, 200, {
 				ok: true,
 				count: shapes.length,
+				capabilities: capabilityCatalog.length,
 				roots: {
 					bundled: bundledDir,
 					user: userDir
 				}
 			});
+			return;
+		}
+		if (req.method === "GET" && url.pathname === `${API}/capabilities`) {
+			json(res, 200, {
+				ok: true,
+				capabilities: capabilityCatalog
+			});
+			return;
+		}
+		if (req.method === "POST" && url.pathname === `${API}/capabilities`) {
+			let body;
+			try {
+				body = await readJsonBody(req);
+			} catch {
+				json(res, 400, {
+					ok: false,
+					error: {
+						code: "bad-request",
+						message: "invalid JSON body"
+					}
+				});
+				return;
+			}
+			const record = typeof body === "object" && body !== null && !Array.isArray(body) ? body : void 0;
+			try {
+				const catalog = readCapabilityCatalog(record?.capabilities);
+				await mkdir(stateDir, { recursive: true });
+				await writeFile(capabilityFile, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
+				capabilityCatalog = catalog;
+				json(res, 200, {
+					ok: true,
+					capabilities: capabilityCatalog
+				});
+			} catch (cause) {
+				json(res, 400, {
+					ok: false,
+					error: {
+						code: "invalid-capabilities",
+						message: cause instanceof Error ? cause.message : String(cause)
+					}
+				});
+			}
 			return;
 		}
 		if (req.method === "POST" && url.pathname === `${API}/refresh`) {

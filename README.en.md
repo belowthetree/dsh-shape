@@ -13,14 +13,15 @@ dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and wo
 - **Client behavior**: shapes can register page-level behavior and shortcuts, and read only the capability APIs they declare
 - **Workspace switching**: built-in previous/next workspace shortcuts, `Ctrl + Alt + ←` and `Ctrl + Alt + →`
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their chat cards
+- **Capability catalog**: inspect which capabilities are available to shapes, including their versions and API method names
 - **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
 
 ## Shape Studio preset
 
 Installation adds the **Shape Studio** preset for developing shapes and extension plugins:
 
-- Tools to list, inspect, scaffold, and validate shapes
-- A shape-development skill
+- Tools to list, inspect, scaffold, and validate shapes, plus a shape capability catalog
+- A shape-development skill plus a topic-based reference for the full interfaces and rules
 - Cordis inspection, plugin installation/management, and the plugin market
 - Skills for plugin development and preset editing
 
