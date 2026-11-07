@@ -16,8 +16,33 @@ dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and pa
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their slot entries
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
-- **Built-in capabilities**: `dsh-shape#workspace` switches workspaces; `dsh-shape#ui` controls the surface — navigate Sessions and Workspaces, toggle the sidebar, switch main panels and themes, send or cancel turns, raise toasts, and open the Shapes browser; `dsh-shape#shortcuts` registers shape actions as DSH commands that users can rebind in Settings; `dsh-shape#slots` discovers slots, mounts into them at runtime, and counts occupancy; `dsh-shape#events` shares events between shapes; `dsh-shape#storage` persists JSON under the shape's own `data/` directory
+- **Built-in capabilities**: seven capabilities cover workspace switching, surface control, shortcuts, slots, events, and storage; see [Built-in capabilities](#built-in-capabilities) below
 - **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
+
+## Built-in capabilities
+
+A shape declares what it needs in `shape.requires` and reads it with `api.require('dsh-shape', '<capability>')`; a missing or mismatched capability keeps the shape from starting.
+
+| Capability | Version | Methods | Purpose |
+| --- | --- | --- | --- |
+| `dsh-shape#core` | 1.0.0 | field `apiVersion` | Read the shape ABI |
+| `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | Switch workspaces and reveal the target group |
+| `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | Navigate, move panels, switch themes, act on the conversation, show toasts, open Shapes |
+| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | Register shape actions as DSH commands users can rebind |
+| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the nine slots, mount into them, count occupancy |
+| `dsh-shape#events` | 1.0.0 | `emit` `on` | Share events between shapes |
+| `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | Persist JSON under the shape's `data/` directory |
+
+```js
+const ui = api.require('dsh-shape', 'ui')
+const shortcuts = api.require('dsh-shape', 'shortcuts')
+const store = api.require('dsh-shape', 'storage')
+
+shortcuts.register({ id: 'summary', label: 'Show MCP summary', keys: 'Ctrl+Alt+M', run: () => ui.notify('3 servers') })
+await store.set('collapsed', true)   // → <shape>/data/collapsed.json
+```
+
+The `shape_capabilities` tool lists every capability with its version, purpose, usage, and API method names.
 
 ## Demo
 

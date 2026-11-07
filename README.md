@@ -16,8 +16,33 @@ dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面�
 - **删除 shape**：卡片右上角的删除按钮，确认后把该 shape 目录从磁盘移除
 - **能力依赖**：shape 声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
 - **能力目录**：可以查看当前有哪些 shape 可用能力、版本、用途、用法和 API 方法名
-- **内置能力**：`dsh-shape#workspace` 切换工作区，`dsh-shape#ui` 控制界面——导航会话/工作区、收起侧栏、切换主面板与主题、发送或取消对话、弹出通知、打开 Shapes 面板；`dsh-shape#shortcuts` 把 shape 的快捷操作注册成可在设置里重绑的 DSH 命令；`dsh-shape#slots` 查询槽位、运行时挂载并统计占用；`dsh-shape#events` 在 shape 之间收发事件；`dsh-shape#storage` 把 JSON 数据存在 shape 目录的 `data/` 下
+- **内置能力**：7 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件与存储，见下文[内置能力](#内置能力)
 - **即时生效**：新增或修改 shape 文件夹后刷新即可，不需要重启 DSH
+
+## 内置能力
+
+shape 在 `package.json` 的 `shape.requires` 里声明需要的能力，再用 `api.require('dsh-shape', '<能力>')` 取用；缺少能力或版本不匹配时 shape 不会启动。
+
+| 能力 | 版本 | 方法 | 用途 |
+| --- | --- | --- | --- |
+| `dsh-shape#core` | 1.0.0 | 字段 `apiVersion` | 判断 shape ABI |
+| `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | 切换工作区，并展开、滚动到目标分组 |
+| `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | 控制 DSH 界面：导航、面板、主题、对话、通知、打开 Shapes |
+| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把 shape 动作注册成 DSH 命令，用户可在设置里重绑 |
+| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | 查询 9 个槽位、运行时挂载、统计占用 |
+| `dsh-shape#events` | 1.0.0 | `emit` `on` | shape 之间收发事件 |
+| `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到 shape 目录的 `data/` 下 |
+
+```js
+const ui = api.require('dsh-shape', 'ui')
+const shortcuts = api.require('dsh-shape', 'shortcuts')
+const store = api.require('dsh-shape', 'storage')
+
+shortcuts.register({ id: 'summary', label: '显示 MCP 摘要', keys: 'Ctrl+Alt+M', run: () => ui.notify('3 个服务器') })
+await store.set('collapsed', true)   // → <shape>/data/collapsed.json
+```
+
+`shape_capabilities` 工具会列出当前所有能力、版本、用途、用法和 API 方法名。
 
 ## 演示
 
