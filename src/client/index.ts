@@ -25,7 +25,15 @@ import { createShapeStorage } from './shape-storage.ts'
 import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
-import { setShapePanelOpener, shapePanels, subscribeShapePanels } from './shape-surfaces.ts'
+import { ShapeTabBody, ShapeTabTitle } from './ShapeTabHost.tsx'
+import {
+  setShapePanelOpener,
+  setShapeTabOpener,
+  shapePanels,
+  shapeTabs,
+  subscribeShapePanels,
+  subscribeShapeTabs,
+} from './shape-surfaces.ts'
 import { createUiControl } from './ui-control.ts'
 import { createWorkspaceSwitch } from './workspace.ts'
 
@@ -234,4 +242,49 @@ export function apply(ctx: Context): void {
       panelSlots.clear()
     }
   }, 'dsh-shape: shape panels')
+
+  ctx.effect(() => {
+    setShapeTabOpener((id) => {
+      const service = ctx.get('sidebarRight')
+      if (service === undefined) throw new Error('dsh-shape: the sidebarRight service is unavailable in this host')
+      service.openTab(id)
+    })
+    return () => { setShapeTabOpener(() => { throw new Error('dsh-shape: tab opening is unavailable in this host') }) }
+  }, 'dsh-shape: tab opener')
+
+  const tabSlots = new Map<string, Array<() => void>>()
+  const syncTabs = (): void => {
+    const live = new Set(shapeTabs().map(tab => tab.id))
+    for (const [id, disposers] of tabSlots) {
+      if (live.has(id)) continue
+      for (const off of disposers) off()
+      tabSlots.delete(id)
+    }
+    for (const tab of shapeTabs()) {
+      if (tabSlots.has(tab.id)) continue
+      const disposers: Array<() => void> = []
+      const registry = ctx.get('sidebarRightTabs')
+      if (registry !== undefined) {
+        disposers.push(registry.register({ id: tab.id, kind: tab.id, title: () => tab.title }))
+      }
+      disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+        name: 'sidebar.right.pane.tab', key: tab.id,
+      }, () => createElement(ShapeTabBody, { tab }))))
+      disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+        name: 'sidebar.right.pane.tab.title', key: tab.id,
+      }, () => createElement(ShapeTabTitle, { tab }))))
+      tabSlots.set(tab.id, disposers)
+    }
+  }
+  ctx.effect(() => {
+    syncTabs()
+    const off = subscribeShapeTabs(syncTabs)
+    return () => {
+      off()
+      for (const disposers of tabSlots.values()) {
+        for (const dispose of disposers) dispose()
+      }
+      tabSlots.clear()
+    }
+  }, 'dsh-shape: shape tabs')
 }

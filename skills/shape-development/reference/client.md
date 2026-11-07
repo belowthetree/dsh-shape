@@ -31,6 +31,7 @@ export function activate(api) {
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
 - `api.panel(options)`: adds a panel to the left sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` selects it in the main area.
+- `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
 
 ## Panels
 
@@ -50,6 +51,23 @@ export function activate(api) {
 ```
 
 The panel id is namespaced as `shape:<shapeId>:<id>`, so two shapes can use the same local id. Registration is lazy: the sidebar entry appears as soon as the shape activates and disappears with it. `open()` throws when the host has no layout service.
+
+## Tabs
+
+```js
+export function activate(api) {
+  const tab = api.tab({
+    id: 'notes',
+    title: '笔记',
+    render: (container) => {
+      container.textContent = '这一页属于形态自己'
+    },
+  })
+  return () => tab.dispose()
+}
+```
+
+A tab is a page type: `open()` adds one to the right sidebar, and opening the same tab twice focuses the existing page instead of duplicating it. The body mounts only while the tab is visible, and the same cleanup rules as panels apply. `open()` throws when the host has no right sidebar service.
 
 ## Mounts
 

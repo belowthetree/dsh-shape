@@ -2965,6 +2965,23 @@ window.__ModuleLoader__.load({
 						        dispose: off,
 						    };
 						},
+						tab(options) {
+						    const id = `shape:${shape.id}:${options.id}`;
+						    const off = registerShapeTab({
+						        shapeId: shape.id,
+						        id,
+						        title: options.title,
+						        render: options.render,
+						    });
+						    state.mounts.push(off);
+						    return {
+						        id,
+						        open() {
+						            openShapeTab(id);
+						        },
+						        dispose: off,
+						    };
+						},
 						shortcuts: { register(binding) {
 							const specs = typeof binding.keys === "string" ? [binding.keys] : binding.keys;
 							const disposers = [];
@@ -3010,6 +3027,7 @@ window.__ModuleLoader__.load({
 								disposeShapeMounts(shape.id);
 								disposeShapeEvents(shape.id);
 								disposeShapePanels(shape.id);
+							disposeShapeTabs(shape.id);
 							}
 						});
 					} catch (cause) {
@@ -3018,6 +3036,7 @@ window.__ModuleLoader__.load({
 						disposeShapeMounts(shape.id);
 						disposeShapeEvents(shape.id);
 						disposeShapePanels(shape.id);
+						disposeShapeTabs(shape.id);
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
@@ -3956,6 +3975,82 @@ window.__ModuleLoader__.load({
 		    for (const listener of panelListeners)
 		        listener();
 		}
+		const tabs = new Map();
+		const tabListeners = new Set();
+		let tabOpener;
+		/**
+		 * Register one tab.
+		 * @param tab - tab definition.
+		 * @returns an idempotent disposer.
+		 */
+		function registerShapeTab(tab) {
+		    tabs.set(tab.id, tab);
+		    notifyTabs();
+		    let disposed = false;
+		    return () => {
+		        if (disposed)
+		            return;
+		        disposed = true;
+		        if (tabs.get(tab.id) === tab) {
+		            tabs.delete(tab.id);
+		            notifyTabs();
+		        }
+		    };
+		}
+		/**
+		 * Read every registered tab.
+		 * @returns tabs in registration order.
+		 */
+		function shapeTabs() {
+		    return [...tabs.values()];
+		}
+		/**
+		 * Observe tab registration changes.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeTabs(listener) {
+		    tabListeners.add(listener);
+		    return () => { tabListeners.delete(listener); };
+		}
+		/**
+		 * Remove every tab one shape owns.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapeTabs(shapeId) {
+		    let changed = false;
+		    for (const [id, tab] of tabs) {
+		        if (tab.shapeId !== shapeId)
+		            continue;
+		        tabs.delete(id);
+		        changed = true;
+		    }
+		    if (changed)
+		        notifyTabs();
+		}
+		/**
+		 * Install the function that opens a tab in the right sidebar.
+		 * @param open - receives a namespaced tab id.
+		 */
+		function setShapeTabOpener(open) {
+		    tabOpener = open;
+		}
+		/**
+		 * Open one registered tab.
+		 * @param id - namespaced tab id.
+		 */
+		function openShapeTab(id) {
+		    if (tabOpener === undefined)
+		        throw new Error('dsh-shape: tab opening is unavailable in this host');
+		    tabOpener(id);
+		}
+		/**
+		 * Notify every tab observer.
+		 */
+		function notifyTabs() {
+		    for (const listener of tabListeners)
+		        listener();
+		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/ShapePanelHost.tsx
 		/** Hosts for shape-owned left sidebar panels. */
@@ -4070,6 +4165,46 @@ window.__ModuleLoader__.load({
 		        });
 		    }, [sessionId, inputActions, input]);
 		    return null;
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeTabHost.tsx
+		/** Hosts for shape-owned right sidebar tabs. */
+		const TAB_BODY_STYLE = { display: 'block', width: '100%', height: '100%', overflow: 'auto' };
+		const TAB_TITLE_STYLE = { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 };
+		/**
+		 * Render one shape tab body.
+		 * @param props.tab - tab registered by the shape.
+		 * @returns the tab container.
+		 */
+		function ShapeTabBody({ tab }) {
+		    const ref = react.useRef(null);
+		    react.useEffect(() => {
+		        const container = ref.current;
+		        if (container === null)
+		            return;
+		        let cleanup;
+		        try {
+		            const result = tab.render(container);
+		            if (typeof result === 'function')
+		                cleanup = result;
+		        }
+		        catch (cause) {
+		            console.warn('dsh-shape: tab render failed', cause);
+		        }
+		        return () => {
+		            cleanup?.();
+		            container.replaceChildren();
+		        };
+		    }, [tab]);
+		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-tab": tab.id, style: TAB_BODY_STYLE });
+		}
+		/**
+		 * Render one shape tab's chip label.
+		 * @param props.tab - tab registered by the shape.
+		 * @returns the label element.
+		 */
+		function ShapeTabTitle({ tab }) {
+		    return react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
@@ -4269,6 +4404,54 @@ window.__ModuleLoader__.load({
 		        panelSlots.clear();
 		    };
 		}, 'dsh-shape: shape panels');
+		ctx.effect(() => {
+		    setShapeTabOpener((id) => {
+		        const service = ctx.get('sidebarRight');
+		        if (service === undefined)
+		            throw new Error('dsh-shape: the sidebarRight service is unavailable in this host');
+		        service.openTab(id);
+		    });
+		    return () => { setShapeTabOpener(() => { throw new Error('dsh-shape: tab opening is unavailable in this host'); }); };
+		}, 'dsh-shape: tab opener');
+		const tabSlots = new Map();
+		const syncTabs = () => {
+		    const live = new Set(shapeTabs().map(tab => tab.id));
+		    for (const [id, disposers] of tabSlots) {
+		        if (live.has(id))
+		            continue;
+		        for (const off of disposers)
+		            off();
+		        tabSlots.delete(id);
+		    }
+		    for (const tab of shapeTabs()) {
+		        if (tabSlots.has(tab.id))
+		            continue;
+		        const disposers = [];
+		        const registry = ctx.get('sidebarRightTabs');
+		        if (registry !== undefined) {
+		            disposers.push(registry.register({ id: tab.id, kind: tab.id, title: () => tab.title }));
+		        }
+		        disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+		            name: 'sidebar.right.pane.tab', key: tab.id,
+		        }, () => createElement(ShapeTabBody, { tab }))));
+		        disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+		            name: 'sidebar.right.pane.tab.title', key: tab.id,
+		        }, () => createElement(ShapeTabTitle, { tab }))));
+		        tabSlots.set(tab.id, disposers);
+		    }
+		};
+		ctx.effect(() => {
+		    syncTabs();
+		    const off = subscribeShapeTabs(syncTabs);
+		    return () => {
+		        off();
+		        for (const disposers of tabSlots.values()) {
+		            for (const dispose of disposers)
+		                dispose();
+		        }
+		        tabSlots.clear();
+		    };
+		}, 'dsh-shape: shape tabs');
 		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
