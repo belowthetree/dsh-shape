@@ -1,0 +1,80 @@
+name: publish
+
+# Publishes only when package.json carries a version npm does not have yet.
+# A push that leaves the version untouched is a no-op.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the release tag
+  id-token: write # npm provenance
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Read package metadata
+        id: pkg
+        run: |
+          node -e '
+            const pkg = require("./package.json")
+            if (pkg.private === true) {
+              console.error("::error::package.json still sets \"private\": true")
+              process.exit(1)
+            }
+            require("node:fs").appendFileSync(
+              process.env.GITHUB_OUTPUT,
+              `name=${pkg.name}\nversion=${pkg.version}\n`,
+            )
+          '
+
+      - name: Decide whether this version is unpublished
+        id: decide
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PKG_NAME: ${{ steps.pkg.outputs.name }}
+          PKG_VERSION: ${{ steps.pkg.outputs.version }}
+        run: node .github/scripts/publish-decision.mjs
+
+      - name: Verify tarball contents
+        if: steps.decide.outputs.state == 'new'
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        if: steps.decide.outputs.state == 'new'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
+
+      - name: Tag the release
+        if: steps.decide.outputs.state == 'new'
+        env:
+          TAG: v${{ steps.pkg.outputs.version }}
+        run: |
+          if git rev-parse "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "tag $TAG already exists"
+            exit 0
+          fi
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Nothing to publish
+        if: steps.decide.outputs.state == 'exists'
+        run: echo "::notice::${{ steps.pkg.outputs.name }}@${{ steps.pkg.outputs.version }} is already on npm; skipping."

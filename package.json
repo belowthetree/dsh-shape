@@ -1,10 +1,29 @@
 {
   "name": "dsh-shape",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "A DeepSeek Harness plugin for rapidly customizing DSH UI and functionality with folder-based shapes.",
   "license": "MIT",
+  "author": "belowthetree",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "shape",
+    "agent-ui"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/belowthetree/dsh-shape.git"
+  },
+  "homepage": "https://github.com/belowthetree/dsh-shape#readme",
+  "bugs": {
+    "url": "https://github.com/belowthetree/dsh-shape/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "engines": {
     "dsh": ">=0.2.2-rc.1"
   },
