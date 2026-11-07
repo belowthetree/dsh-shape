@@ -28,7 +28,7 @@ A shape declares what it needs in `shape.requires` and reads it with `api.requir
 | `dsh-shape#core` | 1.0.0 | field `apiVersion` | Read the shape ABI |
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | Switch workspaces and reveal the target group |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | Navigate, move panels, switch themes, act on the conversation, show toasts, open Shapes |
-| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | Register shape actions as DSH commands users can rebind |
+| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | Register shape actions as DSH commands users can rebind; `regions` decides whether they also fire while the composer has focus |
 | `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the ten slots, mount into them, count occupancy |
 | `dsh-shape#events` | 1.0.0 | `emit` `on` | Share events between shapes |
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | Persist JSON under the shape's `data/` directory |

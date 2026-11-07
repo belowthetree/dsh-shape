@@ -74,8 +74,36 @@ export interface ShapeShortcutCommand {
   aliases?: readonly string[]
   /** Default combination such as `Ctrl+Alt+M`; omit for an unbound command. */
   keys?: string
+  /** Regions the command fires in; defaults to `['page']`. */
+  regions?: readonly ShapeShortcutRegion[]
+  /** Modal ids the command fires in; defaults to none. */
+  modals?: readonly string[]
   /** Action invoked when the combination matches. */
   run: () => void | Promise<void>
+}
+
+/** Regions DSH dispatches shortcuts in. */
+export type ShapeShortcutRegion = 'page' | 'editable' | 'terminal'
+
+/** Every region a command may opt into. */
+const REGIONS: readonly ShapeShortcutRegion[] = ['page', 'editable', 'terminal']
+
+/**
+ * Validate and de-duplicate the regions a command asked for.
+ * @param regions - requested regions, or undefined for the page default.
+ * @returns the regions to register.
+ */
+function normalizeRegions(regions: readonly ShapeShortcutRegion[] | undefined): ShapeShortcutRegion[] {
+  if (regions === undefined) return ['page']
+  const seen = new Set<ShapeShortcutRegion>()
+  for (const region of regions) {
+    if (!REGIONS.includes(region)) {
+      throw new Error(`shape shortcut region must be page, editable, or terminal: ${String(region)}`)
+    }
+    seen.add(region)
+  }
+  if (seen.size === 0) throw new Error('shape shortcut regions must not be empty')
+  return [...seen]
 }
 
 /** Catalog row for one of this shape's commands. */
@@ -133,8 +161,8 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
             label: () => command.label,
             aliases: command.aliases ?? [],
             defaults: expandDefaults(command.keys),
-            regions: ['page'],
-            modals: [],
+            regions: normalizeRegions(command.regions),
+            modals: command.modals ?? [],
             resolve: () => ({
               status: 'handled',
               run: () => { void runAction(command.run) },

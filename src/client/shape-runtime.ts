@@ -29,8 +29,7 @@ export interface ShapeShortcutBinding {
   /** Stable name used for diagnostics. */
   id?: string
   /** One or more key combinations such as `Ctrl+Alt+ArrowRight`. */
-  keys: string | readonly string[]
-  /** Action invoked when the combination matches. */
+  keys: string | readonly string[]  /** Action invoked when the combination matches. */
   run: () => void | Promise<void>
 }
 

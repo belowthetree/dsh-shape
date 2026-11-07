@@ -137,6 +137,18 @@ const off = shortcuts.register({
 
 The command id becomes `shape:<shapeId>:<id>`. `keys` accepts `Ctrl`, `Alt`, `Shift`, `Meta`, and `Mod` (Meta on macOS, Control elsewhere) plus one letter, digit, `F1`–`F24`, or named key (`Esc`, `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, arrows, `/`, `,`, `.`, `;`, `'`, `[`, `]`, `\`, `` ` ``, `-`, `=`). Omit `keys` to register an unbound command. Commands run only outside editable regions; registration throws on duplicate ids and overlapping defaults.
 
+`regions` widens that: pass `['page', 'editable']` so the command also fires while the composer has focus, or `['page', 'editable', 'terminal']` for a global command. `modals` lists the modal ids the command fires inside. Both default to the page-only, no-modal behaviour.
+
+```js
+shortcuts.register({
+  id: 'find',
+  label: '搜索对话',
+  keys: 'Mod+F',
+  regions: ['page', 'editable'],
+  run: () => openSearch(),
+})
+```
+
 Because these are DSH commands rather than raw listeners, users can rebind them in Settings, they appear in the shortcut reference, and conflicts with other plugins are reported. `list()` returns this shape's catalog rows: `{ id, label, keys, modified, conflicts, issue }`.
 
 The older `api.shortcuts.register({ keys, run })` still exists as a low-level escape hatch: it installs a private `keydown` listener that ignores user rebinding, the settings page, and cross-plugin conflicts.

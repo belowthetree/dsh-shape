@@ -3533,106 +3533,127 @@ window.__ModuleLoader__.load({
 		/** Built-in shortcut capability: DSH commands that users can rebind. */
 		/** Every profile a default binding is expanded to. */
 		const PROFILES = [
-			'desktop:macos',
-			'desktop:windows',
-			'desktop:linux',
-			'web:macos',
-			'web:windows',
-			'web:linux',
+		    'desktop:macos',
+		    'desktop:windows',
+		    'desktop:linux',
+		    'web:macos',
+		    'web:windows',
+		    'web:linux',
 		];
 		/** Modifier spellings accepted in `keys`. */
 		const MODIFIERS = {
-			ctrl: 'control',
-			control: 'control',
-			alt: 'alt',
-			option: 'alt',
-			opt: 'alt',
-			shift: 'shift',
-			meta: 'meta',
-			cmd: 'meta',
-			command: 'meta',
-			super: 'meta',
-			win: 'meta',
-			mod: 'primary',
-			primary: 'primary',
+		    ctrl: 'control',
+		    control: 'control',
+		    alt: 'alt',
+		    option: 'alt',
+		    opt: 'alt',
+		    shift: 'shift',
+		    meta: 'meta',
+		    cmd: 'meta',
+		    command: 'meta',
+		    super: 'meta',
+		    win: 'meta',
+		    mod: 'primary',
+		    primary: 'primary',
 		};
 		/** Named keys accepted in `keys`; anything else must be a letter, digit, or F-key. */
 		const NAMED_CODES = {
-			esc: 'Escape',
-			escape: 'Escape',
-			space: 'Space',
-			tab: 'Tab',
-			enter: 'Enter',
-			return: 'Enter',
-			backspace: 'Backspace',
-			delete: 'Delete',
-			del: 'Delete',
-			up: 'ArrowUp',
-			down: 'ArrowDown',
-			left: 'ArrowLeft',
-			right: 'ArrowRight',
-			slash: 'Slash',
-			comma: 'Comma',
-			period: 'Period',
-			dot: 'Period',
-			backslash: 'Backslash',
-			backquote: 'Backquote',
-			minus: 'Minus',
-			equal: 'Equal',
-			bracketleft: 'BracketLeft',
-			bracketright: 'BracketRight',
-			semicolon: 'Semicolon',
-			quote: 'Quote',
+		    esc: 'Escape',
+		    escape: 'Escape',
+		    space: 'Space',
+		    tab: 'Tab',
+		    enter: 'Enter',
+		    return: 'Enter',
+		    backspace: 'Backspace',
+		    delete: 'Delete',
+		    del: 'Delete',
+		    up: 'ArrowUp',
+		    down: 'ArrowDown',
+		    left: 'ArrowLeft',
+		    right: 'ArrowRight',
+		    slash: 'Slash',
+		    comma: 'Comma',
+		    period: 'Period',
+		    dot: 'Period',
+		    backslash: 'Backslash',
+		    backquote: 'Backquote',
+		    minus: 'Minus',
+		    equal: 'Equal',
+		    bracketleft: 'BracketLeft',
+		    bracketright: 'BracketRight',
+		    semicolon: 'Semicolon',
+		    quote: 'Quote',
 		};
+		/** Every region a command may opt into. */
+		const REGIONS = ['page', 'editable', 'terminal'];
+		/**
+		 * Validate and de-duplicate the regions a command asked for.
+		 * @param regions - requested regions, or undefined for the page default.
+		 * @returns the regions to register.
+		 */
+		function normalizeRegions(regions) {
+		    if (regions === undefined)
+		        return ['page'];
+		    const seen = new Set();
+		    for (const region of regions) {
+		        if (!REGIONS.includes(region)) {
+		            throw new Error(`shape shortcut region must be page, editable, or terminal: ${String(region)}`);
+		        }
+		        seen.add(region);
+		    }
+		    if (seen.size === 0)
+		        throw new Error('shape shortcut regions must not be empty');
+		    return [...seen];
+		}
 		/**
 		 * Build the shortcut capability provider.
 		 * @param ctx - Client context with the shortcuts service.
 		 * @returns the provider the runtime scopes per shape.
 		 */
 		function createShapeShortcuts(ctx) {
-			return {
-				forShape(shapeId) {
-					const prefix = `shape:${shapeId}:`;
-					const service = () => {
-						const shortcuts = ctx.get('shortcuts');
-						if (shortcuts === undefined) {
-							throw new Error('dsh-shape#shortcuts: the shortcuts service is unavailable in this host');
-						}
-						return shortcuts;
-					};
-					return {
-						register(command) {
-							if (!/^[a-z0-9][a-z0-9-]*$/.test(command.id)) {
-								throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`);
-							}
-							return service().register({
-								id: `${prefix}${command.id}`,
-								label: () => command.label,
-								aliases: command.aliases ?? [],
-								defaults: expandDefaults(command.keys),
-								regions: ['page'],
-								modals: [],
-								resolve: () => ({
-									status: 'handled',
-									run: () => { void runAction(command.run); },
-								}),
-							});
-						},
-						list() {
-							return service().catalog.getSnapshot()
-								.filter(entry => entry.id.startsWith(prefix))
-								.map(entry => ({
-								id: entry.id.slice(prefix.length),
-								label: entry.label,
-								keys: entry.keys,
-								modified: entry.modified,
-								conflicts: entry.conflicts.map(value => String(value)),
-								issue: entry.issue,
-							}));
-						},
-					};
-				},
-			};
+		    return {
+		        forShape(shapeId) {
+		            const prefix = `shape:${shapeId}:`;
+		            const service = () => {
+		                const shortcuts = ctx.get('shortcuts');
+		                if (shortcuts === undefined) {
+		                    throw new Error('dsh-shape#shortcuts: the shortcuts service is unavailable in this host');
+		                }
+		                return shortcuts;
+		            };
+		            return {
+		                register(command) {
+		                    if (!/^[a-z0-9][a-z0-9-]*$/.test(command.id)) {
+		                        throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`);
+		                    }
+		                    return service().register({
+		                        id: `${prefix}${command.id}`,
+		                        label: () => command.label,
+		                        aliases: command.aliases ?? [],
+		                        defaults: expandDefaults(command.keys),
+		                        regions: normalizeRegions(command.regions),
+		                        modals: command.modals ?? [],
+		                        resolve: () => ({
+		                            status: 'handled',
+		                            run: () => { void runAction(command.run); },
+		                        }),
+		                    });
+		                },
+		                list() {
+		                    return service().catalog.getSnapshot()
+		                        .filter(entry => entry.id.startsWith(prefix))
+		                        .map(entry => ({
+		                        id: entry.id.slice(prefix.length),
+		                        label: entry.label,
+		                        keys: entry.keys,
+		                        modified: entry.modified,
+		                        conflicts: entry.conflicts.map(value => String(value)),
+		                        issue: entry.issue,
+		                    }));
+		                },
+		            };
+		        },
+		    };
 		}
 		/**
 		 * Expand one combination into the same default for every profile.
@@ -3640,13 +3661,13 @@ window.__ModuleLoader__.load({
 		 * @returns defaults keyed by profile.
 		 */
 		function expandDefaults(spec) {
-			if (spec === undefined)
-				return {};
-			const binding = parseBinding(spec);
-			const defaults = {};
-			for (const profile of PROFILES)
-				defaults[profile] = binding;
-			return defaults;
+		    if (spec === undefined)
+		        return {};
+		    const binding = parseBinding(spec);
+		    const defaults = {};
+		    for (const profile of PROFILES)
+		        defaults[profile] = binding;
+		    return defaults;
 		}
 		/**
 		 * Parse `Modifier+…+Key` into a physical binding.
@@ -3654,18 +3675,18 @@ window.__ModuleLoader__.load({
 		 * @returns the binding to register as a default.
 		 */
 		function parseBinding(spec) {
-			const parts = spec.split('+').map(part => part.trim()).filter(part => part.length > 0);
-			const key = parts.pop();
-			if (key === undefined)
-				throw new Error(`empty shortcut: "${spec}"`);
-			const modifiers = [];
-			for (const part of parts) {
-				const modifier = MODIFIERS[part.toLowerCase()];
-				if (modifier === undefined)
-					throw new Error(`unknown modifier "${part}" in "${spec}"`);
-				modifiers.push(modifier);
-			}
-			return { code: codeOf(key, spec), modifiers };
+		    const parts = spec.split('+').map(part => part.trim()).filter(part => part.length > 0);
+		    const key = parts.pop();
+		    if (key === undefined)
+		        throw new Error(`empty shortcut: "${spec}"`);
+		    const modifiers = [];
+		    for (const part of parts) {
+		        const modifier = MODIFIERS[part.toLowerCase()];
+		        if (modifier === undefined)
+		            throw new Error(`unknown modifier "${part}" in "${spec}"`);
+		        modifiers.push(modifier);
+		    }
+		    return { code: codeOf(key, spec), modifiers };
 		}
 		/**
 		 * Map a key name to the physical code the shortcut registry accepts.
@@ -3674,16 +3695,16 @@ window.__ModuleLoader__.load({
 		 * @returns physical code.
 		 */
 		function codeOf(key, spec) {
-			if (/^[a-z]$/i.test(key))
-				return `Key${key.toUpperCase()}`;
-			if (/^[0-9]$/.test(key))
-				return `Digit${key}`;
-			if (/^f([1-9]|1[0-9]|2[0-4])$/i.test(key))
-				return key.toUpperCase();
-			const named = NAMED_CODES[key.toLowerCase()];
-			if (named !== undefined)
-				return named;
-			throw new Error(`unknown key "${key}" in "${spec}"`);
+		    if (/^[a-z]$/i.test(key))
+		        return `Key${key.toUpperCase()}`;
+		    if (/^[0-9]$/.test(key))
+		        return `Digit${key}`;
+		    if (/^f([1-9]|1[0-9]|2[0-4])$/i.test(key))
+		        return key.toUpperCase();
+		    const named = NAMED_CODES[key.toLowerCase()];
+		    if (named !== undefined)
+		        return named;
+		    throw new Error(`unknown key "${key}" in "${spec}"`);
 		}
 		/**
 		 * Run a shape action and contain its failure.
@@ -3691,12 +3712,12 @@ window.__ModuleLoader__.load({
 		 * @returns completion after the action settles.
 		 */
 		async function runAction(run) {
-			try {
-				await run();
-			}
-			catch (cause) {
-				console.warn('dsh-shape: shortcut failed', cause);
-			}
+		    try {
+		        await run();
+		    }
+		    catch (cause) {
+		        console.warn('dsh-shape: shortcut failed', cause);
+		    }
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/slot-access.ts

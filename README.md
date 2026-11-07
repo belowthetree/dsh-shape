@@ -30,7 +30,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 | `dsh-shape#core` | 1.0.0 | 字段 `apiVersion` | 判断形态 ABI |
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | 切换工作区，并展开、滚动到目标分组 |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | 控制 DSH 界面：导航、面板、主题、对话、通知、打开 Shapes |
-| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把形态动作注册成 DSH 命令，用户可在设置里重绑 |
+| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把形态动作注册成 DSH 命令，用户可在设置里重绑；`regions` 决定输入框聚焦时是否也触发 |
 | `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | 查询 10 个槽位、运行时挂载、统计占用 |
 | `dsh-shape#events` | 1.0.0 | `emit` `on` | 形态之间收发事件 |
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到形态目录的 `data/` 下 |
