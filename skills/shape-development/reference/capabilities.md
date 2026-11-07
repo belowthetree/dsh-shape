@@ -55,6 +55,19 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 - `dsh-shape#slots` version `1.0.0`; methods `list`, `mount`, `entries`; discovers the conversation slots and renders into them.
 - `dsh-shape#events` version `1.0.0`; methods `emit`, `on`; a shared event bus between running shapes.
 - `dsh-shape#storage` version `1.0.0`; methods `get`, `set`, `remove`, `keys`; JSON files under the shape's own `data/` directory.
+- `dsh-shape#composer` version `1.0.0`; methods `getText`, `setText`, `insert`, `submit`, `sessionId`; the draft of the composer currently mounted in the conversation.
+
+### `dsh-shape#composer`
+
+```js
+const composer = api.require('dsh-shape', 'composer')
+const draft = composer.getText()
+composer.setText(`${draft}\n\n请补充测试`)
+composer.insert(' [选中片段]')
+composer.submit()
+```
+
+The capability follows the mounted composer: `sessionId()` names its Session, and every call throws when no composer is mounted. `insert` uses the caret when the composer exposes it and appends otherwise. `setText` replaces the whole draft and drops inline reference chips, so a shape that rewrites a prompt should read `getText()` first and compose the full replacement.
 
 ### `dsh-shape#events`
 

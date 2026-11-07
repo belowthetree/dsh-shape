@@ -3992,6 +3992,86 @@ window.__ModuleLoader__.load({
 		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-panel": panel.id, style: BODY });
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-composer.ts
+		/** Built-in composer capability: read and write the active composer draft. */
+		const bridges = new Map();
+		let active;
+		/**
+		 * Attach one mounted composer.
+		 * @param bridge - session id, draft reader, and actions.
+		 * @returns a detacher that only removes its own bridge.
+		 */
+		function attachComposer(bridge) {
+		    bridges.set(bridge.sessionId, bridge);
+		    active = bridge.sessionId;
+		    return () => {
+		        if (bridges.get(bridge.sessionId) !== bridge)
+		            return;
+		        bridges.delete(bridge.sessionId);
+		        if (active === bridge.sessionId)
+		            active = bridges.keys().next().value;
+		    };
+		}
+		/**
+		 * Build the composer capability.
+		 * @returns the API shapes receive.
+		 */
+		function createComposer() {
+		    const current = () => {
+		        const id = active;
+		        return id === undefined ? undefined : bridges.get(id);
+		    };
+		    return {
+		        sessionId: () => current()?.sessionId ?? null,
+		        getText: () => current()?.readText() ?? '',
+		        setText(text) {
+		            const bridge = current();
+		            if (bridge === undefined)
+		                throw new Error('dsh-shape#composer: no composer is mounted');
+		            bridge.actions.setDraft(text);
+		        },
+		        insert(text) {
+		            const bridge = current();
+		            if (bridge === undefined)
+		                throw new Error('dsh-shape#composer: no composer is mounted');
+		            const span = bridge.actions.captureInsertion?.();
+		            if (span !== undefined && bridge.actions.insertText?.(text, span) === true)
+		                return true;
+		            bridge.actions.setDraft(`${bridge.readText()}${text}`);
+		            return true;
+		        },
+		        submit() {
+		            const bridge = current();
+		            if (bridge === undefined)
+		                throw new Error('dsh-shape#composer: no composer is mounted');
+		            bridge.actions.submit?.();
+		        },
+		    };
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeComposerBridge.tsx
+		/** Bridge that publishes one mounted composer to the `dsh-shape#composer` capability. */
+		/**
+		 * Publish the composer of the session this entry is mounted in.
+		 * @param props.session - session snapshot of the slot scope.
+		 * @param props.input - current input state.
+		 * @param props.inputActions - composer actions.
+		 * @returns nothing; the entry renders no DOM.
+		 */
+		function ShapeComposerBridge({ session, input, inputActions }) {
+		    const sessionId = session?.sessionId;
+		    react.useEffect(() => {
+		        if (sessionId === undefined || inputActions === undefined)
+		            return;
+		        return attachComposer({
+		            sessionId,
+		            readText: () => input?.draft ?? '',
+		            actions: inputActions,
+		        });
+		    }, [sessionId, inputActions, input]);
+		    return null;
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
@@ -4114,6 +4194,15 @@ window.__ModuleLoader__.load({
 				usage: "get(key) returns the stored value or null; set(key, value) writes JSON; remove(key) deletes; keys() lists stored keys. Keys match [a-z0-9][a-z0-9._-]{0,63} and each value is limited to 256 KB. Files live under the shape directory as data/<key>.json; bundled shapes are read-only.",
 				api: createShapeStorage()
 			}), "dsh-shape: storage capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "composer",
+				version: "1.0.0",
+				description: "Read and write the active composer draft.",
+				usage: "getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.",
+				api: createComposer()
+			}), "dsh-shape: composer capability");
 			capabilities.subscribe(() => {
 				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
 				syncCapabilities(capabilities);
@@ -4133,6 +4222,11 @@ window.__ModuleLoader__.load({
 				inject: () => ({ resolveShape, slot: spec.name })
 			}, spec.presentation === "overlay" ? ShapeOverlay : ShapeSlotEntries));
 		}
+		ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
+			name: "conversation.input.dock",
+			id: "dsh-shape-composer-bridge",
+			order: 0
+		}, ShapeComposerBridge));
 		ctx.effect(() => {
 		    setShapePanelOpener((id) => {
 		        const layout = ctx.get('layout');

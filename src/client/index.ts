@@ -22,6 +22,8 @@ import { createShapeShortcuts } from './shortcut-commands.ts'
 import { createShapeSlots } from './slot-access.ts'
 import { createElement } from 'react'
 import { createShapeStorage } from './shape-storage.ts'
+import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
+import { createComposer } from './shape-composer.ts'
 import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
 import { setShapePanelOpener, shapePanels, subscribeShapePanels } from './shape-surfaces.ts'
 import { createUiControl } from './ui-control.ts'
@@ -151,6 +153,15 @@ export function apply(ctx: Context): void {
     api: createShapeStorage(),
   }), 'dsh-shape: storage capability')
 
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'composer',
+    version: '1.0.0',
+    description: 'Read and write the active composer draft.',
+    usage: 'getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.',
+    api: createComposer(),
+  }), 'dsh-shape: composer capability')
+
   capabilities.subscribe(() => {
     window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'))
     void syncCapabilities(capabilities)
@@ -178,6 +189,12 @@ export function apply(ctx: Context): void {
       inject: () => ({ resolveShape, slot: spec.name }),
     }, ShapeSlotEntries))
   }
+
+  ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+    name: 'conversation.input.dock',
+    id: 'dsh-shape-composer-bridge',
+    order: 0,
+  }, ShapeComposerBridge))
 
   ctx.effect(() => {
     setShapePanelOpener((id) => {

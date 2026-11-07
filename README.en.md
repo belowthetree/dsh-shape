@@ -16,7 +16,7 @@ dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extensio
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their slot entries
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
-- **Built-in capabilities**: seven capabilities cover workspace switching, surface control, shortcuts, slots, events, and storage; see [Built-in capabilities](#built-in-capabilities) below
+- **Built-in capabilities**: eight capabilities cover workspace switching, surface control, shortcuts, slots, events, storage, and the composer; see [Built-in capabilities](#built-in-capabilities) below
 - **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
 
 ## Built-in capabilities
@@ -32,6 +32,7 @@ A shape declares what it needs in `shape.requires` and reads it with `api.requir
 | `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the ten slots, mount into them, count occupancy |
 | `dsh-shape#events` | 1.0.0 | `emit` `on` | Share events between shapes |
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | Persist JSON under the shape's `data/` directory |
+| `dsh-shape#composer` | 1.0.0 | `getText` `setText` `insert` `submit` `sessionId` | Read and rewrite the active composer draft |
 
 ```js
 const ui = api.require('dsh-shape', 'ui')
