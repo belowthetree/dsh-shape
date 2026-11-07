@@ -27,7 +27,6 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 - `slots`: card descriptor fields and rendering rules.
 - `views`: URL, sandbox, index fallback.
 - `lifecycle`: refresh, toggles, persistence, restart boundaries.
-- `recipes`: working code for search, templates, sidebar panels and tabs.
 - `testing`: validation and UI checks.
 - `plugin`: extending dsh-shape with a capability provider or separate DSH plugin.
 
