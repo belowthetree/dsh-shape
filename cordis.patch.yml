@@ -5,7 +5,7 @@
 # the preset scope, so other presets never see them.
 - insert:
     - id: dsh-shape
-      name: dsh-shape
+      name: '@belowthetree/dsh-shape'
     - id: preset-shape
       name: '@deepseek-ai/dsh-agent-preset'
       config:
@@ -86,6 +86,6 @@
                   headChars: 4096
                   tailChars: 1024
           - id: shape-tools
-            name: dsh-shape/tools
+            name: '@belowthetree/dsh-shape/tools'
           - id: shape-skill
-            name: dsh-shape/skill
+            name: '@belowthetree/dsh-shape/skill'

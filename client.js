@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "dsh-shape",
+	id: "@belowthetree/dsh-shape",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;

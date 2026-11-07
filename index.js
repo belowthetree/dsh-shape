@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 * @module @deepseek-ai/dsh-shape
 */
 /** Plugin name shown in the Loader. */
-const name = "dsh-shape";
+const name = "@belowthetree/dsh-shape";
 /** The shape browser mounts beside the Web server. */
 const inject = ["webServer"];
 const ROUTE = "/dsh-shape";

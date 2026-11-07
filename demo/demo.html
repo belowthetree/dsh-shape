@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>dsh-shape · 演示</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --bg-2: #16181d;
+    --panel: #1b1d22;
+    --panel-2: #202329;
+    --line: rgba(255, 255, 255, 0.09);
+    --line-strong: rgba(255, 255, 255, 0.16);
+    --text: #e6edf3;
+    --muted: #9aa4b2;
+    --dim: #6b7280;
+    --accent: #6ea6ff;
+    --accent-soft: rgba(110, 166, 255, 0.16);
+    --success: #7dd3a7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body {
+    font: 14px/1.6 "Segoe UI", system-ui, -apple-system, "Microsoft YaHei", sans-serif;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage {
+    position: relative;
+    width: 1280px;
+    height: 720px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 520px at 18% 0%, rgba(110, 166, 255, 0.10), transparent 60%),
+      radial-gradient(760px 520px at 100% 100%, rgba(125, 211, 167, 0.06), transparent 55%),
+      linear-gradient(180deg, #101319 0%, #0c0e12 100%);
+  }
+  #stage::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.028) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(760px 460px at 50% 45%, #000 30%, transparent 100%);
+  }
+
+  .scene {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+    will-change: opacity, transform;
+  }
+
+  /* 共享的 DSH 应用背景，第 2、3 段叠加在它上面 */
+  #appLayer {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    opacity: 0;
+  }
+
+  .logo { display: grid; grid-template-columns: repeat(2, 14px); grid-template-rows: repeat(2, 14px); gap: 5px; }
+  .logo span { border-radius: 4px; background: var(--accent); opacity: 0.92; }
+  .logo span:nth-child(2) { opacity: 0.55; }
+  .logo span:nth-child(3) { opacity: 0.55; }
+  .logo span:nth-child(4) { opacity: 0.28; }
+
+  .caption {
+    position: absolute;
+    left: 64px;
+    bottom: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+  .caption::before {
+    content: "";
+    width: 18px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+    opacity: 0.8;
+  }
+  .kbd {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    border: 1px solid var(--line-strong);
+    border-bottom-width: 2px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  /* S1 */
+  #s1 .inner { display: grid; justify-items: center; gap: 16px; text-align: center; }
+  #s1 h1 { margin: 6px 0 0; font-size: 54px; font-weight: 600; letter-spacing: -0.02em; opacity: 0; }
+  #s1 .lead { margin: 0; color: var(--text); font-size: 19px; opacity: 0; }
+  #s1 .lead em { color: var(--accent); font-style: normal; }
+  #s1 .tags { display: flex; gap: 10px; margin-top: 10px; opacity: 0; }
+  #s1 .tag {
+    padding: 4px 12px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--dim);
+    font-size: 12px;
+  }
+
+  /* shared app chrome */
+  .app {
+    width: 1120px;
+    height: 560px;
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--bg-2);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+    position: relative;
+  }
+  .side { border-right: 1px solid var(--line); padding: 14px 10px; display: flex; flex-direction: column; gap: 8px; }
+  .side .brand { display: flex; align-items: center; gap: 8px; padding: 2px 6px 10px; font-weight: 600; font-size: 13px; }
+  .side .brand i { width: 8px; height: 8px; border-radius: 2px; background: var(--accent); }
+  .ws { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 8px; color: var(--muted); font-size: 12.5px; }
+  .ws.current { background: rgba(110, 166, 255, 0.14); color: var(--text); }
+  .ws .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .ws .folder { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line-strong); }
+  .main { display: flex; flex-direction: column; position: relative; }
+  .messages { flex: 1; padding: 22px 26px; display: flex; flex-direction: column; gap: 12px; }
+  .bubble { max-width: 64%; padding: 9px 13px; border-radius: 12px; font-size: 13px; opacity: 0; }
+  .bubble.user { align-self: flex-end; background: rgba(110, 166, 255, 0.16); border: 1px solid rgba(110, 166, 255, 0.22); }
+  .bubble.bot { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); }
+  .bubble code { color: var(--text); font: 12px ui-monospace, Consolas, monospace; }
+  .composer { padding: 0 26px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .input-card {
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--panel);
+    padding: 12px 14px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .input-card .text { color: var(--dim); font-size: 13px; min-height: 22px; }
+  .input-card .text.typed { color: var(--text); }
+  .caret { display: inline-block; width: 1.5px; height: 14px; margin-left: 1px; background: var(--accent); vertical-align: -2px; animation: none; }
+  .input-card .tools { display: flex; align-items: center; gap: 8px; }
+  .input-card .tools .chip { padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; color: var(--muted); }
+  .send { margin-left: auto; width: 26px; height: 26px; border-radius: 8px; background: var(--accent); opacity: 0.35; }
+  .send.live { opacity: 0.9; }
+  .stats { display: flex; align-items: center; justify-content: center; gap: 12px; color: var(--dim); font-size: 11.5px; padding-top: 2px; opacity: 0; }
+  .stats .pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); }
+  .stats .pill .d { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+  .float-win {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 300px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--panel);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    opacity: 0;
+  }
+  .float-win .bar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: rgba(255, 255, 255, 0.045); font-size: 12px; }
+  .float-win .bar .grip { width: 3px; height: 14px; border-radius: 2px; background: var(--line-strong); }
+  .float-win .bar .x { margin-left: auto; color: var(--dim); }
+  .float-win .body { padding: 8px 10px 10px; display: grid; gap: 3px; }
+  .mcp-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: var(--muted); padding: 2px 4px; border-radius: 6px; }
+  .mcp-row .d { width: 6px; height: 6px; border-radius: 50%; }
+  .mcp-row .n { color: var(--text); }
+  .mcp-row .m { margin-left: auto; color: var(--dim); font-size: 11px; }
+
+  /* S3 panel + view */
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 8, 11, 0.52);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    z-index: 2;
+  }
+  .modal {
+    width: 980px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(32, 35, 41, 0.97), rgba(24, 26, 31, 0.99));
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+    overflow: hidden;
+    position: relative;
+    z-index: 3;
+  }
+  .modal > header { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+  .modal > header h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .modal > header .hint { margin-left: auto; color: var(--dim); font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 16px 20px 20px; }
+  .shape-card {
+    display: grid;
+    grid-template-columns: 42px 1fr auto;
+    gap: 12px;
+    align-items: start;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel-2);
+    opacity: 0;
+  }
+  .shape-card .glyph {
+    display: grid; place-items: center;
+    width: 42px; height: 42px;
+    border-radius: 11px;
+    background: var(--accent-soft);
+    border: 1px solid rgba(110, 166, 255, 0.28);
+    color: var(--accent);
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .shape-card .name { font-size: 13.5px; font-weight: 600; }
+  .shape-card .id { color: var(--dim); font: 11px/1.4 ui-monospace, Consolas, monospace; margin-top: 2px; }
+  .shape-card .desc { color: var(--muted); font-size: 12px; margin-top: 6px; }
+  .toggle { position: relative; width: 32px; height: 18px; border-radius: 999px; background: var(--accent); }
+  .toggle::after { content: ""; position: absolute; top: 2px; left: 16px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+  .modal > footer { padding: 10px 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: 11px; font-family: ui-monospace, Consolas, monospace; }
+
+  .view-win {
+    position: absolute;
+    left: 170px;
+    top: 90px;
+    width: 940px;
+    height: 540px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.6);
+    overflow: hidden;
+    opacity: 0;
+    z-index: 4;
+    display: flex;
+    flex-direction: column;
+  }
+  .view-win header { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .view-win header .glyph {
+    display: grid; place-items: center;
+    width: 34px; height: 34px; border-radius: 9px;
+    background: var(--accent-soft);
+    border: 1px solid rgba(110, 166, 255, 0.3);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .view-win header .t { font-size: 14px; font-weight: 600; }
+  .view-win header .s { color: var(--dim); font-size: 11px; }
+  .view-win header .x { margin-left: auto; color: var(--dim); font-size: 16px; }
+  .view-body { flex: 1; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .view-toolbar { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .kpi { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: rgba(255, 255, 255, 0.02); display: flex; align-items: baseline; gap: 8px; }
+  .kpi .v { font-size: 18px; font-weight: 600; }
+  .kpi .k { color: var(--dim); font-size: 11px; }
+  .note-card { border: 1px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; color: var(--muted); font-size: 12px; display: grid; gap: 2px; }
+  .note-card .nc-t { color: var(--text); font-size: 12px; font-weight: 600; }
+  .note-card .nc-d { color: var(--dim); font-size: 11.5px; }
+  .view-toolbar .btn { padding: 3px 10px; border: 1px solid var(--line-strong); border-radius: 7px; font-size: 11.5px; color: var(--text); }
+  .view-toolbar .spacer { flex: 1; }
+  .table { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .tr { display: grid; grid-template-columns: 1.4fr 1fr 1.6fr 0.8fr; gap: 10px; padding: 9px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); }
+  .tr:first-child { border-top: 0; }
+  .tr.head { color: var(--dim); font-size: 11px; background: rgba(255, 255, 255, 0.03); }
+  .tr .n { color: var(--text); }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; }
+  .badge .d { width: 6px; height: 6px; border-radius: 50%; }
+  .view-foot { margin-top: auto; color: var(--dim); font-size: 11px; }
+
+  /* S4 */
+  #s4 .inner { display: grid; justify-items: center; gap: 14px; text-align: center; }
+  #s4 h2 { margin: 0; font-size: 40px; font-weight: 600; letter-spacing: -0.02em; }
+  #s4 .install {
+    padding: 10px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font: 13px/1.5 ui-monospace, Consolas, monospace;
+    opacity: 0;
+  }
+  #s4 .install b { color: var(--accent); font-weight: 500; }
+  #s4 .line { color: var(--muted); font-size: 13px; opacity: 0; }
+
+  #cursor { position: absolute; left: 0; top: 0; width: 22px; height: 22px; opacity: 0; z-index: 50; }
+  #cursor svg { display: block; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.55)); }
+  #ripple {
+    position: absolute;
+    width: 26px; height: 26px;
+    margin: -13px 0 0 -13px;
+    border-radius: 50%;
+    border: 2px solid rgba(110, 166, 255, 0.85);
+    opacity: 0;
+    z-index: 49;
+  }
+  #fade {
+    position: absolute;
+    inset: 0;
+    background: #0b0d10;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 60;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- 1 · 片头 -->
+  <section class="scene" id="s1">
+    <div class="inner">
+      <div class="logo"><span></span><span></span><span></span><span></span></div>
+      <h1>dsh-shape</h1>
+      <p class="lead">dsh 插件的轻量化扩展，旨在<em>即时自定义界面和功能</em></p>
+      <div class="tags">
+        <span class="tag">一句话生成浮窗</span>
+        <span class="tag">快捷操作即开即用</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 共享背景：DSH 应用（第 2、3 段都在它上面叠加） -->
+  <div id="appLayer">
+    <div class="app">
+      <aside class="side">
+        <div class="brand"><i></i> DeepSeek Harness</div>
+        <div class="ws current"><span class="dot"></span> Workbench</div>
+        <div class="ws"><span class="folder"></span> dsh-plugins</div>
+        <div class="ws"><span class="folder"></span> deepseek-harness</div>
+      </aside>
+      <div class="main">
+        <div class="messages">
+          <div class="bubble user" id="askBubble">做一个 MCP 管理器浮窗</div>
+          <div class="bubble bot" id="madeBubble">已创建 shape <code>mcp-manager</code>，挂载到 <code>conversation.input.overlay</code> 浮层槽位。</div>
+        </div>
+        <div class="composer">
+          <div class="input-card">
+            <div class="text" id="composerText"><span id="typed"></span><span class="caret" id="caret"></span></div>
+            <div class="tools">
+              <span class="chip">模型</span>
+              <span class="chip">附件</span>
+              <div class="send" id="sendBtn"></div>
+            </div>
+          </div>
+          <div class="stats" id="stats">
+            <span class="pill"><span class="d"></span> 3 个 shape 已启用</span>
+          </div>
+        </div>
+        <div class="float-win" id="mcpWin">
+          <div class="bar"><span class="grip"></span><span>MCP 管理器</span><span class="x">×</span></div>
+          <div class="body">
+            <div class="mcp-row" id="row1"><span class="d" style="background:var(--success)"></span><span class="n">filesystem</span><span class="m">connected · 12 工具</span></div>
+            <div class="mcp-row"><span class="d" style="background:rgba(255,255,255,0.3)"></span><span class="n">playwright</span><span class="m">disabled</span></div>
+            <div class="mcp-row"><span class="d" style="background:var(--accent)"></span><span class="n">github</span><span class="m">workspace · 2 会话</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2 · 输入提示 → 生成 MCP 管理器浮窗 -->
+  <section class="scene" id="s2">
+    <div class="caption">输入一句话，直接生成可用的浮窗</div>
+  </section>
+
+  <!-- 3 · 快捷操作打开面板 → 进入 shape 界面 -->
+  <section class="scene" id="s3">
+    <div class="backdrop" id="s3Backdrop"></div>
+    <div class="modal" id="shapesPanel">
+      <header>
+        <h3>Shapes</h3>
+        <span class="hint"><span class="kbd" id="panelCtrl">Ctrl</span> + <span class="kbd" id="panelDot">.</span></span>
+      </header>
+      <div class="grid">
+        <article class="shape-card">
+          <div class="glyph">H</div>
+          <div>
+            <div class="name">Hello Shape</div>
+            <div class="id">hello</div>
+            <div class="desc">输入框上方的卡片与问候按钮</div>
+          </div>
+          <div class="toggle"></div>
+        </article>
+        <article class="shape-card">
+          <div class="glyph">W</div>
+          <div>
+            <div class="name">Workspace Tab Switch</div>
+            <div class="id">workspace-tab-switch</div>
+            <div class="desc">Ctrl+Tab 前后切换工作区</div>
+          </div>
+          <div class="toggle"></div>
+        </article>
+        <article class="shape-card">
+          <div class="glyph">C</div>
+          <div>
+            <div class="name">Context Panel</div>
+            <div class="id">context-panel</div>
+            <div class="desc">底栏按钮 + 小面板</div>
+          </div>
+          <div class="toggle"></div>
+        </article>
+        <article class="shape-card" id="mcpCard">
+          <div class="glyph">M</div>
+          <div>
+            <div class="name">MCP 管理器</div>
+            <div class="id">mcp-manager</div>
+            <div class="desc">打开即用的 MCP 服务器管理界面</div>
+          </div>
+          <div class="toggle"></div>
+        </article>
+      </div>
+      <footer>4 registered · ~/.dsh/dsh-shape/shapes</footer>
+    </div>
+
+    <div class="view-win" id="viewWin">
+      <header>
+        <div class="glyph">M</div>
+        <div>
+          <div class="t">MCP 管理器</div>
+          <div class="s">mcp-manager · views/index.html</div>
+        </div>
+        <span class="x">×</span>
+      </header>
+      <div class="view-body">
+        <div class="view-toolbar">
+          <span class="btn">刷新</span>
+          <span>3 个服务器 · 1 个已连接</span>
+          <span class="spacer"></span>
+          <span>上次读取 刚刚</span>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><span class="v">1</span><span class="k">已连接</span></div>
+          <div class="kpi"><span class="v">1</span><span class="k">工作区挂载</span></div>
+          <div class="kpi"><span class="v">1</span><span class="k">已禁用</span></div>
+        </div>
+        <div class="table">
+          <div class="tr head"><span>服务器</span><span>状态</span><span>说明</span><span>工具</span></div>
+          <div class="tr"><span class="n">filesystem</span><span class="badge"><span class="d" style="background:var(--success)"></span> connected</span><span>本地文件读写</span><span>12</span></div>
+          <div class="tr"><span class="n">playwright</span><span class="badge"><span class="d" style="background:rgba(255,255,255,0.3)"></span> disabled</span><span>浏览器自动化</span><span>0</span></div>
+          <div class="tr"><span class="n">github</span><span class="badge"><span class="d" style="background:var(--accent)"></span> workspace</span><span>工作区挂载 · 2 个会话</span><span>8</span></div>
+        </div>
+        <div class="note-card">
+          <span class="nc-t">工作区规则</span>
+          <span class="nc-d">E:/work/** · 2 个会话挂载了 github 服务器</span>
+        </div>
+        <div class="view-foot">这个界面由 shape 自己的 views/index.html 提供，面板点开即可使用。</div>
+      </div>
+    </div>
+    <div class="caption">Ctrl + . 打开面板，点开即用</div>
+  </section>
+
+  <!-- 4 · 片尾 -->
+  <section class="scene" id="s4">
+    <div class="inner">
+      <div class="logo"><span></span><span></span><span></span><span></span></div>
+      <h2>dsh-shape</h2>
+      <div class="install">dsh plugin --profile &lt;profile&gt; add <b>github:belowthetree/dsh-shape</b></div>
+      <div class="line">Shape Studio 预设 · 9 个会话槽位 · 能力注册表 · 浮窗吸附</div>
+    </div>
+  </section>
+
+  <div id="ripple"></div>
+  <div id="fade"></div>
+  <div id="cursor">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M4 2.5 L17 11 L10.8 12.2 L14 19 L11.4 20.2 L8.2 13.4 L4 17 Z" fill="#ffffff" stroke="#0b0d10" stroke-width="1.2" stroke-linejoin="round"/>
+    </svg>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const scenes = { s1: [0, 5000], s2: [5000, 16000], s3: [16000, 30500], s4: [30500, 36000] };
+  const PROMPT = '做一个 MCP 管理器浮窗';
+  const clamp01 = (x) => Math.min(1, Math.max(0, x));
+  const seg = (t, a, b) => clamp01((t - a) / (b - a));
+  const ease = (x) => (x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2);
+  const easeOut = (x) => 1 - Math.pow(1 - x, 3);
+  const lerp = (a, b, p) => a + (b - a) * p;
+  /** Viewport centre of one element; the stage sits at 0,0 so page and stage coordinates match. */
+  const centerOf = (el) => {
+    const rect = el.getBoundingClientRect();
+    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+  };
+  let cardPoint = null;
+
+  const cursor = $('cursor');
+  const ripple = $('ripple');
+  let cursorX = 0;
+  let cursorY = 0;
+  let cursorOpacity = 0;
+
+  function render(t) {
+    cursorOpacity = 0;
+    ripple.style.opacity = '0';
+
+    for (const [id, [start, end]] of Object.entries(scenes)) {
+      const el = $(id);
+      const fadeIn = seg(t, start, start + 380);
+      const fadeOut = 1 - seg(t, end - 340, end);
+      el.style.opacity = String(Math.min(fadeIn, fadeOut));
+      el.style.transform = `translateY(${(1 - easeOut(fadeIn)) * 14}px)`;
+    }
+
+    // 第 2、3 段共用 DSH 应用背景；第 3 段里它被遮罩压暗，模态窗浮在上面。
+    const appShown = seg(t, scenes.s2[0], scenes.s2[0] + 420) * (1 - seg(t, scenes.s3[1] - 420, scenes.s3[1]));
+    $('appLayer').style.opacity = String(appShown);
+
+    // ── 1 · 片头 ─────────────────────────────────────────────
+    if (t <= scenes.s1[1] + 200) {
+      const p = ease(seg(t, 200, 900));
+      $('s1').querySelector('h1').style.opacity = String(p);
+      $('s1').querySelector('h1').style.transform = `translateY(${(1 - p) * 10}px)`;
+      $('s1').querySelector('.lead').style.opacity = String(ease(seg(t, 550, 1250)));
+      $('s1').querySelector('.tags').style.opacity = String(ease(seg(t, 1000, 1700)));
+    }
+
+    // ── 2 · 输入提示 → 浮窗 ──────────────────────────────────
+    if (t >= scenes.s2[0] - 300 && t <= scenes.s2[1] + 200) {
+      const lt = t - scenes.s2[0];
+      const app = $('appLayer').querySelector('.app');
+      const appIn = easeOut(seg(lt, 60, 600));
+      app.style.transform = `translateY(${(1 - appIn) * 16}px) scale(${0.99 + appIn * 0.01})`;
+
+      // 打字
+      const typeStart = 700;
+      const perChar = 95;
+      const typedCount = Math.max(0, Math.min(PROMPT.length, Math.floor((lt - typeStart) / perChar)));
+      $('typed').textContent = lt > typeStart + PROMPT.length * perChar + 300 ? '' : PROMPT.slice(0, typedCount);
+      $('composerText').classList.toggle('typed', typedCount > 0);
+      const typing = lt > typeStart - 200 && lt < typeStart + PROMPT.length * perChar + 200;
+      $('caret').style.opacity = typing ? String(0.55 + 0.45 * Math.cos(lt / 90)) : '0';
+
+      // 发送
+      const sendAt = typeStart + PROMPT.length * perChar + 150;
+      $('sendBtn').classList.toggle('live', lt > sendAt - 200);
+      const sendPress = seg(lt, sendAt, sendAt + 220) * (1 - seg(lt, sendAt + 220, sendAt + 500));
+      $('sendBtn').style.transform = `scale(${1 - sendPress * 0.12})`;
+
+      // 提问气泡 + 生成结果
+      const askIn = easeOut(seg(lt, sendAt + 120, sendAt + 520));
+      $('askBubble').style.opacity = String(askIn);
+      $('askBubble').style.transform = `translateY(${(1 - askIn) * 8}px)`;
+      const madeIn = easeOut(seg(lt, sendAt + 900, sendAt + 1400));
+      $('madeBubble').style.opacity = String(madeIn);
+      $('madeBubble').style.transform = `translateY(${(1 - madeIn) * 8}px)`;
+
+      // 浮窗生成
+      const winIn = easeOut(seg(lt, sendAt + 1500, sendAt + 2100));
+      const glow = seg(lt, sendAt + 1500, sendAt + 1900) * (1 - seg(lt, sendAt + 2600, sendAt + 3200));
+      const win = $('mcpWin');
+      win.style.opacity = String(winIn);
+      win.style.transform = `translate(470px, 236px) scale(${0.94 + winIn * 0.06})`;
+      win.style.boxShadow = `0 18px 44px rgba(0,0,0,0.5), 0 0 0 ${1 + glow * 1.5}px rgba(110,166,255,${0.55 * glow})`;
+
+      // 状态行
+      const statsIn = ease(seg(lt, sendAt + 700, sendAt + 1100));
+      $('stats').style.opacity = String(statsIn);
+
+      // 光标移到浮窗上
+      const hover = ease(seg(lt, sendAt + 2400, sendAt + 3100));
+      if (hover > 0) {
+        const row = centerOf($('row1'));
+        cursorX = lerp(820, row.x, hover) + Math.sin(lt / 900) * 4;
+        cursorY = lerp(560, row.y, hover);
+        cursorOpacity = seg(lt, sendAt + 2400, sendAt + 2700);
+      }
+      const rowHover = seg(lt, sendAt + 2900, sendAt + 3300);
+      $('row1').style.background = `rgba(255, 255, 255, ${0.06 * rowHover})`;
+    }
+
+    // ── 3 · 面板 → shape 界面 ────────────────────────────────
+    if (t >= scenes.s3[0] - 300 && t <= scenes.s3[1] + 200) {
+      const lt = t - scenes.s3[0];
+
+      // 快捷键
+      const press = seg(lt, 300, 620) * (1 - seg(lt, 700, 950));
+      for (const id of ['panelCtrl', 'panelDot']) {
+        const el = $(id);
+        el.style.transform = `translateY(${press * 2}px)`;
+        el.style.background = `rgba(110,166,255,${0.18 * press})`;
+        el.style.borderColor = `rgba(110,166,255,${0.25 + 0.4 * press})`;
+      }
+
+      // 面板出现
+      const backIn = seg(lt, 500, 900);
+      $('s3Backdrop').style.opacity = String(backIn * 0.9);
+      const panelIn = easeOut(seg(lt, 620, 1200));
+      const panel = $('shapesPanel');
+      panel.style.opacity = String(panelIn);
+      panel.style.transform = `translateY(${(1 - panelIn) * 16}px) scale(${0.985 + panelIn * 0.015})`;
+
+      // 卡片入场
+      const cards = panel.querySelectorAll('.shape-card');
+      cards.forEach((card, i) => {
+        const p = easeOut(seg(lt, 800 + i * 80, 1200 + i * 80));
+        card.style.opacity = String(p);
+        card.style.transform = `translateY(${(1 - p) * 10}px)`;
+      });
+
+      // 光标 → MCP 卡片（按卡片实际位置对准）
+      if (cardPoint === null && lt > 1400) cardPoint = centerOf($('mcpCard'));
+      const toCard = ease(seg(lt, 1500, 2400));
+      if (lt > 1400) {
+        const target = cardPoint ?? centerOf($('mcpCard'));
+        cursorX = lerp(900, target.x, toCard);
+        cursorY = lerp(640, target.y, toCard);
+        cursorOpacity = seg(lt, 1400, 1700) * (1 - seg(lt, 4300, 4600));
+      }
+
+      // 点击 + 卡片高亮
+      const hover = seg(lt, 2300, 2550) * (1 - seg(lt, 2700, 2900));
+      const card = $('mcpCard');
+      card.style.boxShadow = `0 0 0 1px rgba(110,166,255,${0.6 * hover}), 0 10px 26px rgba(0,0,0,${0.35 * hover})`;
+      const click = seg(lt, 2600, 2980);
+      if (click > 0 && click < 1) {
+        ripple.style.opacity = String((1 - click) * 0.85);
+        ripple.style.transform = `scale(${0.4 + click * 1.8})`;
+        ripple.style.left = `${cursorX + 5}px`;
+        ripple.style.top = `${cursorY + 3}px`;
+      }
+
+      // 面板退场 → 界面打开
+      const panelOut = ease(seg(lt, 3100, 3500));
+      panel.style.opacity = String(panelIn * (1 - panelOut));
+      panel.style.transform = `translateY(${(1 - panelIn) * 16 - panelOut * 10}px) scale(${(0.985 + panelIn * 0.015) * (1 - panelOut * 0.02)})`;
+      $('s3Backdrop').style.opacity = String(backIn * (0.9 - 0.42 * seg(lt, 3900, 4300)));
+
+      const viewIn = easeOut(seg(lt, 3400, 4000));
+      const view = $('viewWin');
+      view.style.opacity = String(viewIn);
+      view.style.transform = `translateY(${(1 - viewIn) * 14}px) scale(${0.985 + viewIn * 0.015})`;
+
+      // 光标在界面里移动（对准 github 行）
+      const inView = ease(seg(lt, 4300, 5200));
+      if (lt > 4300) {
+        const rows = view.querySelectorAll('.tr');
+        const rowPoint = rows[3] !== undefined ? centerOf(rows[3]) : (cardPoint ?? { x: 880, y: 300 });
+        const from = cardPoint ?? rowPoint;
+        cursorX = lerp(from.x, rowPoint.x, inView) + Math.sin(lt / 1100) * 5;
+        cursorY = lerp(from.y, rowPoint.y, inView);
+        cursorOpacity = seg(lt, 4300, 4600) * (1 - seg(lt, 8000, 8400));
+      }
+      const rowHover = seg(lt, 6200, 6700);
+      const rows = view.querySelectorAll('.tr');
+      if (rows[3] !== undefined) rows[3].style.background = `rgba(110, 166, 255, ${0.10 * rowHover})`;
+      const refreshBtn = view.querySelector('.view-toolbar .btn');
+      if (refreshBtn !== null) refreshBtn.style.borderColor = `rgba(110, 166, 255, ${0.2 + 0.45 * rowHover})`;
+    }
+
+    // ── 4 · 片尾 ─────────────────────────────────────────────
+    if (t >= scenes.s4[0] - 300) {
+      const lt = t - scenes.s4[0];
+      const p = easeOut(seg(lt, 200, 900));
+      $('s4').querySelector('.logo').style.transform = `scale(${0.9 + p * 0.1})`;
+      $('s4').querySelector('.install').style.opacity = String(ease(seg(lt, 700, 1300)));
+      $('s4').querySelector('.line').style.opacity = String(ease(seg(lt, 1200, 1800)));
+    }
+
+    cursor.style.opacity = String(cursorOpacity);
+    cursor.style.transform = `translate(${cursorX}px, ${cursorY}px)`;
+    $('fade').style.opacity = String(Math.max(1 - seg(t, 0, 520), seg(t, 35400, 36000)));
+  }
+
+  window.__seek = (ms) => render(ms);
+  window.__duration = 36000;
+  render(0);
+})();
+</script>
+</body>
+</html>

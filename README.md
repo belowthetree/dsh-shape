@@ -2,6 +2,8 @@
 
 [中文](README.md) | [English](README.en.md)
 
+[![dsh-shape 海报](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
+
 dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面、聊天卡片和页面级快捷操作。
 
 ## 能做什么
@@ -16,6 +18,12 @@ dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面�
 - **能力目录**：可以查看当前有哪些 shape 可用能力、版本、用途、用法和 API 方法名
 - **即时生效**：新增或修改 shape 文件夹后刷新即可，不需要重启 DSH
 
+## 演示
+
+![dsh-shape 演示](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)
+
+36 秒功能演示：[1080p MP4](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4) · [演示源码与复现步骤](https://github.com/belowthetree/dsh-shape/tree/main/demo)
+
 ## Shape Studio 预设
 
 安装后新增 **Shape Studio** 预设，用于开发 shape 和扩展插件：
@@ -29,10 +37,20 @@ dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面�
 
 ## 安装
 
-- CLI：`dsh plugin --profile <profile> add github:belowthetree/dsh-shape`
+npm 包名：**`@belowthetree/dsh-shape`**
+
+```sh
+dsh plugin --profile <profile> add @belowthetree/dsh-shape
+```
+
+把 `<profile>` 换成要安装的 profile（如 `desktop`、`web`），然后重启该 profile。
+
+其他安装方式：
+
+- GitHub 仓库：`dsh plugin --profile <profile> add github:belowthetree/dsh-shape`
 - 本地开发：`dsh plugin --profile <profile> add link:/path/to/dsh-shape`
-- 也可以在 DSH 的插件管理器中安装 GitHub 仓库 `belowthetree/dsh-shape`
+- 插件管理器：在 DSH 的插件管理器中按包名 `@belowthetree/dsh-shape` 或仓库 `belowthetree/dsh-shape` 安装
 
-安装后重启对应的 DSH profile。要求 DSH `>= 0.2.2-rc.1`。
+要求 DSH `>= 0.2.2-rc.1`。安装后点击对话顶栏的 **Shapes**，或按 `Ctrl + .` 打开。
 
-启动后点击对话顶栏的 **Shapes**，或按 `Ctrl + .` 打开。
+> 从旧的无作用域包名 `dsh-shape` 升级：先 `dsh plugin --profile <profile> remove dsh-shape`，再按上面的命令安装，最后把 profile 的 `dsh.profile.bundles` 里的 `dsh-shape` 改成 `@belowthetree/dsh-shape`。

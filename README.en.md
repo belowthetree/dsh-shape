@@ -2,6 +2,8 @@
 
 [English](README.en.md) | [中文](README.md)
 
+[![dsh-shape poster](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
+
 dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and page-level shortcuts through shape folders.
 
 ## What it can do
@@ -16,6 +18,12 @@ dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and pa
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
 - **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
 
+## Demo
+
+![dsh-shape demo](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)
+
+36-second feature demo: [1080p MP4](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4) · [source and reproduction steps](https://github.com/belowthetree/dsh-shape/tree/main/demo)
+
 ## Shape Studio preset
 
 Installation adds the **Shape Studio** preset for developing shapes and extension plugins:
@@ -29,10 +37,20 @@ These tools and skills are visible only in Shape Studio; other presets never see
 
 ## Install
 
-- CLI: `dsh plugin --profile <profile> add github:belowthetree/dsh-shape`
+npm package: **`@belowthetree/dsh-shape`**
+
+```sh
+dsh plugin --profile <profile> add @belowthetree/dsh-shape
+```
+
+Replace `<profile>` with the profile to install into (`desktop`, `web`, …), then restart that profile.
+
+Other ways to install:
+
+- GitHub repository: `dsh plugin --profile <profile> add github:belowthetree/dsh-shape`
 - Local development: `dsh plugin --profile <profile> add link:/path/to/dsh-shape`
-- Or install the GitHub repository `belowthetree/dsh-shape` from DSH's plugin manager
+- Plugin manager: install by package name `@belowthetree/dsh-shape` or repository `belowthetree/dsh-shape`
 
-Restart the target DSH profile after installation. Requires DSH `>= 0.2.2-rc.1`.
+Requires DSH `>= 0.2.2-rc.1`. After startup, click **Shapes** in the conversation header or press `Ctrl + .`.
 
-After startup, click **Shapes** in the conversation header or press `Ctrl + .`.
+> Upgrading from the old unscoped `dsh-shape`: run `dsh plugin --profile <profile> remove dsh-shape`, install with the command above, then change `dsh-shape` to `@belowthetree/dsh-shape` in the profile's `dsh.profile.bundles`.
