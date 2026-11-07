@@ -30,6 +30,26 @@ export function activate(api) {
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
+- `api.panel(options)`: adds a panel to the left sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` selects it in the main area.
+
+## Panels
+
+```js
+export function activate(api) {
+  const panel = api.panel({
+    id: 'board',
+    title: '任务看板',
+    order: 30,
+    render: (container) => {
+      container.textContent = '看板内容'
+    },
+  })
+  api.shortcuts.register({ id: 'board', label: '打开看板', keys: 'Ctrl+Alt+B', run: () => panel.open() })
+  return () => panel.dispose()
+}
+```
+
+The panel id is namespaced as `shape:<shapeId>:<id>`, so two shapes can use the same local id. Registration is lazy: the sidebar entry appears as soon as the shape activates and disappears with it. `open()` throws when the host has no layout service.
 
 ## Mounts
 

@@ -20,7 +20,10 @@ import { createShapeRuntime } from './shape-runtime.ts'
 import { createShapeEvents } from './shape-events.ts'
 import { createShapeShortcuts } from './shortcut-commands.ts'
 import { createShapeSlots } from './slot-access.ts'
+import { createElement } from 'react'
 import { createShapeStorage } from './shape-storage.ts'
+import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
+import { setShapePanelOpener, shapePanels, subscribeShapePanels } from './shape-surfaces.ts'
 import { createUiControl } from './ui-control.ts'
 import { createWorkspaceSwitch } from './workspace.ts'
 
@@ -175,4 +178,43 @@ export function apply(ctx: Context): void {
       inject: () => ({ resolveShape, slot: spec.name }),
     }, ShapeSlotEntries))
   }
+
+  ctx.effect(() => {
+    setShapePanelOpener((id) => {
+      const layout = ctx.get('layout')
+      if (layout === undefined) throw new Error('dsh-shape: the layout service is unavailable in this host')
+      layout.selectPanel(id)
+    })
+    return () => { setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host') }) }
+  }, 'dsh-shape: panel opener')
+
+  const panelSlots = new Map<string, Array<() => void>>()
+  const syncPanels = (): void => {
+    const live = new Set(shapePanels().map(panel => panel.id))
+    for (const [id, disposers] of panelSlots) {
+      if (live.has(id)) continue
+      for (const off of disposers) off()
+      panelSlots.delete(id)
+    }
+    for (const panel of shapePanels()) {
+      if (panelSlots.has(panel.id)) continue
+      panelSlots.set(panel.id, [
+        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+          name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
+        }, ShapePanelEntry)),
+        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: panel.id }, () => createElement(ShapePanelBody, { panel }))),
+      ])
+    }
+  }
+  ctx.effect(() => {
+    syncPanels()
+    const off = subscribeShapePanels(syncPanels)
+    return () => {
+      off()
+      for (const disposers of panelSlots.values()) {
+        for (const dispose of disposers) dispose()
+      }
+      panelSlots.clear()
+    }
+  }, 'dsh-shape: shape panels')
 }

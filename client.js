@@ -2947,6 +2947,24 @@ window.__ModuleLoader__.load({
 							state.mounts.push(off);
 							return off;
 						},
+						panel(options) {
+						    const id = `shape:${shape.id}:${options.id}`;
+						    const off = registerShapePanel({
+						        shapeId: shape.id,
+						        id,
+						        title: options.title,
+						        order: options.order ?? 100,
+						        render: options.render,
+						    });
+						    state.mounts.push(off);
+						    return {
+						        id,
+						        open() {
+						            openShapePanel(id);
+						        },
+						        dispose: off,
+						    };
+						},
 						shortcuts: { register(binding) {
 							const specs = typeof binding.keys === "string" ? [binding.keys] : binding.keys;
 							const disposers = [];
@@ -2991,6 +3009,7 @@ window.__ModuleLoader__.load({
 								for (const off of state.shortcuts) off();
 								disposeShapeMounts(shape.id);
 								disposeShapeEvents(shape.id);
+								disposeShapePanels(shape.id);
 							}
 						});
 					} catch (cause) {
@@ -2998,6 +3017,7 @@ window.__ModuleLoader__.load({
 						for (const off of state.shortcuts) off();
 						disposeShapeMounts(shape.id);
 						disposeShapeEvents(shape.id);
+						disposeShapePanels(shape.id);
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
@@ -3858,6 +3878,120 @@ window.__ModuleLoader__.load({
 			return react_dom.createPortal(react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-surfaces.ts
+		/** Shape-owned surfaces that are not conversation slots: left sidebar panels. */
+		const panels = new Map();
+		const panelListeners = new Set();
+		let opener;
+		/**
+		 * Install the function that selects a panel in the main area.
+		 * @param open - receives a namespaced panel id.
+		 */
+		function setShapePanelOpener(open) {
+		    opener = open;
+		}
+		/**
+		 * Select one registered panel in the main area.
+		 * @param id - namespaced panel id.
+		 */
+		function openShapePanel(id) {
+		    if (opener === undefined)
+		        throw new Error('dsh-shape: panel opening is unavailable in this host');
+		    opener(id);
+		}
+		/**
+		 * Register one panel.
+		 * @param panel - panel definition.
+		 * @returns an idempotent disposer.
+		 */
+		function registerShapePanel(panel) {
+		    panels.set(panel.id, panel);
+		    notify();
+		    let disposed = false;
+		    return () => {
+		        if (disposed)
+		            return;
+		        disposed = true;
+		        if (panels.get(panel.id) === panel) {
+		            panels.delete(panel.id);
+		            notify();
+		        }
+		    };
+		}
+		/**
+		 * Read every registered panel.
+		 * @returns panels in registration order.
+		 */
+		function shapePanels() {
+		    return [...panels.values()];
+		}
+		/**
+		 * Observe panel registration changes.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapePanels(listener) {
+		    panelListeners.add(listener);
+		    return () => { panelListeners.delete(listener); };
+		}
+		/**
+		 * Remove every panel one shape owns.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapePanels(shapeId) {
+		    let changed = false;
+		    for (const [id, panel] of panels) {
+		        if (panel.shapeId !== shapeId)
+		            continue;
+		        panels.delete(id);
+		        changed = true;
+		    }
+		    if (changed)
+		        notify();
+		}
+		/**
+		 * Notify every observer.
+		 */
+		function notify() {
+		    for (const listener of panelListeners)
+		        listener();
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapePanelHost.tsx
+		/** Hosts for shape-owned left sidebar panels. */
+		const BODY = { display: 'block', width: '100%', height: '100%', overflow: 'auto' };
+		/** Panellist entries carry metadata only; the sidebar reads their options, not their DOM. */
+		function ShapePanelEntry() {
+		    return null;
+		}
+		/**
+		 * Render one shape panel body.
+		 * @param props.panel - panel registered by the shape.
+		 * @returns the panel container.
+		 */
+		function ShapePanelBody({ panel }) {
+		    const ref = react.useRef(null);
+		    react.useEffect(() => {
+		        const container = ref.current;
+		        if (container === null)
+		            return;
+		        let cleanup;
+		        try {
+		            const result = panel.render(container);
+		            if (typeof result === 'function')
+		                cleanup = result;
+		        }
+		        catch (cause) {
+		            console.warn('dsh-shape: panel render failed', cause);
+		        }
+		        return () => {
+		            cleanup?.();
+		            container.replaceChildren();
+		        };
+		    }, [panel]);
+		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-panel": panel.id, style: BODY });
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
@@ -3999,6 +4133,48 @@ window.__ModuleLoader__.load({
 				inject: () => ({ resolveShape, slot: spec.name })
 			}, spec.presentation === "overlay" ? ShapeOverlay : ShapeSlotEntries));
 		}
+		ctx.effect(() => {
+		    setShapePanelOpener((id) => {
+		        const layout = ctx.get('layout');
+		        if (layout === undefined)
+		            throw new Error('dsh-shape: the layout service is unavailable in this host');
+		        layout.selectPanel(id);
+		    });
+		    return () => { setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host'); }); };
+		}, 'dsh-shape: panel opener');
+		const panelSlots = new Map();
+		const syncPanels = () => {
+		    const live = new Set(shapePanels().map(panel => panel.id));
+		    for (const [id, disposers] of panelSlots) {
+		        if (live.has(id))
+		            continue;
+		        for (const off of disposers)
+		            off();
+		        panelSlots.delete(id);
+		    }
+		    for (const panel of shapePanels()) {
+		        if (panelSlots.has(panel.id))
+		            continue;
+		        panelSlots.set(panel.id, [
+		            ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+		                name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
+		            }, ShapePanelEntry)),
+		            ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: panel.id }, () => createElement(ShapePanelBody, { panel }))),
+		        ]);
+		    }
+		};
+		ctx.effect(() => {
+		    syncPanels();
+		    const off = subscribeShapePanels(syncPanels);
+		    return () => {
+		        off();
+		        for (const disposers of panelSlots.values()) {
+		            for (const dispose of disposers)
+		                dispose();
+		        }
+		        panelSlots.clear();
+		    };
+		}, 'dsh-shape: shape panels');
 		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;

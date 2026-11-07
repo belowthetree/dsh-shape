@@ -4,6 +4,7 @@ import type { ShapeCapabilityRegistry, ShapeRequirement } from '../capabilities.
 import { supportsShapeApiVersion } from '../capabilities.ts'
 import { disposeShapeMounts, isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
 import { disposeShapeEvents } from './shape-events.ts'
+import { disposeShapePanels, openShapePanel, registerShapePanel } from './shape-surfaces.ts'
 
 interface ShapeInfo {
   id: string
@@ -43,9 +44,41 @@ export interface ShapeClientApi {
     render: (container: HTMLElement) => (() => void) | void,
     options?: ShapePlacementOptions,
   ) => () => void
+  /**
+   * Contribute a left sidebar panel.
+   * @param options - panel id, title, order, and render callback.
+   * @returns a handle that opens the panel and releases it.
+   */
+  panel: (options: ShapePanelOptions) => ShapePanelHandle
   shortcuts: {
     register: (binding: ShapeShortcutBinding) => () => void
   }
+}
+
+/** Options accepted by `api.panel()`. */
+export interface ShapePanelOptions {
+  /** Panel id, namespaced per shape by the runtime. */
+  id: string
+  /** Sidebar label. */
+  title: string
+  /** Sidebar order; lower sorts first. */
+  order?: number
+  /**
+   * Render the panel body.
+   * @param container - element owned by the panel host.
+   * @returns an optional cleanup run before the container is dropped.
+   */
+  render: (container: HTMLElement) => (() => void) | void
+}
+
+/** Handle returned by `api.panel()`. */
+export interface ShapePanelHandle {
+  /** Namespaced panel id. */
+  readonly id: string
+  /** Select the panel in the main area. */
+  open: () => void
+  /** Remove the panel from the sidebar. */
+  dispose: () => void
 }
 
 interface ShapeModule {
@@ -241,6 +274,24 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
           state.mounts.push(off)
           return off
         },
+        panel(options) {
+          const id = `shape:${shape.id}:${options.id}`
+          const off = registerShapePanel({
+            shapeId: shape.id,
+            id,
+            title: options.title,
+            order: options.order ?? 100,
+            render: options.render,
+          })
+          state.mounts.push(off)
+          return {
+            id,
+            open() {
+              openShapePanel(id)
+            },
+            dispose: off,
+          }
+        },
         shortcuts: {
           register(binding) {
             const specs = typeof binding.keys === 'string' ? [binding.keys] : binding.keys
@@ -280,6 +331,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             for (const off of state.shortcuts) off()
             disposeShapeMounts(shape.id)
             disposeShapeEvents(shape.id)
+            disposeShapePanels(shape.id)
           },
         })
       } catch (cause) {
@@ -287,6 +339,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         for (const off of state.shortcuts) off()
         disposeShapeMounts(shape.id)
         disposeShapeEvents(shape.id)
+        disposeShapePanels(shape.id)
         state.cleanup?.()
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)
       }
