@@ -1,13 +1,14 @@
-# dsh-shape bundle: the Shape Studio agent preset and the shape surfaces.
+# dsh-shape bundle: the shape surfaces and the Shape Studio agent preset.
 #
-# The profile installs this package itself, so the patch only adds the preset:
-# a second row with the same id as the installed one would collide and drop the
-# whole insert block, taking the preset with it.
+# A bundle entry only applies this patch; it does not load the package itself,
+# so the patch inserts both the plugin row and the preset row.
 #
 # Shape Studio composes the ordinary coding tools and mounts two preset-local
 # plugins: shape tools and the bundled shape-development skill. Both register in
 # the preset scope, so other presets never see them.
 - insert:
+    - id: dsh-shape
+      name: '@belowthetree/dsh-shape'
     - id: preset-shape
       name: '@deepseek-ai/dsh-agent-preset'
       config:
