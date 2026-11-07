@@ -25,6 +25,31 @@ export function activate(api) {
 
 ## API
 
+| Call | Returns | Notes |
+| --- | --- | --- |
+| `api.shape` | `{ id, title, version }` | Identity of the running shape. |
+| `api.capabilities` | `Record<'plugin#capability', unknown>` | Every declared capability API. |
+| `api.require(plugin, capability)` | capability API | Throws when the shape did not declare it. |
+| `api.mount(slot, render, options?)` | disposer | One of the ten slots; `options` is `{ placement, snap }` for `conversation.input.overlay`. |
+| `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Left sidebar panel; `open()` selects it in the main area. |
+| `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
+| `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
+
+Capabilities are read with `api.require`, never off `api.capabilities` directly, so a missing declaration fails at the call site:
+
+| Capability | Methods |
+| --- | --- |
+| `dsh-shape#workspace` | `list` `current` `next` `previous` |
+| `dsh-shape#ui` | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` |
+| `dsh-shape#shortcuts` | `register` `list` |
+| `dsh-shape#slots` | `list` `mount` `entries` |
+| `dsh-shape#events` | `emit` `on` |
+| `dsh-shape#storage` | `get` `set` `remove` `keys` |
+| `dsh-shape#composer` | `getText` `setText` `insert` `submit` `sessionId` |
+| `dsh-shape#conversation` | `messages` `find` `reveal` `subscribe` |
+
+Details:
+
 - `api.shape`: `{ id, title, version }`.
 - `api.capabilities`: object keyed by `plugin#capability`, containing resolved API objects.
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
