@@ -65,6 +65,10 @@ jobs:
         if: steps.decide.outputs.state == 'new'
         run: node scripts/gen-capability-fallback.mjs --check
 
+      - name: Verify tool schemas stay inside the supported subset
+        if: steps.decide.outputs.state == 'new'
+        run: node scripts/check-tool-schemas.mjs
+
       - name: Publish to npm
         if: steps.decide.outputs.state == 'new'
         env:
