@@ -8,6 +8,40 @@
 
 `shape_validate` checks the manifest object, ABI, requirement fields and semver ranges, and reports warnings for missing `views/`/`slots/` directories. It does not execute client code or validate HTML.
 
+## Actions and `shape_test`
+
+Keep behavior that does not need the DOM in `actions.js` at the shape root, so it can be tested without a browser:
+
+```js
+// actions.js
+export const actions = {
+  summarize(servers) {
+    return `${servers.filter(server => server.connected).length}/${servers.length} 已连接`
+  },
+}
+
+export const tests = {
+  'summarize counts connected servers': ({ actions, assert }) => {
+    assert.equal(actions.summarize([{ connected: true }, { connected: false }]), '1/2 已连接')
+  },
+}
+```
+
+`client/index.js` binds those actions to capabilities:
+
+```js
+import { actions } from '../actions.js'
+
+export function activate(api) {
+  const shortcuts = api.require('dsh-shape', 'shortcuts')
+  return shortcuts.register({ id: 'summary', label: '显示 MCP 摘要', keys: 'Ctrl+Alt+M', run: () => actions.summarize(load()) })
+}
+```
+
+`shape_test` imports `actions.js`, runs every exported test with `{ actions, assert }`, and reports each result. `assert` provides `ok`, `equal`, and `deepEqual`. The module is imported as ESM, so the shape's `package.json` needs `"type": "module"` (`shape_scaffold` writes it).
+
+What stays manual: pressing the real combination inside DSH and watching the surface react. `shape_test` covers the action and the binding data, not the live keyboard path.
+
 ## UI checks
 
 - Open Shapes with `Ctrl + .`; the header button also opens it.

@@ -50,6 +50,87 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 
 - `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`; ABI metadata.
 - `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation. Switching also expands the target workspace group in the sidebar and scrolls it into view.
+- `dsh-shape#ui` version `1.0.0`; methods `openSession`, `openWorkspace`, `toggleSidebar`, `selectPanel`, `getTheme`, `setTheme`, `send`, `cancelTurn`, `notify`, `openShapeBrowser`; controls the DSH surface.
+- `dsh-shape#shortcuts` version `1.0.0`; methods `register`, `list`; registers DSH keyboard commands under the shape's own namespace.
+- `dsh-shape#slots` version `1.0.0`; methods `list`, `mount`, `entries`; discovers the conversation slots and renders into them.
+- `dsh-shape#events` version `1.0.0`; methods `emit`, `on`; a shared event bus between running shapes.
+- `dsh-shape#storage` version `1.0.0`; methods `get`, `set`, `remove`, `keys`; JSON files under the shape's own `data/` directory.
+
+### `dsh-shape#events`
+
+```js
+const events = api.require('dsh-shape', 'events')
+const off = events.on('mcp-manager/servers-changed', (payload) => {
+  render(payload)
+})
+events.emit('mcp-manager/servers-changed', { count: 3 })
+```
+
+Names are plain strings; namespace them by producer (`<producer>/<event>`) because every shape shares one bus. A throwing handler is contained and logged, and the remaining handlers still run. Subscriptions are released when the shape is disabled or reloaded, so the returned unsubscribe function is optional but recommended for early cleanup.
+
+### `dsh-shape#storage`
+
+```js
+const store = api.require('dsh-shape', 'storage')
+await store.set('collapsed', true)      // data/collapsed.json
+await store.get('collapsed')            // true
+await store.keys()                      // ['collapsed']
+await store.remove('collapsed')
+```
+
+Values are JSON-serializable and limited to 256 KB each; keys match `[a-z0-9][a-z0-9._-]{0,63}` and map to `data/<key>.json` inside the shape directory. The `data/` folder is created on first write and is not part of `shape_list`/`shape_inspect` inventory. Bundled shapes can be read but not written, and deleting the shape removes its data with the folder.
+
+### `dsh-shape#slots`
+
+```js
+const slots = api.require('dsh-shape', 'slots')
+slots.list()
+// [{ name: 'conversation.input.dock', presentation: 'card', available: true, mounts: 0, total: 1 }, …]
+
+const off = slots.mount('conversation.composer.dock', (container) => {
+  container.textContent = '3 个任务'
+})
+slots.entries('conversation.composer.dock') // 1
+```
+
+`list()` covers the nine supported slots and reports `presentation` (`card`, `strip`, `panel`, `inline`, `menu-row`), `available` (whether this host renders the slot), `mounts` (owned by this shape), and `total` (owned by every shape). `mount` accepts the same options as `api.mount`: `placement` (`anchored` by default, `floating` for `conversation.input.overlay`) and `snap`. Mounts made through the capability are disposed with the shape, alongside `api.mount` registrations.
+
+### `dsh-shape#shortcuts`
+
+```js
+const shortcuts = api.require('dsh-shape', 'shortcuts')
+const off = shortcuts.register({
+  id: 'toggle-panel',
+  label: '打开 MCP 管理器',
+  aliases: ['mcp'],
+  keys: 'Ctrl+Alt+M',
+  run: () => openPanel(),
+})
+```
+
+The command id becomes `shape:<shapeId>:<id>`. `keys` accepts `Ctrl`, `Alt`, `Shift`, `Meta`, and `Mod` (Meta on macOS, Control elsewhere) plus one letter, digit, `F1`–`F24`, or named key (`Esc`, `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, arrows, `/`, `,`, `.`, `;`, `'`, `[`, `]`, `\`, `` ` ``, `-`, `=`). Omit `keys` to register an unbound command. Commands run only outside editable regions; registration throws on duplicate ids and overlapping defaults.
+
+Because these are DSH commands rather than raw listeners, users can rebind them in Settings, they appear in the shortcut reference, and conflicts with other plugins are reported. `list()` returns this shape's catalog rows: `{ id, label, keys, modified, conflicts, issue }`.
+
+The older `api.shortcuts.register({ keys, run })` still exists as a low-level escape hatch: it installs a private `keydown` listener that ignores user rebinding, the settings page, and cross-plugin conflicts.
+
+### `dsh-shape#ui`
+
+```js
+const ui = api.require('dsh-shape', 'ui')
+ui.openSession(sessionId)        // show one Session
+await ui.openWorkspace(id)       // connect a Workspace and open its Session
+ui.toggleSidebar()               // collapse or expand the sidebar
+ui.selectPanel('settings')       // switch main panel; null returns to the Conversation
+ui.getTheme()                    // { id, preference }
+ui.setTheme('dark')              // switch the active theme
+await ui.send('hello')           // send a prompt into the scoped Session
+await ui.cancelTurn()            // cancel the in-flight turn
+ui.notify('构建完成', { tone: 'success', timeout: 2000 })
+ui.openShapeBrowser()            // raise the shape browser
+```
+
+`notify` accepts `tone` (`info`, `success`, `warn`, `error`) and `timeout` in milliseconds; toasts stack in the top-right corner and dismiss themselves. Methods backed by a Client service the host does not provide throw an error naming that service, so guard with `try`/`catch` when the shape must run on unknown hosts.
 
 `shape_capabilities` lists providers with qualified id, contract version, self-description, usage guidance, method names, and non-function field types. It is a discovery catalog, not a signature or validation contract; inspect provider source or use `cordis` for exact service behavior.
 

@@ -1582,6 +1582,20 @@ window.__ModuleLoader__.load({
 		 * @param slot - slot to read.
 		 * @returns a stable-ordered snapshot.
 		 */
+		/**
+		 * Remove every mount one shape owns, across all slots.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapeMounts(shapeId) {
+			for (const [slot, set] of mounts) {
+				for (const mount of [...set]) {
+					if (mount.shapeId !== shapeId) continue;
+					set.delete(mount);
+					notify(slot);
+				}
+			}
+		}
+
 		function shapeMounts(slot) {
 			return [...(mounts.get(slot) ?? [])];
 		}
@@ -2744,6 +2758,9 @@ window.__ModuleLoader__.load({
 					window.removeEventListener("keydown", onKeyDown);
 				};
 			}, []);
+			(0, react.useEffect)(() => subscribeShapeBrowser(() => {
+				setOpen(true);
+			}), []);
 			return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)(react_jsx_runtime.Fragment, { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				"data-testid": "dsh-shape-open",
 				size: "sm",
@@ -2765,6 +2782,20 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-runtime.ts
+		/**
+		 * Bind capability providers that expose a per-shape view to the receiving shape.
+		 * @param capabilities - resolved capability map.
+		 * @param shapeId - shape receiving the API.
+		 * @returns the map handed to that shape.
+		 */
+		function scopeCapabilities(capabilities, shape) {
+			const scoped = {};
+			for (const [key, value] of Object.entries(capabilities)) {
+				const provider = value;
+				scoped[key] = typeof provider?.forShape === "function" ? provider.forShape(shape.id, { title: shape.title }) : value;
+			}
+			return scoped;
+		}
 		const KEY_ALIASES = {
 			esc: "Escape",
 			space: " ",
@@ -2889,17 +2920,18 @@ window.__ModuleLoader__.load({
 						mounts: [],
 						cleanup: void 0
 					};
+					const scopedCapabilities = scopeCapabilities(resolution.capabilities, shape);
 					const api = {
 						shape: {
 							id: shape.id,
 							title: shape.title,
 							version: shape.version
 						},
-						capabilities: resolution.capabilities,
+						capabilities: scopedCapabilities,
 						require(plugin, capability) {
 							const key = `${plugin}#${capability}`;
-							if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`);
-							return resolution.capabilities[key];
+							if (!(key in scopedCapabilities)) throw new Error(`capability not declared: ${key}`);
+							return scopedCapabilities[key];
 						},
 						mount(slot, render, options) {
 							if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`);
@@ -2956,11 +2988,15 @@ window.__ModuleLoader__.load({
 								module.deactivate?.();
 								for (const off of state.mounts) off();
 								for (const off of state.shortcuts) off();
+								disposeShapeMounts(shape.id);
+								disposeShapeEvents(shape.id);
 							}
 						});
 					} catch (cause) {
 						for (const off of state.mounts) off();
 						for (const off of state.shortcuts) off();
+						disposeShapeMounts(shape.id);
+						disposeShapeEvents(shape.id);
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
@@ -3233,6 +3269,566 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/toast.ts
+		/** Toast layer for capability-driven notifications. */
+		const MAX_VISIBLE = 4;
+		const DEFAULT_TIMEOUT = 3200;
+		const CONTAINER_ID = 'dsh-shape-toasts';
+		const TONE_COLORS = {
+			info: 'var(--dsw-alias-brand-primary, #6ea6ff)',
+			success: 'var(--dsw-alias-status-success, #7dd3a7)',
+			warn: 'var(--dsw-alias-status-warning, #f0c36a)',
+			error: 'var(--dsw-alias-status-danger, #f2707a)',
+		};
+		const CONTAINER_STYLE = [
+			'position:fixed',
+			'top:16px',
+			'right:16px',
+			'display:grid',
+			'gap:8px',
+			'justify-items:end',
+			'max-width:min(360px, calc(100vw - 32px))',
+			'z-index:2147483000',
+			'pointer-events:none',
+		].join(';');
+		const TOAST_STYLE = [
+			'display:flex',
+			'align-items:flex-start',
+			'gap:8px',
+			'padding:8px 12px',
+			'border-radius:10px',
+			'border:1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.14))',
+			'background:var(--dsw-alias-bg-layer-2, #1b1d22)',
+			'color:var(--dsw-alias-label-primary, #e6edf3)',
+			'font-size:12.5px',
+			'line-height:1.5',
+			'box-shadow:0 10px 28px rgba(0, 0, 0, 0.35)',
+			'opacity:0',
+			'transform:translateY(-6px)',
+			'transition:opacity 160ms ease, transform 160ms ease',
+		].join(';');
+		let container = null;
+		const timers = new Set();
+		/**
+		 * Show one transient notification above the application surface.
+		 * @param text - message body.
+		 * @param options - tone and visibility duration.
+		 */
+		function showToast(text, options = {}) {
+			if (typeof document === 'undefined')
+				return;
+			const host = ensureContainer();
+			if (host === null)
+				return;
+			while (host.childElementCount >= MAX_VISIBLE) {
+				host.firstElementChild?.remove();
+			}
+			const tone = options.tone ?? 'info';
+			const toast = document.createElement('div');
+			toast.setAttribute('role', 'status');
+			toast.setAttribute('data-testid', 'dsh-shape-toast');
+			toast.style.cssText = TOAST_STYLE;
+			const dot = document.createElement('span');
+			dot.setAttribute('aria-hidden', 'true');
+			dot.style.cssText = [
+				'flex:none',
+				'width:7px',
+				'height:7px',
+				'margin-top:6px',
+				'border-radius:50%',
+				`background:${TONE_COLORS[tone] ?? TONE_COLORS.info}`,
+			].join(';');
+			const body = document.createElement('span');
+			body.style.cssText = 'min-width:0;overflow-wrap:anywhere';
+			body.textContent = text;
+			toast.append(dot, body);
+			host.append(toast);
+			requestAnimationFrame(() => {
+				toast.style.opacity = '1';
+				toast.style.transform = 'translateY(0)';
+			});
+			const timeout = Math.max(600, options.timeout ?? DEFAULT_TIMEOUT);
+			const timer = setTimeout(() => { dismiss(toast); }, timeout);
+			timers.add(timer);
+		}
+		/**
+		 * Remove every toast and the shared container.
+		 */
+		function disposeToasts() {
+			for (const timer of timers)
+				clearTimeout(timer);
+			timers.clear();
+			container?.remove();
+			container = null;
+		}
+		/**
+		 * Resolve the lazily created container, or null when the document cannot host it.
+		 * @returns the container element.
+		 */
+		function ensureContainer() {
+			if (container !== null && container.isConnected)
+				return container;
+			const existing = document.getElementById(CONTAINER_ID);
+			if (existing !== null) {
+				container = existing;
+				return container;
+			}
+			const created = document.createElement('div');
+			created.id = CONTAINER_ID;
+			created.style.cssText = CONTAINER_STYLE;
+			document.body.append(created);
+			container = created;
+			return container;
+		}
+		/**
+		 * Fade one toast out and drop it from the container.
+		 * @param toast - element to remove.
+		 */
+		function dismiss(toast) {
+			toast.style.opacity = '0';
+			toast.style.transform = 'translateY(-6px)';
+			setTimeout(() => {
+				toast.remove();
+				if (container !== null && container.childElementCount === 0) {
+					container.remove();
+					container = null;
+				}
+			}, 180);
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-browser.ts
+		/** Open-request bridge so capabilities can raise the shape browser. */
+		const browserListeners = new Set();
+		/**
+		 * Ask the mounted shape browser to open.
+		 */
+		function requestShapeBrowser() {
+			for (const listener of browserListeners)
+				listener();
+		}
+		/**
+		 * Observe open requests.
+		 * @param listener - invoked for every request.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeBrowser(listener) {
+			browserListeners.add(listener);
+			return () => { browserListeners.delete(listener); };
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ui-control.ts
+		/** Built-in UI control capability: navigation, panels, theme, conversation actions, and toasts. */
+		/**
+		 * Build the UI control capability.
+		 * @param ctx - Client context with layout, theme, conversation, and workspace services.
+		 * @returns the capability API.
+		 */
+		function createUiControl(ctx) {
+			ctx.effect(() => () => { disposeToasts(); }, 'dsh-shape: toast layer');
+			const layout = () => ctx.get('layout');
+			const theme = () => ctx.get('theme');
+			const conversation = () => ctx.get('conversation');
+			const requireLayout = () => {
+				const service = layout();
+				if (service === undefined)
+					throw unavailable('layout');
+				return service;
+			};
+			const requireTheme = () => {
+				const service = theme();
+				if (service === undefined)
+					throw unavailable('theme');
+				return service;
+			};
+			const requireConversation = () => {
+				const service = conversation();
+				if (service === undefined)
+					throw unavailable('conversation');
+				return service;
+			};
+			return {
+				openSession(id) {
+					ctx.uiWorkspace.openSession(id);
+				},
+				openWorkspace(id) {
+					return ctx.uiWorkspace.openWorkspace(id);
+				},
+				toggleSidebar() {
+					requireLayout().toggleSidebar();
+				},
+				selectPanel(id) {
+					requireLayout().selectPanel(id);
+				},
+				getTheme() {
+					const snapshot = requireTheme().getTheme();
+					return { id: snapshot.active.id, preference: snapshot.preference };
+				},
+				setTheme(id) {
+					requireTheme().setTheme(id);
+				},
+				send(text) {
+					return requireConversation().send(text);
+				},
+				cancelTurn() {
+					return requireConversation().cancel();
+				},
+				notify(text, options) {
+					showToast(text, options);
+				},
+				openShapeBrowser() {
+					requestShapeBrowser();
+				},
+			};
+		}
+		/**
+		 * Build the error raised when a host lacks the service behind one method.
+		 * @param service - missing Client service name.
+		 * @returns the error to throw.
+		 */
+		function unavailable(service) {
+			return new Error(`dsh-shape#ui: the ${service} service is unavailable in this host`);
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shortcut-commands.ts
+		/** Built-in shortcut capability: DSH commands that users can rebind. */
+		/** Every profile a default binding is expanded to. */
+		const PROFILES = [
+			'desktop:macos',
+			'desktop:windows',
+			'desktop:linux',
+			'web:macos',
+			'web:windows',
+			'web:linux',
+		];
+		/** Modifier spellings accepted in `keys`. */
+		const MODIFIERS = {
+			ctrl: 'control',
+			control: 'control',
+			alt: 'alt',
+			option: 'alt',
+			opt: 'alt',
+			shift: 'shift',
+			meta: 'meta',
+			cmd: 'meta',
+			command: 'meta',
+			super: 'meta',
+			win: 'meta',
+			mod: 'primary',
+			primary: 'primary',
+		};
+		/** Named keys accepted in `keys`; anything else must be a letter, digit, or F-key. */
+		const NAMED_CODES = {
+			esc: 'Escape',
+			escape: 'Escape',
+			space: 'Space',
+			tab: 'Tab',
+			enter: 'Enter',
+			return: 'Enter',
+			backspace: 'Backspace',
+			delete: 'Delete',
+			del: 'Delete',
+			up: 'ArrowUp',
+			down: 'ArrowDown',
+			left: 'ArrowLeft',
+			right: 'ArrowRight',
+			slash: 'Slash',
+			comma: 'Comma',
+			period: 'Period',
+			dot: 'Period',
+			backslash: 'Backslash',
+			backquote: 'Backquote',
+			minus: 'Minus',
+			equal: 'Equal',
+			bracketleft: 'BracketLeft',
+			bracketright: 'BracketRight',
+			semicolon: 'Semicolon',
+			quote: 'Quote',
+		};
+		/**
+		 * Build the shortcut capability provider.
+		 * @param ctx - Client context with the shortcuts service.
+		 * @returns the provider the runtime scopes per shape.
+		 */
+		function createShapeShortcuts(ctx) {
+			return {
+				forShape(shapeId) {
+					const prefix = `shape:${shapeId}:`;
+					const service = () => {
+						const shortcuts = ctx.get('shortcuts');
+						if (shortcuts === undefined) {
+							throw new Error('dsh-shape#shortcuts: the shortcuts service is unavailable in this host');
+						}
+						return shortcuts;
+					};
+					return {
+						register(command) {
+							if (!/^[a-z0-9][a-z0-9-]*$/.test(command.id)) {
+								throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`);
+							}
+							return service().register({
+								id: `${prefix}${command.id}`,
+								label: () => command.label,
+								aliases: command.aliases ?? [],
+								defaults: expandDefaults(command.keys),
+								regions: ['page'],
+								modals: [],
+								resolve: () => ({
+									status: 'handled',
+									run: () => { void runAction(command.run); },
+								}),
+							});
+						},
+						list() {
+							return service().catalog.getSnapshot()
+								.filter(entry => entry.id.startsWith(prefix))
+								.map(entry => ({
+								id: entry.id.slice(prefix.length),
+								label: entry.label,
+								keys: entry.keys,
+								modified: entry.modified,
+								conflicts: entry.conflicts.map(value => String(value)),
+								issue: entry.issue,
+							}));
+						},
+					};
+				},
+			};
+		}
+		/**
+		 * Expand one combination into the same default for every profile.
+		 * @param spec - combination such as `Ctrl+Alt+M`, or undefined for no default.
+		 * @returns defaults keyed by profile.
+		 */
+		function expandDefaults(spec) {
+			if (spec === undefined)
+				return {};
+			const binding = parseBinding(spec);
+			const defaults = {};
+			for (const profile of PROFILES)
+				defaults[profile] = binding;
+			return defaults;
+		}
+		/**
+		 * Parse `Modifier+…+Key` into a physical binding.
+		 * @param spec - combination text.
+		 * @returns the binding to register as a default.
+		 */
+		function parseBinding(spec) {
+			const parts = spec.split('+').map(part => part.trim()).filter(part => part.length > 0);
+			const key = parts.pop();
+			if (key === undefined)
+				throw new Error(`empty shortcut: "${spec}"`);
+			const modifiers = [];
+			for (const part of parts) {
+				const modifier = MODIFIERS[part.toLowerCase()];
+				if (modifier === undefined)
+					throw new Error(`unknown modifier "${part}" in "${spec}"`);
+				modifiers.push(modifier);
+			}
+			return { code: codeOf(key, spec), modifiers };
+		}
+		/**
+		 * Map a key name to the physical code the shortcut registry accepts.
+		 * @param key - key token from the combination.
+		 * @param spec - original combination, for error messages.
+		 * @returns physical code.
+		 */
+		function codeOf(key, spec) {
+			if (/^[a-z]$/i.test(key))
+				return `Key${key.toUpperCase()}`;
+			if (/^[0-9]$/.test(key))
+				return `Digit${key}`;
+			if (/^f([1-9]|1[0-9]|2[0-4])$/i.test(key))
+				return key.toUpperCase();
+			const named = NAMED_CODES[key.toLowerCase()];
+			if (named !== undefined)
+				return named;
+			throw new Error(`unknown key "${key}" in "${spec}"`);
+		}
+		/**
+		 * Run a shape action and contain its failure.
+		 * @param run - action to invoke.
+		 * @returns completion after the action settles.
+		 */
+		async function runAction(run) {
+			try {
+				await run();
+			}
+			catch (cause) {
+				console.warn('dsh-shape: shortcut failed', cause);
+			}
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/slot-access.ts
+		/** Built-in slot capability: discover slots, mount into them, and count mounts. */
+		/**
+		 * Build the slot capability provider.
+		 * @param ctx - Client context with the slots service.
+		 * @returns the provider the runtime scopes per shape.
+		 */
+		function createShapeSlots(ctx) {
+			return {
+				forShape(shapeId, info) {
+					const title = info?.title ?? shapeId;
+					const owned = (slot) => shapeMounts(slot).filter(mount => mount.shapeId === shapeId).length;
+					return {
+						list() {
+							return SHAPE_SLOTS.map(spec => ({
+								name: spec.name,
+								presentation: spec.presentation,
+								available: rendered(spec.name),
+								mounts: owned(spec.name),
+								total: shapeMounts(spec.name).length,
+							}));
+						},
+						mount(slot, render, options) {
+							if (!isShapeSlot(slot))
+								throw new Error(`unsupported shape slot: ${slot}`);
+							return registerShapeMount({
+								slot,
+								shapeId,
+								title,
+								placement: options?.placement === 'floating' ? 'floating' : 'anchored',
+								snap: options?.snap !== false,
+								render,
+							});
+						},
+						entries(slot) {
+							if (!isShapeSlot(slot))
+								throw new Error(`unsupported shape slot: ${slot}`);
+							return owned(slot);
+						},
+					};
+				},
+			};
+			/**
+			 * Report whether this host renders a slot.
+			 * @param slot - supported slot name.
+			 * @returns true when at least one entry is registered for the slot.
+			 */
+			function rendered(slot) {
+				const entries = ctx.slots.entries;
+				return entries(slot).length > 0;
+			}
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-events.ts
+		/** Built-in event capability: one shared bus with per-shape subscription cleanup. */
+		const subscriptions = new Map();
+		/**
+		 * Build the event capability provider.
+		 * @returns the provider the runtime scopes per shape.
+		 */
+		function createShapeEvents() {
+			return {
+				forShape(shapeId) {
+					return {
+						emit(type, payload) {
+							assertType(type);
+							for (const subscription of subscriptions.get(type) ?? []) {
+								try {
+									subscription.handler(payload);
+								}
+								catch (cause) {
+									console.warn(`dsh-shape: event handler failed (${type})`, cause);
+								}
+							}
+						},
+						on(type, handler) {
+							assertType(type);
+							if (typeof handler !== 'function')
+								throw new Error('dsh-shape#events: handler must be a function');
+							const subscription = { shapeId, handler };
+							let set = subscriptions.get(type);
+							if (set === undefined) {
+								set = new Set();
+								subscriptions.set(type, set);
+							}
+							set.add(subscription);
+							return () => {
+								set.delete(subscription);
+								if (set.size === 0)
+									subscriptions.delete(type);
+							};
+						},
+					};
+				},
+			};
+		}
+		/**
+		 * Release every subscription one shape owns.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapeEvents(shapeId) {
+			for (const [type, set] of subscriptions) {
+				for (const subscription of [...set]) {
+					if (subscription.shapeId !== shapeId)
+						continue;
+					set.delete(subscription);
+				}
+				if (set.size === 0)
+					subscriptions.delete(type);
+			}
+		}
+		/**
+		 * Reject event names that cannot be matched or are unusable as keys.
+		 * @param type - candidate event name.
+		 */
+		function assertType(type) {
+			if (typeof type !== 'string' || !/^[a-z0-9][a-z0-9./-]*$/i.test(type) || type.length > 80) {
+				throw new Error(`dsh-shape#events: invalid event type: ${String(type)}`);
+			}
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-storage.ts
+		/** Built-in storage capability: per-shape JSON files under the shape's `data/` directory. */
+		const ENDPOINT = '/dsh-shape/api/data';
+		/**
+		 * Build the storage capability provider.
+		 * @returns the provider the runtime scopes per shape.
+		 */
+		function createShapeStorage() {
+			return {
+				forShape(shapeId) {
+					return {
+						async get(key) {
+							const body = await request({ id: shapeId, op: 'get', key });
+							return (body.value ?? null);
+						},
+						async set(key, value) {
+							await request({ id: shapeId, op: 'set', key, value });
+						},
+						async remove(key) {
+							await request({ id: shapeId, op: 'remove', key });
+						},
+						async keys() {
+							const body = await request({ id: shapeId, op: 'keys' });
+							return body.keys ?? [];
+						},
+					};
+				},
+			};
+		}
+		/**
+		 * Call the host data endpoint.
+		 * @param payload - shape id, operation, and arguments.
+		 * @returns the response body.
+		 */
+		async function request(payload) {
+			const response = await fetch(ENDPOINT, {
+				method: 'POST',
+				credentials: 'same-origin',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(payload),
+			});
+			const body = await response.json().catch(() => null);
+			if (!response.ok || body?.ok !== true) {
+				const message = body?.error?.message ?? `request failed (${String(response.status)})`;
+				throw new Error(`dsh-shape#storage: ${message}`);
+			}
+			return body;
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
@@ -3248,9 +3844,12 @@ window.__ModuleLoader__.load({
 		*/
 		function describeApi(api) {
 			const record = typeof api === "object" && api !== null ? api : {};
+			// Providers with a per-shape view describe the view the shape actually receives.
+			const scoped = typeof record.forShape === "function" ? record.forShape("shape") : record;
+			const view = typeof scoped === "object" && scoped !== null ? scoped : {};
 			const methods = [];
 			const fields = [];
-			for (const [key, value] of Object.entries(record)) if (typeof value === "function") methods.push(key);
+			for (const [key, value] of Object.entries(view)) if (typeof value === "function") methods.push(key);
 			else fields.push(`${key}:${typeof value}`);
 			return {
 				methods: methods.sort(),
@@ -3307,6 +3906,51 @@ window.__ModuleLoader__.load({
 				usage: "Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace's most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.",
 				api: createWorkspaceSwitch(ctx)
 			}), "dsh-shape: workspace capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "ui",
+				version: "1.0.0",
+				description: "Control the DSH surface: navigate Sessions and Workspaces, toggle panels, read and switch the theme, send or cancel turns, show toasts, and open the shape browser.",
+				usage: "openSession(id) and openWorkspace(id) navigate; toggleSidebar() and selectPanel(id|null) move the layout; getTheme() returns { id, preference } and setTheme(id) switches it; send(text) and cancelTurn() act on the scoped Session; notify(text, { tone, timeout }) shows a toast; openShapeBrowser() raises the shape browser. Methods throw when the host lacks the underlying service.",
+				api: createUiControl(ctx)
+			}), "dsh-shape: ui capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "shortcuts",
+				version: "1.0.0",
+				description: "Register DSH keyboard commands that users can rebind, so shape actions appear in the shortcut settings and reference.",
+				usage: "register({ id, label, aliases, keys, run }) registers one command as shape:<shapeId>:<id>; keys is a combination such as \"Ctrl+Alt+M\" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape's catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.",
+				api: createShapeShortcuts(ctx)
+			}), "dsh-shape: shortcuts capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "slots",
+				version: "1.0.0",
+				description: "Discover the conversation slots this host renders, mount into them, and count the mounts a shape owns.",
+				usage: "list() returns every supported slot with its presentation, whether this host renders it, and how many mounts this shape and all shapes own. mount(slot, render, options) renders into a slot and returns a disposer; options.placement is anchored (default) or floating for conversation.input.overlay, and options.snap defaults to true. entries(slot) returns how many mounts this shape owns in that slot.",
+				api: createShapeSlots(ctx)
+			}), "dsh-shape: slots capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "events",
+				version: "1.0.0",
+				description: "Publish and subscribe to events shared by every running shape.",
+				usage: "emit(type, payload) publishes to every subscriber; on(type, handler) subscribes and returns an unsubscribe function. Names are plain strings namespaced by convention, for example \"mcp-manager/servers-changed\". Handler failures are contained and logged. A shape's subscriptions are released when it is disabled or reloaded.",
+				api: createShapeEvents()
+			}), "dsh-shape: events capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "storage",
+				version: "1.0.0",
+				description: "Persist JSON values in the shape's own data/ directory.",
+				usage: "get(key) returns the stored value or null; set(key, value) writes JSON; remove(key) deletes; keys() lists stored keys. Keys match [a-z0-9][a-z0-9._-]{0,63} and each value is limited to 256 KB. Files live under the shape directory as data/<key>.json; bundled shapes are read-only.",
+				api: createShapeStorage()
+			}), "dsh-shape: storage capability");
 			capabilities.subscribe(() => {
 				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
 				syncCapabilities(capabilities);

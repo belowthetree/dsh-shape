@@ -16,6 +16,7 @@ dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面�
 - **删除 shape**：卡片右上角的删除按钮，确认后把该 shape 目录从磁盘移除
 - **能力依赖**：shape 声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
 - **能力目录**：可以查看当前有哪些 shape 可用能力、版本、用途、用法和 API 方法名
+- **内置能力**：`dsh-shape#workspace` 切换工作区，`dsh-shape#ui` 控制界面——导航会话/工作区、收起侧栏、切换主面板与主题、发送或取消对话、弹出通知、打开 Shapes 面板；`dsh-shape#shortcuts` 把 shape 的快捷操作注册成可在设置里重绑的 DSH 命令；`dsh-shape#slots` 查询槽位、运行时挂载并统计占用；`dsh-shape#events` 在 shape 之间收发事件；`dsh-shape#storage` 把 JSON 数据存在 shape 目录的 `data/` 下
 - **即时生效**：新增或修改 shape 文件夹后刷新即可，不需要重启 DSH
 
 ## 演示

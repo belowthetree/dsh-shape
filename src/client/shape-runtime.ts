@@ -2,7 +2,8 @@
 
 import type { ShapeCapabilityRegistry, ShapeRequirement } from '../capabilities.ts'
 import { supportsShapeApiVersion } from '../capabilities.ts'
-import { isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
+import { disposeShapeMounts, isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
+import { disposeShapeEvents } from './shape-events.ts'
 
 interface ShapeInfo {
   id: string
@@ -50,6 +51,26 @@ export interface ShapeClientApi {
 interface ShapeModule {
   activate?: (api: ShapeClientApi) => void | (() => void) | { dispose?: () => void }
   deactivate?: () => void
+}
+
+/**
+ * Bind capability providers that expose a per-shape view to the receiving shape.
+ * @param capabilities - resolved capability map.
+ * @param shapeId - shape receiving the API.
+ * @returns the map handed to that shape.
+ */
+function scopeCapabilities(
+  capabilities: Readonly<Record<string, unknown>>,
+  shape: { id: string; title: string },
+): Record<string, unknown> {
+  const scoped: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(capabilities)) {
+    const provider = value as { forShape?: (id: string, info: { title: string }) => unknown } | null
+    scoped[key] = typeof provider?.forShape === 'function'
+      ? provider.forShape(shape.id, { title: shape.title })
+      : value
+  }
+  return scoped
 }
 
 interface ParsedShortcut {
@@ -198,13 +219,14 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         mounts: [] as Array<() => void>,
         cleanup: undefined as (() => void) | undefined,
       }
+      const scopedCapabilities = scopeCapabilities(resolution.capabilities, shape)
       const api: ShapeClientApi = {
         shape: { id: shape.id, title: shape.title, version: shape.version },
-        capabilities: resolution.capabilities,
+        capabilities: scopedCapabilities,
         require(plugin, capability) {
           const key = `${plugin}#${capability}`
-          if (!(key in resolution.capabilities)) throw new Error(`capability not declared: ${key}`)
-          return resolution.capabilities[key]
+          if (!(key in scopedCapabilities)) throw new Error(`capability not declared: ${key}`)
+          return scopedCapabilities[key]
         },
         mount(slot, render, options) {
           if (!isShapeSlot(slot)) throw new Error(`unsupported shape slot: ${slot}`)
@@ -256,11 +278,15 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             module.deactivate?.()
             for (const off of state.mounts) off()
             for (const off of state.shortcuts) off()
+            disposeShapeMounts(shape.id)
+            disposeShapeEvents(shape.id)
           },
         })
       } catch (cause) {
         for (const off of state.mounts) off()
         for (const off of state.shortcuts) off()
+        disposeShapeMounts(shape.id)
+        disposeShapeEvents(shape.id)
         state.cleanup?.()
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)
       }

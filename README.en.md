@@ -16,6 +16,7 @@ dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and pa
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their slot entries
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
+- **Built-in capabilities**: `dsh-shape#workspace` switches workspaces; `dsh-shape#ui` controls the surface — navigate Sessions and Workspaces, toggle the sidebar, switch main panels and themes, send or cancel turns, raise toasts, and open the Shapes browser; `dsh-shape#shortcuts` registers shape actions as DSH commands that users can rebind in Settings; `dsh-shape#slots` discovers slots, mounts into them at runtime, and counts occupancy; `dsh-shape#events` shares events between shapes; `dsh-shape#storage` persists JSON under the shape's own `data/` directory
 - **Instant updates**: add or edit a shape folder and refresh; no DSH restart is needed
 
 ## Demo

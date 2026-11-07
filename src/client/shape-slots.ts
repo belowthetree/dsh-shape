@@ -128,6 +128,20 @@ export function registerShapeMount(mount: ShapeMount): () => void {
 }
 
 /**
+ * Remove every mount one shape owns, across all slots.
+ * @param shapeId - owning shape.
+ */
+export function disposeShapeMounts(shapeId: string): void {
+  for (const [slot, set] of mounts) {
+    for (const mount of [...set]) {
+      if (mount.shapeId !== shapeId) continue
+      set.delete(mount)
+      notify(slot)
+    }
+  }
+}
+
+/**
  * Read the mounts of one slot.
  * @param slot - slot to read.
  * @returns a stable-ordered snapshot.

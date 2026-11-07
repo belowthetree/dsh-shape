@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ShapeResolverInjected } from '../capabilities.ts'
 import { ShapeDialog } from './ShapeDialog.tsx'
+import { subscribeShapeBrowser } from './shape-browser.ts'
 
 /**
  * Render the header action and own the dialog's open state.
@@ -24,6 +25,8 @@ export function ShapeButton({ resolveShape }: ShapeResolverInjected) {
     window.addEventListener('keydown', onKeyDown)
     return () => { window.removeEventListener('keydown', onKeyDown) }
   }, [])
+
+  useEffect(() => subscribeShapeBrowser(() => { setOpen(true) }), [])
 
   return (
     <>

@@ -14,6 +14,8 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 - `views/`: static HTML/CSS/JS rendered in a second modal iframe.
 - `slots/*.json`: chat composer cards; only `conversation.input.dock` is rendered.
 - `client/index.js`: page-level `activate(api)` behavior, including shortcuts.
+- `actions.js`: DOM-free actions and their tests, run by `shape_test`.
+- `data/`: JSON values written through `dsh-shape#storage`; created on first write and read-only for bundled shapes.
 - `tools/`: declared files are listed and inspected, but not executed.
 - `package.json` `shape` block: ABI and capability requirements.
 

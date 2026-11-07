@@ -10,8 +10,9 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
    - `views/index.html`: content rendered in the Shape browser's second modal.
    - `slots/chat-card.json`: a card above the chat composer.
    - `client/index.js`: page-level behavior such as shortcuts, using declared capabilities.
+   - `actions.js`: DOM-free behavior plus `tests`, so `shape_test` can run it without a browser.
    - `tools/`: metadata only today; do not assume these tools execute.
-4. Scaffold a new shape with `shape_scaffold`, then edit the generated files.
+4. Scaffold a new shape with `shape_scaffold`, then edit the generated files. Pass `withActions` to get an `actions.js` with one passing test.
 5. Declare dependencies in `package.json`:
 
 ```json
@@ -24,20 +25,25 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
   "shape": {
     "apiVersion": 1,
     "requires": [
-      { "plugin": "dsh-shape", "capability": "core", "version": "^1.0.0" }
+      { "plugin": "dsh-shape", "capability": "core", "version": "^1.0.0" },
+      { "plugin": "dsh-shape", "capability": "workspace", "version": "^1.0.0" },
+      { "plugin": "dsh-shape", "capability": "shortcuts", "version": "^1.0.0" }
     ]
   }
 }
 ```
 
-Capabilities are identified by `plugin#capability`; never use an unqualified name. Use `optional: true` only when the shape remains useful without the capability. The built-in `dsh-shape#workspace` capability exposes `list()`, `current()`, `next()`, and `previous()`; switching also expands the target workspace group in the sidebar and scrolls it into view.
+Capabilities are identified by `plugin#capability`; never use an unqualified name. Use `optional: true` only when the shape remains useful without the capability. The built-in `dsh-shape#workspace` capability exposes `list()`, `current()`, `next()`, and `previous()`; switching also expands the target workspace group in the sidebar and scrolls it into view. The built-in `dsh-shape#ui` capability controls the surface: `openSession`, `openWorkspace`, `toggleSidebar`, `selectPanel`, `getTheme`, `setTheme`, `send`, `cancelTurn`, `notify`, and `openShapeBrowser`. The built-in `dsh-shape#shortcuts` capability registers DSH commands (`register`, `list`) that users can rebind in Settings instead of private key listeners. The built-in `dsh-shape#slots` capability lists the nine slots (`list`), renders into them (`mount`), and counts a shape's mounts (`entries`). `dsh-shape#events` shares `emit`/`on` events between running shapes, and `dsh-shape#storage` persists JSON under the shape's own `data/` directory.
 
 6. For a client module, export `activate(api)` and return a cleanup function:
 
 ```js
 export function activate(api) {
   const workspace = api.require('dsh-shape', 'workspace')
-  const off = api.shortcuts.register({
+  const shortcuts = api.require('dsh-shape', 'shortcuts')
+  const off = shortcuts.register({
+    id: 'next-workspace',
+    label: 'Next workspace',
     keys: 'Ctrl+Alt+ArrowRight',
     run: () => workspace.next(),
   })
@@ -45,10 +51,11 @@ export function activate(api) {
 }
 ```
 
-Use `api.shape`, `api.capabilities`, `api.require(plugin, capability)`, and `api.shortcuts.register(...)`. A shape whose requirements or `apiVersion` are not satisfied is never imported.
+Use `api.shape`, `api.capabilities`, `api.require(plugin, capability)`, `api.mount(...)`, and the capabilities above. A shape whose requirements or `apiVersion` are not satisfied is never imported.
 
 7. Run `shape_validate` and fix every error before testing.
-8. Test in the app: open Shapes with `Ctrl+.`, open the shape's view, exercise its chat card and shortcuts, and toggle it off to confirm all client registrations are removed.
+8. Run `shape_test` after changing `actions.js`; it runs every exported test without a browser and reports failures with messages.
+9. Test in the app: open Shapes with `Ctrl+.`, open the shape's view, exercise its chat card and shortcuts, and toggle it off to confirm all client registrations are removed.
 
 ## Extension plugins
 

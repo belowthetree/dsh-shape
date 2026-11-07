@@ -6,7 +6,7 @@
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export const name = 'dsh-shape-tools'
 export const inject = ['tools']
@@ -278,6 +278,7 @@ async function scaffold(args, root) {
   const manifest = {
     name: args.id,
     version: '0.1.0',
+    type: 'module',
     title: args.title,
     description: args.description,
     output: 'text',
@@ -309,6 +310,28 @@ async function scaffold(args, root) {
 `)
     files.push('client/index.js')
   }
+  if (args.withActions === true) {
+    await writeFile(path.join(dir, 'actions.js'), `/** DOM-free actions and their tests; run them with shape_test. */
+
+export const actions = {
+  /**
+   * Return its input unchanged.
+   * @param input - caller-provided value.
+   * @returns the same value.
+   */
+  echo(input) {
+    return input
+  },
+}
+
+export const tests = {
+  'echo returns its input': ({ actions, assert }) => {
+    assert.equal(actions.echo('ok'), 'ok')
+  },
+}
+`)
+    files.push('actions.js')
+  }
   return { path: dir, files }
 }
 
@@ -329,6 +352,96 @@ async function validate(id, roots) {
     warnings: result.warnings ?? [],
     requirements: result.requirements ?? [],
   }
+}
+
+/** Assertions available to shape tests. */
+const TEST_ASSERT = {
+  /**
+   * Fail when the value is falsy.
+   * @param value - value under test.
+   * @param message - failure message.
+   */
+  ok(value, message = 'expected a truthy value') {
+    if (!value) throw new Error(message)
+  },
+  /**
+   * Fail when the values differ under `Object.is`.
+   * @param actual - produced value.
+   * @param expected - expected value.
+   * @param message - failure message.
+   */
+  equal(actual, expected, message) {
+    if (!Object.is(actual, expected)) {
+      throw new Error(message ?? `expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`)
+    }
+  },
+  /**
+   * Fail when the JSON projections differ.
+   * @param actual - produced value.
+   * @param expected - expected value.
+   * @param message - failure message.
+   */
+  deepEqual(actual, expected, message) {
+    const left = JSON.stringify(actual)
+    const right = JSON.stringify(expected)
+    if (left !== right) throw new Error(message ?? `expected ${right}, received ${left}`)
+  },
+}
+
+/**
+ * Read one failure as text.
+ * @param cause - thrown value.
+ * @returns message text.
+ */
+function messageOf(cause) {
+  return cause instanceof Error ? cause.message : String(cause)
+}
+
+/**
+ * Run the tests a shape exports from its actions module.
+ * @param id - shape id.
+ * @param roots - source roots in precedence order.
+ * @returns test results.
+ */
+async function testShape(id, roots) {
+  if (!SHAPE_ID.test(id)) throw new Error('shape id must be lowercase letters, digits, and hyphens')
+  const found = await findShape(id, roots)
+  if (found === undefined) throw new Error(`shape not found: ${id}`)
+  const file = path.join(found.dir, 'actions.js')
+  try {
+    await stat(file)
+  } catch {
+    return { ok: true, shape: id, note: 'no actions.js; nothing to test', results: [] }
+  }
+
+  let module
+  try {
+    module = await import(`${pathToFileURL(file).href}?v=${String(Date.now())}`)
+  } catch (cause) {
+    return { ok: false, shape: id, file, note: `import failed: ${messageOf(cause)}`, results: [] }
+  }
+
+  const actions = typeof module.actions === 'object' && module.actions !== null ? module.actions : {}
+  const tests = typeof module.tests === 'object' && module.tests !== null ? module.tests : {}
+  const names = Object.keys(tests)
+  if (names.length === 0) {
+    return { ok: true, shape: id, file, note: 'actions.js exports no tests', results: [] }
+  }
+
+  const results = []
+  for (const name of names) {
+    if (typeof tests[name] !== 'function') {
+      results.push({ name, ok: false, error: 'test is not a function' })
+      continue
+    }
+    try {
+      await tests[name]({ actions, assert: TEST_ASSERT })
+      results.push({ name, ok: true })
+    } catch (cause) {
+      results.push({ name, ok: false, error: messageOf(cause) })
+    }
+  }
+  return { ok: results.every(result => result.ok), shape: id, file, results }
 }
 
 /**
@@ -559,6 +672,7 @@ export function apply(ctx, config) {
         title: { type: 'string', description: 'Display title.' },
         description: { type: 'string', description: 'Short user-facing description.' },
         withClient: { type: 'boolean', description: 'Also create client/index.js for activation logic.' },
+        withActions: { type: 'boolean', description: 'Also create actions.js with a DOM-free action and one test for shape_test.' },
       },
     },
     output: {
@@ -615,4 +729,53 @@ export function apply(ctx, config) {
       return validate(args.id, roots)
     },
   }), 'dsh-shape: shape_validate tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_test',
+    description: 'Run the tests a shape exports from actions.js. The module exports `actions` (DOM-free functions) and optional `tests` (name → function receiving { actions, assert }); use assert.ok, assert.equal, or assert.deepEqual.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id'],
+      properties: {
+        id: { type: 'string', description: 'Shape id whose actions.js to test.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['ok', 'shape', 'results'],
+        properties: {
+          ok: { type: 'boolean' },
+          shape: { type: 'string' },
+          file: { type: 'string' },
+          note: { type: 'string' },
+          results: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['name', 'ok'],
+              properties: {
+                name: { type: 'string' },
+                ok: { type: 'boolean' },
+                error: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => {
+        const passed = value.results.filter(result => result.ok).length
+        const text = value.results.length === 0
+          ? `${value.shape}: ${value.note ?? 'no tests'}`
+          : `${value.ok ? 'passed' : 'failed'} (${String(passed)}/${String(value.results.length)})\n${value.results.map(result => `- ${result.ok ? '✓' : '✗'} ${result.name}${result.error === undefined ? '' : `: ${result.error}`}`).join('\n')}`
+        return [{ type: 'text', text }]
+      },
+    },
+    async execute(args) {
+      return testShape(args.id, roots)
+    },
+  }), 'dsh-shape: shape_test tool')
 }
