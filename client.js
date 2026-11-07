@@ -4468,7 +4468,6 @@ window.__ModuleLoader__.load({
 				order: 20,
 				inject: () => ({ resolveShape, slot: spec.name })
 			}, spec.presentation === "overlay" ? ShapeOverlay : ShapeSlotEntries));
-		}
 		ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
 			name: "conversation.input.dock",
 			id: "dsh-shape-composer-bridge",
@@ -4564,6 +4563,7 @@ window.__ModuleLoader__.load({
 		        tabSlots.clear();
 		    };
 		}, 'dsh-shape: shape tabs');
+		}
 		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;

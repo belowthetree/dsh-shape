@@ -57,6 +57,10 @@ jobs:
         if: steps.decide.outputs.state == 'new'
         run: npm pack --dry-run
 
+      - name: Verify the client bundle loads
+        if: steps.decide.outputs.state == 'new'
+        run: node scripts/check-client-bundle.mjs
+
       - name: Publish to npm
         if: steps.decide.outputs.state == 'new'
         env:
