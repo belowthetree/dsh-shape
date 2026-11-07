@@ -260,9 +260,9 @@ async function readCapabilityCatalog() {
       return {
         source: 'runtime',
         entries,
-        packageVersion: installed,
-        catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : null,
-        syncedAt: typeof value?.syncedAt === 'string' ? value.syncedAt : null,
+        packageVersion: installed ?? '',
+        catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : '',
+        syncedAt: typeof value?.syncedAt === 'string' ? value.syncedAt : '',
       }
     }
   } catch {
@@ -273,12 +273,12 @@ async function readCapabilityCatalog() {
     return {
       source: 'bundled',
       entries: valid(value?.capabilities),
-      packageVersion: installed,
-      catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : null,
-      syncedAt: null,
+      packageVersion: installed ?? '',
+      catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : '',
+      syncedAt: '',
     }
   } catch {
-    return { source: 'missing', entries: [], packageVersion: installed, catalogVersion: null, syncedAt: null }
+    return { source: 'missing', entries: [], packageVersion: installed ?? '', catalogVersion: '', syncedAt: '' }
   }
 }
 
@@ -301,10 +301,10 @@ async function readInstalledVersion() {
  * @returns one header line and zero or more warning lines.
  */
 function describeCatalog(catalog) {
-  const version = catalog.packageVersion === null ? 'unknown' : catalog.packageVersion
-  const when = catalog.syncedAt === null ? '' : ` · synced ${catalog.syncedAt}`
+  const version = catalog.packageVersion === '' ? 'unknown' : catalog.packageVersion
+  const when = catalog.syncedAt === '' ? '' : ` · synced ${catalog.syncedAt}`
   const lines = [`catalog: ${catalog.source} · dsh-shape ${version}${when}`]
-  if (catalog.source === 'runtime' && catalog.catalogVersion !== null && catalog.catalogVersion !== catalog.packageVersion) {
+  if (catalog.source === 'runtime' && catalog.catalogVersion !== '' && catalog.catalogVersion !== catalog.packageVersion) {
     lines.push(`⚠ the mirror was written by dsh-shape ${catalog.catalogVersion}; the installed package is ${catalog.packageVersion} — restart DSH to refresh it`)
   }
   if (catalog.source === 'bundled') {
@@ -578,9 +578,9 @@ export function apply(ctx, config) {
             required: ['source', 'packageVersion', 'catalogVersion', 'syncedAt'],
             properties: {
               source: { type: 'string', enum: ['runtime', 'bundled', 'missing'] },
-              packageVersion: { type: ['string', 'null'] },
-              catalogVersion: { type: ['string', 'null'] },
-              syncedAt: { type: ['string', 'null'] },
+              packageVersion: { type: 'string' },
+              catalogVersion: { type: 'string' },
+              syncedAt: { type: 'string' },
             },
           },
           capabilities: {
