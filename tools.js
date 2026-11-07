@@ -23,6 +23,7 @@ const SPEC_TOPICS = [
   'client',
   'slots',
   'views',
+  'recipes',
   'lifecycle',
   'testing',
   'plugin',
@@ -553,7 +554,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_spec',
-    description: 'Read the bundled dsh-shape specification for one topic: manifest, client API, slots, views, capabilities, lifecycle, testing, or extension plugins.',
+    description: 'Read the bundled dsh-shape specification for one topic: manifest, client API, slots, views, capabilities, recipes, lifecycle, testing, or extension plugins.',
     parameters: {
       type: 'object',
       additionalProperties: false,

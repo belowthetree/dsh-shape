@@ -71,6 +71,8 @@ conversation.reveal(hits[0].messageId)
 
 Only loaded turns are readable: the conversation renders a window of history, so older messages appear in `messages()` after the reader scrolls back. This capability reads the DOM, so it follows whatever the conversation currently shows rather than a private message store.
 
+The DOM it reads is the transcript contract: each rendered message is an element carrying `data-chat-anchor-key` (the `id`) inside the `[data-chat-flow]` container, and `data-chat-turn` carries the turn number. Shapes should call this capability instead of querying those attributes, so a change to the transcript markup does not break them.
+
 ### `dsh-shape#composer`
 
 ```js
