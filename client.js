@@ -4207,6 +4207,88 @@ window.__ModuleLoader__.load({
 		    return react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-conversation.ts
+		/** Built-in conversation capability: read the rendered transcript and reveal one message. */
+		/** Selector of the transcript flow container. */
+		const FLOW_SELECTOR = '[data-chat-flow]';
+		/** Selector of one rendered message anchor. */
+		const ANCHOR_SELECTOR = '[data-chat-anchor-key]';
+		/**
+		 * Read one rendered message.
+		 * @param element - anchor element.
+		 * @returns its message record.
+		 */
+		function readMessage(element) {
+		    const turn = Number.parseInt(element.getAttribute('data-chat-turn') ?? '', 10);
+		    return {
+		        id: element.getAttribute('data-chat-anchor-key') ?? '',
+		        turn: Number.isFinite(turn) ? turn : 0,
+		        text: (element.textContent ?? '').replace(/\s+/gu, ' ').trim(),
+		    };
+		}
+		/**
+		 * Build the conversation capability.
+		 * @returns the API shapes receive.
+		 */
+		function createConversation() {
+		    const messages = () => {
+		        const seen = new Set();
+		        const rows = [];
+		        for (const element of document.querySelectorAll(ANCHOR_SELECTOR)) {
+		            const message = readMessage(element);
+		            if (message.id === '' || message.text === '' || seen.has(message.id))
+		                continue;
+		            seen.add(message.id);
+		            rows.push(message);
+		        }
+		        return rows;
+		    };
+		    return {
+		        messages,
+		        find(text, options) {
+		            const needle = options?.caseSensitive === true ? text : text.toLowerCase();
+		            if (needle === '')
+		                return [];
+		            const limit = options?.limit ?? 100;
+		            const matches = [];
+		            for (const message of messages()) {
+		                const haystack = options?.caseSensitive === true ? message.text : message.text.toLowerCase();
+		                let index = haystack.indexOf(needle);
+		                while (index >= 0 && matches.length < limit) {
+		                    const start = Math.max(0, index - 24);
+		                    matches.push({
+		                        messageId: message.id,
+		                        index,
+		                        preview: message.text.slice(start, Math.min(message.text.length, index + needle.length + 24)),
+		                    });
+		                    index = haystack.indexOf(needle, index + needle.length);
+		                }
+		                if (matches.length >= limit)
+		                    break;
+		            }
+		            return matches;
+		        },
+		        reveal(messageId) {
+		            const escaped = typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
+		                ? CSS.escape(messageId)
+		                : messageId.replace(/["\\]/gu, '\\$&');
+		            const element = document.querySelector(`[data-chat-anchor-key="${escaped}"]`);
+		            if (element === null || typeof element.scrollIntoView !== 'function')
+		                return false;
+		            element.scrollIntoView({ block: 'center' });
+		            return true;
+		        },
+		        subscribe(listener) {
+		            if (typeof MutationObserver === 'undefined')
+		                return () => { };
+		            const target = document.querySelector(FLOW_SELECTOR) ?? document.body;
+		            const observer = new MutationObserver(() => listener());
+		            observer.observe(target, { childList: true, subtree: true, characterData: true });
+		            return () => observer.disconnect();
+		        },
+		    };
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
@@ -4338,6 +4420,15 @@ window.__ModuleLoader__.load({
 				usage: "getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.",
 				api: createComposer()
 			}), "dsh-shape: composer capability");
+
+			ctx.effect(() => capabilities.provide({
+				plugin: "dsh-shape",
+				capability: "conversation",
+				version: "1.0.0",
+				description: "Read the rendered conversation and reveal a message.",
+				usage: "messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.",
+				api: createConversation()
+			}), "dsh-shape: conversation capability");
 			capabilities.subscribe(() => {
 				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
 				syncCapabilities(capabilities);

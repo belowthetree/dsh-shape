@@ -24,6 +24,7 @@ import { createElement } from 'react'
 import { createShapeStorage } from './shape-storage.ts'
 import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
+import { createConversation } from './shape-conversation.ts'
 import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
 import { ShapeTabBody, ShapeTabTitle } from './ShapeTabHost.tsx'
 import {
@@ -169,6 +170,15 @@ export function apply(ctx: Context): void {
     usage: 'getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.',
     api: createComposer(),
   }), 'dsh-shape: composer capability')
+
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'conversation',
+    version: '1.0.0',
+    description: 'Read the rendered conversation and reveal a message.',
+    usage: 'messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.',
+    api: createConversation(),
+  }), 'dsh-shape: conversation capability')
 
   capabilities.subscribe(() => {
     window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'))

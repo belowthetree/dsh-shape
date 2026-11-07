@@ -56,6 +56,20 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 - `dsh-shape#events` version `1.0.0`; methods `emit`, `on`; a shared event bus between running shapes.
 - `dsh-shape#storage` version `1.0.0`; methods `get`, `set`, `remove`, `keys`; JSON files under the shape's own `data/` directory.
 - `dsh-shape#composer` version `1.0.0`; methods `getText`, `setText`, `insert`, `submit`, `sessionId`; the draft of the composer currently mounted in the conversation.
+- `dsh-shape#conversation` version `1.0.0`; methods `messages`, `find`, `reveal`, `subscribe`; the rendered transcript, for search and jump-to-message.
+
+### `dsh-shape#conversation`
+
+```js
+const conversation = api.require('dsh-shape', 'conversation')
+const hits = conversation.find('timeout')
+for (const hit of hits) console.log(hit.messageId, hit.preview)
+conversation.reveal(hits[0].messageId)
+```
+
+`messages()` returns `{ id, turn, text }` for every rendered row, and `find(text, { caseSensitive, limit })` returns `{ messageId, index, preview }` matches; matching is case-insensitive by default and capped at 100 hits. `reveal(messageId)` scrolls that row to the centre and returns false when it is no longer rendered. `subscribe(listener)` reports transcript mutations so a search panel can refresh.
+
+Only loaded turns are readable: the conversation renders a window of history, so older messages appear in `messages()` after the reader scrolls back. This capability reads the DOM, so it follows whatever the conversation currently shows rather than a private message store.
 
 ### `dsh-shape#composer`
 

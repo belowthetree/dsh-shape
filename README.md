@@ -18,7 +18,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 - **删除形态**：卡片右上角的删除按钮，确认后把该形态目录从磁盘移除
 - **能力依赖**：形态声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
 - **能力目录**：可以查看当前有哪些形态可用能力、版本、用途、用法和 API 方法名
-- **内置能力**：8 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件、存储与输入框，见下文[内置能力](#内置能力)
+- **内置能力**：9 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件、存储、输入框与对话读取，见下文[内置能力](#内置能力)
 - **即时生效**：新增或修改形态目录后刷新即可，不需要重启 DSH
 
 ## 内置能力
@@ -35,6 +35,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 | `dsh-shape#events` | 1.0.0 | `emit` `on` | 形态之间收发事件 |
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到形态目录的 `data/` 下 |
 | `dsh-shape#composer` | 1.0.0 | `getText` `setText` `insert` `submit` `sessionId` | 读写当前输入框草稿，可插入或直接发送 |
+| `dsh-shape#conversation` | 1.0.0 | `messages` `find` `reveal` `subscribe` | 读取已渲染的对话、搜索并跳转到某条消息 |
 
 ```js
 const ui = api.require('dsh-shape', 'ui')
