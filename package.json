@@ -1,8 +1,8 @@
 {
   "name": "@belowthetree/dsh-shape",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
-  "description": "A DeepSeek Harness plugin for rapidly customizing DSH UI and functionality with folder-based shapes.",
+  "description": "A DeepSeek Harness plugin that adds a dynamic lightweight extension form for customizing DSH UI and functionality.",
   "license": "MIT",
   "author": "belowthetree",
   "keywords": [

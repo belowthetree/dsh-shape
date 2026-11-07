@@ -1528,6 +1528,7 @@ window.__ModuleLoader__.load({
 			{ name: 'conversation.session.header.utilities', presentation: 'inline' },
 			{ name: 'conversation.hero.options', presentation: 'inline' },
 			{ name: 'conversation.session.header.views.actions', presentation: 'menu-row' },
+			{ name: 'shell.overlay', presentation: 'overlay' },
 		];
 		/**
 		 * Check whether a name is a supported slot.
@@ -3829,6 +3830,34 @@ window.__ModuleLoader__.load({
 			return body;
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeOverlay.tsx
+		/** Full-screen layer that hosts `shell.overlay` mounts. */
+		/** The layer ignores pointer events; each mount re-enables them for its own content. */
+		const LAYER = {
+			position: 'fixed',
+			inset: 0,
+			zIndex: 2147483000,
+			display: 'block',
+			pointerEvents: 'none',
+		};
+		const ENTRY = { pointerEvents: 'auto' };
+		/**
+		 * Render every `shell.overlay` mount into one fixed layer above the app.
+		 * @param props.slot - overlay slot name.
+		 * @returns the portal, or null when nothing is mounted.
+		 */
+		function ShapeOverlay({ slot }) {
+			const [list, setList] = react.useState(() => shapeMounts(slot));
+			react.useEffect(() => {
+				const sync = () => { setList(shapeMounts(slot)); };
+				sync();
+				return subscribeShapeMounts(slot, sync);
+			}, [slot]);
+			if (list.length === 0)
+				return null;
+			return react_dom.createPortal(react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/** The leading header seat and composer dock are owned by the conversation client. */
 		const inject = [
@@ -3968,7 +3997,7 @@ window.__ModuleLoader__.load({
 				id: `dsh-shape-${spec.name.replaceAll(".", "-")}`,
 				order: 20,
 				inject: () => ({ resolveShape, slot: spec.name })
-			}, ShapeSlotEntries));
+			}, spec.presentation === "overlay" ? ShapeOverlay : ShapeSlotEntries));
 		}
 		//#endregion
 		exports.apply = apply;

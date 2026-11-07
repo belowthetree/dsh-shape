@@ -1,7 +1,7 @@
 /** Conversation slots a shape may target, and the mounts shapes register into them. */
 
 /** How one slot lays out the entries and mounts it receives. */
-export type ShapePresentation = 'card' | 'strip' | 'panel' | 'inline' | 'menu-row'
+export type ShapePresentation = 'card' | 'strip' | 'panel' | 'inline' | 'menu-row' | 'overlay'
 
 /** One slot name a shape may target. */
 export type ShapeSlot =
@@ -14,6 +14,7 @@ export type ShapeSlot =
   | 'conversation.session.header.utilities'
   | 'conversation.hero.options'
   | 'conversation.session.header.views.actions'
+  | 'shell.overlay'
 
 /** One conversation slot exposed to shapes. */
 export interface ShapeSlotSpec {
@@ -40,6 +41,7 @@ export const SHAPE_SLOTS: readonly ShapeSlotSpec[] = [
   { name: 'conversation.session.header.utilities', presentation: 'inline' },
   { name: 'conversation.hero.options', presentation: 'inline' },
   { name: 'conversation.session.header.views.actions', presentation: 'menu-row' },
+  { name: 'shell.overlay', presentation: 'overlay' },
 ]
 
 /**

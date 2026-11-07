@@ -4,34 +4,34 @@
 
 [![dsh-shape 海报](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
 
-dsh-shape 是 DeepSeek Harness 插件，用 shape 文件夹扩展 DSH 的界面、聊天卡片和页面级快捷操作。
+dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**：一个 shape（形态）就是一份清单加可选脚本，即时给 DSH 加上界面、聊天卡片和页面级快捷操作。
 
 ## 能做什么
 
-- **Shape 浏览器**：在对话顶栏打开应用网格，浏览所有 shape；按 `Ctrl + .` 快速打开
-- **独立视图**：点击 shape 卡片，在第二个窗口展示该 shape 自己的界面
-- **会话槽位**：9 个槽位可选——输入框上方的卡片栈、下方的信息条、上方的浮窗（可固定、可自由浮动、靠近屏幕边缘自动吸附）、输入条左右与顶栏的状态 chip、New Session 选项、View 菜单行；客户端模块还能用 `api.mount()` 在受支持槽位里渲染自己的 DOM
-- **单个开关**：每个 shape 独立启停；关闭后它的视图、槽位条目和客户端逻辑一起失效
-- **客户端逻辑**：shape 可以注册页面级行为和快捷键，并按需读取已声明能力的接口
-- **删除 shape**：卡片右上角的删除按钮，确认后把该 shape 目录从磁盘移除
-- **能力依赖**：shape 声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
-- **能力目录**：可以查看当前有哪些 shape 可用能力、版本、用途、用法和 API 方法名
+- **Shape 浏览器**：在对话顶栏打开应用网格，浏览所有形态；按 `Ctrl + .` 快速打开
+- **独立视图**：点击形态卡片，在第二个窗口展示该形态自己的界面
+- **会话槽位**：10 个槽位可选——输入框上方的卡片栈、下方的信息条、上方的浮窗（可固定、可自由浮动、靠近屏幕边缘自动吸附）、输入条左右与顶栏的状态 chip、New Session 选项、View 菜单行，以及覆盖全应用的全屏层（片头、命令面板这类）；客户端模块还能用 `api.mount()` 在受支持槽位里渲染自己的 DOM
+- **单个开关**：每个形态独立启停；关闭后它的视图、槽位条目和客户端逻辑一起失效
+- **客户端逻辑**：形态可以注册页面级行为和快捷键，并按需读取已声明能力的接口
+- **删除形态**：卡片右上角的删除按钮，确认后把该形态目录从磁盘移除
+- **能力依赖**：形态声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
+- **能力目录**：可以查看当前有哪些形态可用能力、版本、用途、用法和 API 方法名
 - **内置能力**：7 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件与存储，见下文[内置能力](#内置能力)
-- **即时生效**：新增或修改 shape 文件夹后刷新即可，不需要重启 DSH
+- **即时生效**：新增或修改形态目录后刷新即可，不需要重启 DSH
 
 ## 内置能力
 
-shape 在 `package.json` 的 `shape.requires` 里声明需要的能力，再用 `api.require('dsh-shape', '<能力>')` 取用；缺少能力或版本不匹配时 shape 不会启动。
+形态在 `package.json` 的 `shape.requires` 里声明需要的能力，再用 `api.require('dsh-shape', '<能力>')` 取用；缺少能力或版本不匹配时形态不会启动。
 
 | 能力 | 版本 | 方法 | 用途 |
 | --- | --- | --- | --- |
-| `dsh-shape#core` | 1.0.0 | 字段 `apiVersion` | 判断 shape ABI |
+| `dsh-shape#core` | 1.0.0 | 字段 `apiVersion` | 判断形态 ABI |
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | 切换工作区，并展开、滚动到目标分组 |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | 控制 DSH 界面：导航、面板、主题、对话、通知、打开 Shapes |
-| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把 shape 动作注册成 DSH 命令，用户可在设置里重绑 |
-| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | 查询 9 个槽位、运行时挂载、统计占用 |
-| `dsh-shape#events` | 1.0.0 | `emit` `on` | shape 之间收发事件 |
-| `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到 shape 目录的 `data/` 下 |
+| `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把形态动作注册成 DSH 命令，用户可在设置里重绑 |
+| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | 查询 10 个槽位、运行时挂载、统计占用 |
+| `dsh-shape#events` | 1.0.0 | `emit` `on` | 形态之间收发事件 |
+| `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到形态目录的 `data/` 下 |
 
 ```js
 const ui = api.require('dsh-shape', 'ui')
@@ -52,10 +52,10 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 
 ## Shape Studio 预设
 
-安装后新增 **Shape Studio** 预设，用于开发 shape 和扩展插件：
+安装后新增 **Shape Studio** 预设，用于开发形态和扩展插件：
 
-- 提供查看、检查、创建和校验 shape 的工具，以及可查询 shape 能力目录的工具
-- 附带 shape 开发 skill，并可按主题读取完整接口与规范
+- 提供查看、检查、创建和校验形态的工具，以及可查询形态能力目录的工具
+- 附带形态开发 skill，并可按主题读取完整接口与规范
 - 提供 Cordis 检查、插件安装与管理、插件市场
 - 附带插件开发与预设编辑相关的 skill
 

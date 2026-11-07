@@ -4,13 +4,13 @@
 
 [![dsh-shape poster](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
 
-dsh-shape is a DeepSeek Harness plugin that extends DSH's UI, chat cards, and page-level shortcuts through shape folders.
+dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extension form** (形态): a shape is a manifest plus optional scripts that adds UI, chat cards, and page-level shortcuts to DSH on the fly.
 
 ## What it can do
 
 - **Shape browser**: open an app grid from the conversation header and browse every shape; press `Ctrl + .` to open it quickly
 - **Dedicated views**: click a shape card to show that shape's own interface in a second window
-- **Conversation slots**: nine slots — the card stack above the composer, the info strip below it, the floating panel above it (anchored or free-floating with viewport edge snapping), status chips in the composer tool row and Session header, New Session options, and View menu rows; client modules can also render their own DOM into a supported slot with `api.mount()`
+- **Conversation slots**: ten slots — the card stack above the composer, the info strip below it, the floating panel above it (anchored or free-floating with viewport edge snapping), status chips in the composer tool row and Session header, New Session options, View menu rows, and a full-screen layer above the whole app for boot screens or command palettes; client modules can also render their own DOM into a supported slot with `api.mount()`
 - **Per-shape switches**: enable or disable each shape independently; turning one off also disables its view, slot entries, and client logic
 - **Client behavior**: shapes can register page-level behavior and shortcuts, and read only the capability APIs they declare
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
@@ -29,7 +29,7 @@ A shape declares what it needs in `shape.requires` and reads it with `api.requir
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | Switch workspaces and reveal the target group |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | Navigate, move panels, switch themes, act on the conversation, show toasts, open Shapes |
 | `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | Register shape actions as DSH commands users can rebind |
-| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the nine slots, mount into them, count occupancy |
+| `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the ten slots, mount into them, count occupancy |
 | `dsh-shape#events` | 1.0.0 | `emit` `on` | Share events between shapes |
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | Persist JSON under the shape's `data/` directory |
 

@@ -309,7 +309,7 @@ function ShapeGlyph({ icon, title }: { icon?: string; title: string }) {
  * @param props.style - wrapper chrome for the slot's layout.
  * @returns the container element.
  */
-function ShapeMountBox({ mount, style }: { mount: ShapeMount; style: CSSProperties }) {
+export function ShapeMountBox({ mount, style }: { mount: ShapeMount; style: CSSProperties }) {
   const ref = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const container = ref.current

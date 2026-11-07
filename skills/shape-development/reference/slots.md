@@ -32,8 +32,11 @@ Files with invalid JSON, non-object content, or a missing/empty `slot` are ignor
 | `conversation.session.header.utilities` | Session header, right side | Informational chip |
 | `conversation.hero.options` | New Session row, right side | Informational chip |
 | `conversation.session.header.views.actions` | Rows of the View tab row's More menu | Menu row: icon, title, text, optional button |
+| `shell.overlay` | Fixed layer above the whole app, portalled to `document.body` | Mount only: the layer ignores pointer events and each mount re-enables them for its own content |
 
 `conversation.view` is deliberately unsupported: its entries are tabs that render the whole Session body, which neither a descriptor nor a bare container can satisfy. `single` and `chain` slots are reserved for their owning product surface.
+
+`shell.overlay` is mount-only: descriptors are skipped, and a shape renders nothing until its mount chooses to. The layer is created on the first mount and removed with the last one, so an overlay that is closed costs no DOM.
 
 Chips are informational only. Use `api.mount()` when a slot needs interaction.
 
