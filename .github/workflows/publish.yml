@@ -61,6 +61,10 @@ jobs:
         if: steps.decide.outputs.state == 'new'
         run: node scripts/check-client-bundle.mjs
 
+      - name: Verify the bundled capability list matches the client
+        if: steps.decide.outputs.state == 'new'
+        run: node scripts/gen-capability-fallback.mjs --check
+
       - name: Publish to npm
         if: steps.decide.outputs.state == 'new'
         env:

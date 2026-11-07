@@ -16,6 +16,8 @@ const VERSION_RANGE = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const BUNDLED_ROOT = fileURLToPath(new URL('./shapes/', import.meta.url))
 const PACKAGE_ROOT = fileURLToPath(new URL('./', import.meta.url))
 const REFERENCE_ROOT = fileURLToPath(new URL('./skills/shape-development/reference/', import.meta.url))
+/** Static capability list generated from the shipped client bundle. */
+const FALLBACK_FILE = path.join(REFERENCE_ROOT, 'capabilities.generated.json')
 const SPEC_TOPICS = [
   'overview',
   'manifest',
@@ -242,20 +244,76 @@ async function readSpec(topic) {
  * @returns available capability providers.
  */
 async function readCapabilityCatalog() {
+  const valid = entries => (Array.isArray(entries) ? entries : []).filter(entry => (
+    typeof entry === 'object' && entry !== null
+    && typeof entry.plugin === 'string'
+    && typeof entry.capability === 'string'
+    && typeof entry.version === 'string'
+    && Array.isArray(entry.methods)
+    && Array.isArray(entry.fields)
+  ))
+  const installed = await readInstalledVersion()
   try {
     const value = JSON.parse(await readFile(CAPABILITY_FILE, 'utf8'))
-    if (!Array.isArray(value)) return []
-    return value.filter(entry => (
-      typeof entry === 'object' && entry !== null
-      && typeof entry.plugin === 'string'
-      && typeof entry.capability === 'string'
-      && typeof entry.version === 'string'
-      && Array.isArray(entry.methods)
-      && Array.isArray(entry.fields)
-    ))
+    const entries = valid(Array.isArray(value) ? value : value?.capabilities)
+    if (entries.length > 0) {
+      return {
+        source: 'runtime',
+        entries,
+        packageVersion: installed,
+        catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : null,
+        syncedAt: typeof value?.syncedAt === 'string' ? value.syncedAt : null,
+      }
+    }
   } catch {
-    return []
+    // Missing or unreadable mirror: fall through to the bundled fallback.
   }
+  try {
+    const value = JSON.parse(await readFile(FALLBACK_FILE, 'utf8'))
+    return {
+      source: 'bundled',
+      entries: valid(value?.capabilities),
+      packageVersion: installed,
+      catalogVersion: typeof value?.packageVersion === 'string' ? value.packageVersion : null,
+      syncedAt: null,
+    }
+  } catch {
+    return { source: 'missing', entries: [], packageVersion: installed, catalogVersion: null, syncedAt: null }
+  }
+}
+
+/**
+ * Read the version of the installed dsh-shape package.
+ * @returns the version, or null when package.json cannot be read.
+ */
+async function readInstalledVersion() {
+  try {
+    const value = JSON.parse(await readFile(path.join(PACKAGE_ROOT, 'package.json'), 'utf8'))
+    return typeof value?.version === 'string' ? value.version : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Summarize where the capability catalog came from and whether it is current.
+ * @param catalog - result of {@link readCapabilityCatalog}.
+ * @returns one header line and zero or more warning lines.
+ */
+function describeCatalog(catalog) {
+  const version = catalog.packageVersion === null ? 'unknown' : catalog.packageVersion
+  const when = catalog.syncedAt === null ? '' : ` · synced ${catalog.syncedAt}`
+  const lines = [`catalog: ${catalog.source} · dsh-shape ${version}${when}`]
+  if (catalog.source === 'runtime' && catalog.catalogVersion !== null && catalog.catalogVersion !== catalog.packageVersion) {
+    lines.push(`⚠ the mirror was written by dsh-shape ${catalog.catalogVersion}; the installed package is ${catalog.packageVersion} — restart DSH to refresh it`)
+  }
+  if (catalog.source === 'bundled') {
+    lines.push('⚠ no runtime mirror yet; this list comes from the installed package and may omit capabilities a running Client provides')
+  }
+  if (catalog.source === 'missing') {
+    lines.push('⚠ no catalog is available; run dsh-shape once so the Client publishes it')
+  }
+  return lines.join('\n')
 }
 
 /**
@@ -512,8 +570,19 @@ export function apply(ctx, config) {
       schema: {
         type: 'object',
         additionalProperties: false,
-        required: ['capabilities'],
+        required: ['capabilities', 'catalog'],
         properties: {
+          catalog: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['source', 'packageVersion', 'catalogVersion', 'syncedAt'],
+            properties: {
+              source: { type: 'string', enum: ['runtime', 'bundled', 'missing'] },
+              packageVersion: { type: ['string', 'null'] },
+              catalogVersion: { type: ['string', 'null'] },
+              syncedAt: { type: ['string', 'null'] },
+            },
+          },
           capabilities: {
             type: 'array',
             items: {
@@ -535,19 +604,20 @@ export function apply(ctx, config) {
       },
       render: (_args, value) => [{
         type: 'text',
-        text: value.capabilities.length === 0
-          ? 'No capability catalog is available. The dsh-shape Client publishes it after startup; restart DSH if this is a fresh install.'
-          : `Available shape capabilities:\n${value.capabilities.map(entry => [
+        text: `${describeCatalog(value.catalog)}\n${value.capabilities.length === 0
+          ? 'No capability list is available yet.'
+          : `\nAvailable shape capabilities:\n${value.capabilities.map(entry => [
             `- ${entry.plugin}#${entry.capability} v${entry.version}`,
             ...(entry.description === undefined ? [] : [`  purpose: ${entry.description}`]),
             ...(entry.usage === undefined ? [] : [`  usage: ${entry.usage}`]),
             ...(entry.methods.length === 0 ? [] : [`  methods: ${entry.methods.join(', ')}`]),
             ...(entry.fields.length === 0 ? [] : [`  fields: ${entry.fields.join(', ')}`]),
-          ].join('\n')).join('\n')}`,
+          ].join('\n')).join('\n')}`}`,
       }],
     },
     async execute() {
-      return { capabilities: await readCapabilityCatalog() }
+      const catalog = await readCapabilityCatalog()
+      return { capabilities: catalog.entries, catalog }
     },
   }), 'dsh-shape: shape_capabilities tool')
 

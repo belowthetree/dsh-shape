@@ -241,8 +241,25 @@ async function readRoot(root, origin) {
 * @param status - HTTP status.
 * @param body - JSON body.
 */
-function json(res, status, body) {
-	const text = JSON.stringify(body);
+/**
+* Read the version of this installed package.
+* @returns the version string, or null when package.json is unreadable.
+*/
+async function readOwnVersion() {
+	try {
+		const value = JSON.parse(await readFile(new URL("./package.json", import.meta.url), "utf8"));
+		return typeof value?.version === "string" ? value.version : null;
+	} catch {
+		return null;
+	}
+}
+/**
+* Send one JSON response.
+* @param res - outgoing response.
+* @param status - HTTP status.
+* @param body - value to serialize.
+*/
+function json(res, status, body) {	const text = JSON.stringify(body);
 	res.writeHead(status, {
 		"content-type": "application/json; charset=utf-8",
 		"cache-control": "no-store",
@@ -325,7 +342,8 @@ async function apply(ctx, config = {}) {
 	const capabilityFile = path.join(stateDir, "capabilities.json");
 	let capabilityCatalog = [];
 	try {
-		capabilityCatalog = readCapabilityCatalog(JSON.parse(await readFile(capabilityFile, "utf8")));
+		const saved = JSON.parse(await readFile(capabilityFile, "utf8"));
+		capabilityCatalog = readCapabilityCatalog(Array.isArray(saved) ? saved : saved?.capabilities);
 	} catch {}
 	const enabledById = /* @__PURE__ */ new Map();
 	try {
@@ -577,7 +595,11 @@ async function apply(ctx, config = {}) {
 			try {
 				const catalog = readCapabilityCatalog(record?.capabilities);
 				await mkdir(stateDir, { recursive: true });
-				await writeFile(capabilityFile, `${JSON.stringify(catalog, null, 2)}\n`, "utf8");
+				await writeFile(capabilityFile, `${JSON.stringify({
+					packageVersion: await readOwnVersion(),
+					syncedAt: (new Date()).toISOString(),
+					capabilities: catalog
+				}, null, 2)}\n`, "utf8");
 				capabilityCatalog = catalog;
 				json(res, 200, {
 					ok: true,

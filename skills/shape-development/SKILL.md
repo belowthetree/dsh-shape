@@ -2,6 +2,27 @@
 
 Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$DSH_HOME/dsh-shape/shapes/<id>/`.
 
+## Getting information
+
+Never guess a contract from memory and never reverse-engineer the DSH frontend. Ask the tools:
+
+| Question | Ask | You get |
+| --- | --- | --- |
+| Which capabilities exist right now? | `shape_capabilities` | Qualified ids, versions, purpose, usage, method names, and where the catalog came from. |
+| What is the exact contract? | `shape_spec` with `overview`, `manifest`, `client`, `slots`, `views`, `capabilities`, `lifecycle`, `testing`, or `plugin` | The bundled specification for that topic. |
+| How does an existing shape do it? | `shape_list`, then `shape_inspect` | Manifests, capability requirements, slot descriptors, client code. |
+| Is this shape valid? | `shape_validate` | Errors and warnings for the manifest, slots, and client entry. |
+| Does the logic work? | `shape_test` | Per-test results for `actions.js`. |
+| What does the host expose beyond shapes? | `cordis` | Live service definitions, tool schemas, entry configuration. |
+
+`shape_capabilities` starts with a `catalog:` line. Read it before trusting the list:
+
+- `runtime` — the running Client wrote it; `synced` is when. Current unless it also prints a version-mismatch warning.
+- `bundled` — no runtime mirror yet; the list comes from the installed package and is a floor, not the ceiling. Restart DSH to get the runtime list.
+- `missing` — nothing is available; start DSH once.
+
+A capability that is absent from the list is absent from the runtime: do not code against it, and do not assume a method exists because it appears in prose.
+
 ## Workflow
 
 1. Read `shape_spec` for the exact contract before relying on memory: start with `overview`, then `manifest`, `client`, `slots`, `views`, `capabilities`, `lifecycle`, `testing`, or `plugin` as needed. Inspect existing shapes with `shape_list`; it reports both `user` and `bundled` origins. Reuse their conventions before creating another shape.
