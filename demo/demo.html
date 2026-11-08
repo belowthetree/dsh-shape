@@ -511,7 +511,7 @@
   let cursorY = 0;
   let cursorOpacity = 0;
 
-  function render(t) {
+  function renderSource(t) {
     cursorOpacity = 0;
     ripple.style.opacity = '0';
 
@@ -683,8 +683,36 @@
     $('fade').style.opacity = String(Math.max(1 - seg(t, 0, 520), seg(t, 35400, 36000)));
   }
 
+  // Each scene keeps its authored choreography and runs on a compressed clock,
+  // so shortening the promo never means retiming every internal offset by hand.
+  const ORDER = ['s1', 's2', 's3', 's4']
+  const SPAN = { s1: 3000, s2: 6800, s3: 8800, s4: 3400 }
+  const NEW = {}
+  let acc = 0
+  for (const id of ORDER) {
+    NEW[id] = [acc, acc + SPAN[id]]
+    acc += SPAN[id]
+  }
+  const TOTAL = acc
+  /** Map a time on the short clock onto the authored timeline. */
+  const mapTime = (ms) => {
+    const t = Math.min(Math.max(ms, 0), TOTAL)
+    for (const id of ORDER) {
+      const [start, end] = NEW[id]
+      if (t <= end || id === 's4') {
+        const p = Math.min(1, Math.max(0, (t - start) / (end - start)))
+        const [sStart, sEnd] = scenes[id]
+        return sStart + p * (sEnd - sStart)
+      }
+    }
+    return scenes.s4[1]
+  }
+  function render(t) {
+    renderSource(mapTime(t))
+  }
+
   window.__seek = (ms) => render(ms);
-  window.__duration = 36000;
+  window.__duration = TOTAL;
   render(0);
 })();
 </script>

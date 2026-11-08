@@ -30,7 +30,7 @@ function loadPlaywright() {
 const { chromium } = loadPlaywright()
 
 const FPS = 30
-const DURATION_MS = 36000
+const DURATION_MS = 22000
 const WIDTH = 1280
 const HEIGHT = 720
 const SCALE = 1.5
