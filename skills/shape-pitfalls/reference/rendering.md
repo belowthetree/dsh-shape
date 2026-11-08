@@ -35,6 +35,21 @@ A bar mounted inside the session header is rebuilt when the session switches, an
 
 Verified by: focus jumping from a search input to a collapsed-block toggle every time a hit was expanded inside the header.
 
+## A client module that fails to import kills the whole shape
+
+Symptom: nothing from the shape works — no button, no shortcut, no card — and the host reports no error.
+
+Cause: the browser loads shape code from `/dsh-shape/client/<id>/<file>`, so a relative import is resolved against **that** URL. `import { actions } from '../actions.js'` becomes `/dsh-shape/client/actions.js`, which the host does not serve (it serves only `/dsh-shape/client/<id>/<file>`), and the whole module graph fails before `activate` runs.
+
+Rule: every module a client imports must live **inside `client/`**, imported as `./name.js`. If shared logic must also be reachable from `shape_test`, keep the implementation in `client/` and make the shape-root file a re-export:
+
+```js
+// actions.js  (read by shape_test)
+export { actions, tests } from './client/actions.js'
+```
+
+Verified by: a switcher whose client imported `../actions.js` never activated — `activate` was never called, so `Ctrl+Tab` and its button were both dead — and worked immediately once the module moved under `client/`.
+
 ## Always keep an escape hatch
 
 If the entry point itself is a slot mount, add a watchdog:
