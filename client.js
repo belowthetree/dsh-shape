@@ -1991,6 +1991,42 @@ window.__ModuleLoader__.load({
 			return (event.key.length === 1 ? event.key.toLowerCase() : event.key) === shortcut.key || event.code === shortcut.key;
 		}
 		/**
+		* Normalize the view path an edge popup declares.
+		* @param view - path relative to the shape's `views/` directory.
+		* @returns the posix path the Host serves.
+		*/
+		function normalizeView(view) {
+			const normalized = view.trim().replaceAll("\\", "/").replace(/^\.\//u, "");
+			if (normalized === "" || normalized.startsWith("/") || normalized.split("/").some((segment) => segment === "" || segment === "." || segment === "..")) throw new Error(`dsh-shape: invalid view path "${view}"`);
+			return normalized;
+		}
+		/**
+		* Check a declared view against the shape's scanned file listing.
+		* @param shape - shape the popup belongs to.
+		* @param view - normalized view path.
+		* @throws when the shape has no such view; a host that does not report views skips the check.
+		*/
+		function assertShapeView(shape, view) {
+			const views = shape.views;
+			if (views === void 0) return;
+			if (views.includes(view)) return;
+			// The Host serves `index.html` as the shape's first top-level page.
+			if (view === "index.html" && views.some((file) => !file.includes("/") && /\.html?$/i.test(file))) return;
+			const available = views.length === 0 ? "no views/ directory" : views.join(", ");
+			throw new Error(`dsh-shape: shape "${shape.id}" has no view "${view}" (${available})`);
+		}
+		/**
+		* Validate one optional window dimension.
+		* @param value - pixels declared by the shape.
+		* @param field - field name for the error message.
+		* @returns the rounded size, or undefined when omitted.
+		*/
+		function positivePixels(value, field) {
+			if (value === void 0) return void 0;
+			if (!Number.isFinite(value) || value <= 0) throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels`);
+			return Math.round(value);
+		}
+		/**
 		* Create the shape Client runtime.
 		* @param capabilities - registry used for startup dependency checks.
 		* @returns a start function returning its disposer.
@@ -2047,6 +2083,37 @@ window.__ModuleLoader__.load({
 						cleanup: void 0
 					};
 					const scopedCapabilities = scopeCapabilities(resolution.capabilities, shape);
+					/**
+					* Register one or more private page-level shortcuts for this shape.
+					* @param specs - combination or combinations.
+					* @param run - action invoked on a match.
+					* @returns a disposer releasing every combination.
+					*/
+					const registerShortcuts = (specs, run) => {
+						const list = typeof specs === "string" ? [specs] : specs;
+						const disposers = [];
+						try {
+							for (const spec of list) {
+								const parsed = parseShortcut(spec);
+								const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`;
+								if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`);
+								const registered = { ...parsed, run };
+								shortcuts.set(key, registered);
+								const off = () => {
+									if (shortcuts.get(key) === registered) shortcuts.delete(key);
+								};
+								disposers.push(off);
+								state.shortcuts.push(off);
+							}
+						} catch (cause) {
+							// A conflict halfway through must not leave the earlier combinations bound.
+							for (const off of disposers) off();
+							throw cause;
+						}
+						return () => {
+							for (const off of disposers) off();
+						};
+					};
 					const api = {
 						shape: {
 							id: shape.id,
@@ -2107,27 +2174,54 @@ window.__ModuleLoader__.load({
 						        dispose: off,
 						    };
 						},
+						edge(options) {
+						    const id = `shape:${shape.id}:${options.id}`;
+						    const edge = options.edge ?? "right";
+						    if (edge !== "top" && edge !== "right" && edge !== "bottom" && edge !== "left") throw new Error(`dsh-shape: edge must be top, right, bottom, or left: ${String(edge)}`);
+						    const view = normalizeView(options.view ?? "index.html");
+						    assertShapeView(shape, view);
+						    const width = positivePixels(options.width, "width");
+						    const height = positivePixels(options.height, "height");
+						    const offShortcut = options.keys === void 0 ? void 0 : registerShortcuts(options.keys, () => {
+						        toggleShapeEdge(id);
+						    });
+						    const offPopup = registerShapeEdge({
+						        shapeId: shape.id,
+						        id,
+						        title: options.title ?? shape.title,
+						        edge,
+						        view,
+						        ...(width === void 0 ? {} : { width }),
+						        ...(height === void 0 ? {} : { height }),
+						        esc: options.esc !== false,
+						    });
+						    let disposed = false;
+						    const dispose = () => {
+						        if (disposed) return;
+						        disposed = true;
+						        offShortcut?.();
+						        offPopup();
+						    };
+						    state.mounts.push(dispose);
+						    return {
+						        id,
+						        open() {
+						            openShapeEdge(id);
+						        },
+						        close() {
+						            closeShapeEdge(id);
+						        },
+						        toggle() {
+						            toggleShapeEdge(id);
+						        },
+						        isOpen() {
+						            return isShapeEdgeOpen(id);
+						        },
+						        dispose,
+						    };
+						},
 						shortcuts: { register(binding) {
-							const specs = typeof binding.keys === "string" ? [binding.keys] : binding.keys;
-							const disposers = [];
-							for (const spec of specs) {
-								const parsed = parseShortcut(spec);
-								const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`;
-								if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`);
-								const registered = {
-									...parsed,
-									run: binding.run
-								};
-								shortcuts.set(key, registered);
-								const off = () => {
-									if (shortcuts.get(key) === registered) shortcuts.delete(key);
-								};
-								disposers.push(off);
-								state.shortcuts.push(off);
-							}
-							return () => {
-								for (const off of disposers) off();
-							};
+							return registerShortcuts(binding.keys, binding.run);
 						} }
 					};
 					let url = `/dsh-shape/client/${encodeURIComponent(shape.id)}/${shape.clientEntry}`;
@@ -2152,7 +2246,8 @@ window.__ModuleLoader__.load({
 								disposeShapeMounts(shape.id);
 								disposeShapeEvents(shape.id);
 								disposeShapePanels(shape.id);
-							disposeShapeTabs(shape.id);
+								disposeShapeTabs(shape.id);
+								disposeShapeEdges(shape.id);
 							}
 						});
 					} catch (cause) {
@@ -2162,6 +2257,7 @@ window.__ModuleLoader__.load({
 						disposeShapeEvents(shape.id);
 						disposeShapePanels(shape.id);
 						disposeShapeTabs(shape.id);
+						disposeShapeEdges(shape.id);
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
@@ -2763,14 +2859,17 @@ window.__ModuleLoader__.load({
 		                            run: () => { void runAction(command.run); },
 		                        }),
 		                    });
-		                    const all = expandDefaults(command.keys);
+		                    const all = expandDefaults(command.keys, command.profiles);
 		                    try {
 		                        return service().register(definition(all));
 		                    }
 		                    catch (cause) {
-		                        // Web on Linux admits only a few combinations; keep the desktop
-		                        // defaults so the command still exists and stays rebindable.
-		                        if (!(cause instanceof Error) || !cause.message.includes('Unsupported Web shortcut'))
+		                        // A Web profile may reject the combination outright, or already
+		                        // own it (the whole catalog is validated at the IPC boundary, and one
+		                        // clash makes every definition unusable). Either way, keep the
+		                        // desktop defaults so the command still exists and stays rebindable.
+		                        const message = cause instanceof Error ? cause.message : "";
+		                        if (!message.includes('Unsupported Web shortcut') && !message.includes('Conflicting shortcut defaults'))
 		                            throw cause;
 		                        const desktopOnly = Object.fromEntries(Object.entries(all).filter(([profile]) => profile.startsWith('desktop:')));
 		                        return service().register(definition(desktopOnly));
@@ -2817,12 +2916,14 @@ window.__ModuleLoader__.load({
 		 * @param spec - combination text.
 		 * @returns defaults keyed by profile; `web:linux` is omitted when it would reject the binding.
 		 */
-		function expandDefaults(spec) {
+		function expandDefaults(spec, only) {
 		    if (spec === undefined)
 		        return {};
 		    const binding = parseBinding(spec);
 		    const defaults = {};
 		    for (const profile of PROFILES) {
+		        if (only !== undefined && !only.some((prefix) => profile.startsWith(prefix + ":")))
+		            continue;
 		        if (profile === 'web:linux' && !webLinuxAllows(binding))
 		            continue;
 		        defaults[profile] = binding;
@@ -3075,7 +3176,404 @@ window.__ModuleLoader__.load({
 		    }, [slot]);
 		    if (list.length === 0)
 		        return null;
-		    return react.createPortal(react_jsx_runtime.react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
+		    return react.createPortal(react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-edges.ts
+		/** Shape-owned edge popups: windows that slide in from one viewport edge. */
+		// Registry state is prefixed because every client source region shares one
+		// bundle scope: a bare `listeners` or `notify` would collide with the slot and
+		// panel registries.
+		const edgePopups = new Map();
+		const edgeListeners = new Set();
+		/** Open ids in stacking order; the last one is the topmost window. */
+		const edgeStack = [];
+		/** Open ids that are playing their exit animation. */
+		const edgeClosing = new Set();
+		/** Tell every observer that the snapshot changed. */
+		function notifyEdges() {
+		    for (const listener of edgeListeners)
+		        listener();
+		}
+		/**
+		 * Drop one id from the stacking order and the closing set.
+		 * @param id - namespaced popup id.
+		 * @returns whether the id was open or closing.
+		 */
+		function forgetEdge(id) {
+		    const at = edgeStack.indexOf(id);
+		    if (at !== -1)
+		        edgeStack.splice(at, 1);
+		    const wasClosing = edgeClosing.delete(id);
+		    return at !== -1 || wasClosing;
+		}
+		/**
+		 * Register one edge popup.
+		 * @param popup - popup definition; a second registration with the same id replaces it.
+		 * @returns an idempotent disposer that also closes the window.
+		 */
+		function registerShapeEdge(popup) {
+		    edgePopups.set(popup.id, popup);
+		    notifyEdges();
+		    let disposed = false;
+		    return () => {
+		        if (disposed)
+		            return;
+		        disposed = true;
+		        if (edgePopups.get(popup.id) !== popup)
+		            return;
+		        edgePopups.delete(popup.id);
+		        forgetEdge(popup.id);
+		        notifyEdges();
+		    };
+		}
+		/**
+		 * Read one registered popup.
+		 * @param id - namespaced popup id.
+		 * @returns the popup, or undefined when it is not registered.
+		 */
+		function shapeEdge(id) {
+		    return edgePopups.get(id);
+		}
+		/**
+		 * Show one registered popup, or raise it when it is already open.
+		 * @param id - namespaced popup id.
+		 */
+		function openShapeEdge(id) {
+		    if (!edgePopups.has(id))
+		        throw new Error(`dsh-shape: no edge popup "${id}" is registered`);
+		    edgeClosing.delete(id);
+		    const at = edgeStack.indexOf(id);
+		    if (at !== -1)
+		        edgeStack.splice(at, 1);
+		    edgeStack.push(id);
+		    notifyEdges();
+		}
+		/**
+		 * Ask one open popup to close; the layer plays its exit animation and then drops it.
+		 * @param id - namespaced popup id.
+		 */
+		function closeShapeEdge(id) {
+		    if (!edgeStack.includes(id) || edgeClosing.has(id))
+		        return;
+		    edgeClosing.add(id);
+		    notifyEdges();
+		}
+		/**
+		 * Open a closed popup or close an open one.
+		 * @param id - namespaced popup id.
+		 */
+		function toggleShapeEdge(id) {
+		    if (edgeStack.includes(id) && !edgeClosing.has(id))
+		        closeShapeEdge(id);
+		    else
+		        openShapeEdge(id);
+		}
+		/**
+		 * Whether a popup is open and not already animating out.
+		 * @param id - namespaced popup id.
+		 * @returns true while the window is fully shown.
+		 */
+		function isShapeEdgeOpen(id) {
+		    return edgeStack.includes(id) && !edgeClosing.has(id);
+		}
+		/**
+		 * Drop a popup after its exit animation finished.
+		 * @param id - namespaced popup id.
+		 */
+		function finishShapeEdgeClose(id) {
+		    if (!edgeClosing.has(id))
+		        return;
+		    edgeClosing.delete(id);
+		    const at = edgeStack.indexOf(id);
+		    if (at !== -1)
+		        edgeStack.splice(at, 1);
+		    notifyEdges();
+		}
+		/**
+		 * Read the current open state.
+		 * @returns a fresh snapshot the layer can render.
+		 */
+		function shapeEdgeSnapshot() {
+		    return { open: [...edgeStack], closing: [...edgeClosing] };
+		}
+		/**
+		 * Observe open-state changes.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeEdges(listener) {
+		    edgeListeners.add(listener);
+		    return () => { edgeListeners.delete(listener); };
+		}
+		/**
+		 * Read the topmost open popup that is not animating out.
+		 * @returns the popup Escape should reach, or undefined when none is open.
+		 */
+		function topShapeEdge() {
+		    for (let index = edgeStack.length - 1; index >= 0; index -= 1) {
+		        const id = edgeStack[index];
+		        if (id === undefined || edgeClosing.has(id))
+		            continue;
+		        const popup = edgePopups.get(id);
+		        if (popup !== undefined)
+		            return popup;
+		    }
+		    return undefined;
+		}
+		/**
+		 * Remove every popup one shape owns, closing any that are open.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapeEdges(shapeId) {
+		    let changed = false;
+		    for (const [id, popup] of edgePopups) {
+		        if (popup.shapeId !== shapeId)
+		            continue;
+		        edgePopups.delete(id);
+		        forgetEdge(id);
+		        changed = true;
+		    }
+		    if (changed)
+		        notifyEdges();
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeEdgeLayer.tsx
+		/** Fixed layer that renders shape edge popups and owns their Escape handling. */
+		/** Above the app frame and its floating panels; below modal dialogs and the shell overlay. */
+		const LAYER_Z = 1100;
+		/** Gap kept between a window and the viewport edge it sits on. */
+		const EDGE_MARGIN = 12;
+		/** Default window size per edge: wide bands on top and bottom, tall columns at the sides. */
+		const DEFAULT_SIZE = {
+		    top: { width: 640, height: 420 },
+		    right: { width: 380, height: 560 },
+		    bottom: { width: 640, height: 420 },
+		    left: { width: 380, height: 560 },
+		};
+		/** Distance and direction the window travels while opening or closing. */
+		const SLIDE = {
+		    top: { x: 0, y: -28 },
+		    right: { x: 28, y: 0 },
+		    bottom: { x: 0, y: 28 },
+		    left: { x: -28, y: 0 },
+		};
+		const ENTER_MS = 190;
+		const EXIT_MS = 140;
+		const ENTER_EASING = 'cubic-bezier(0.16, 0.84, 0.3, 1)';
+		const EXIT_EASING = 'cubic-bezier(0.4, 0, 1, 1)';
+		/** Window chrome; the strip outside it lets pointer events through. */
+		const WINDOW = {
+		    position: 'relative',
+		    display: 'flex',
+		    flexDirection: 'column',
+		    overflow: 'hidden',
+		    pointerEvents: 'auto',
+		    outline: 'none',
+		    color: 'var(--dsw-alias-label-primary, #e6edf3)',
+		    background: 'var(--dsw-alias-bg-layer-2, #1b1d22)',
+		    border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.12))',
+		    borderRadius: 12,
+		    boxShadow: '0 18px 48px rgba(0, 0, 0, 0.38)',
+		};
+		/** Drag-free title bar; it only labels the window and carries the dismiss control. */
+		const BAR = {
+		    display: 'flex',
+		    flex: 'none',
+		    alignItems: 'center',
+		    gap: 8,
+		    height: 34,
+		    padding: '0 6px 0 12px',
+		    background: 'var(--dsw-alias-bg-layer-3, rgba(255, 255, 255, 0.04))',
+		    borderBottom: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))',
+		    fontSize: 12,
+		    lineHeight: '18px',
+		    userSelect: 'none',
+		};
+		/** Window label; long titles ellipsize instead of widening the window. */
+		const BAR_TITLE = {
+		    flex: 1,
+		    minWidth: 0,
+		    overflow: 'hidden',
+		    whiteSpace: 'nowrap',
+		    textOverflow: 'ellipsis',
+		};
+		/** Dismiss control. */
+		const BAR_CLOSE = {
+		    flex: 'none',
+		    width: 24,
+		    height: 24,
+		    padding: 0,
+		    border: 0,
+		    borderRadius: 6,
+		    background: 'transparent',
+		    color: 'var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6))',
+		    cursor: 'pointer',
+		    font: 'inherit',
+		    fontSize: 16,
+		    lineHeight: '24px',
+		};
+		/** The shape's view fills the rest of the window. */
+		const FRAME = {
+		    display: 'block',
+		    flex: 1,
+		    width: '100%',
+		    minHeight: 0,
+		    border: 0,
+		    background: 'var(--dsw-alias-bg-layer-1, #14161a)',
+		    colorScheme: 'normal',
+		};
+		/**
+		 * Position one popup on its edge, centered along it.
+		 * @param edge - edge the window belongs to.
+		 * @returns the fixed strip that centers the window without a transform.
+		 */
+		function stripStyle(edge) {
+		    const base = {
+		        position: 'fixed',
+		        display: 'flex',
+		        zIndex: LAYER_Z,
+		        pointerEvents: 'none',
+		    };
+		    if (edge === 'top')
+		        return { ...base, top: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' };
+		    if (edge === 'bottom')
+		        return { ...base, bottom: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' };
+		    if (edge === 'left')
+		        return { ...base, left: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' };
+		    return { ...base, right: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' };
+		}
+		/**
+		 * Size one popup, keeping it inside the viewport.
+		 * @param popup - popup definition.
+		 * @returns width and height for the window.
+		 */
+		function windowSize(popup) {
+		    const fallback = DEFAULT_SIZE[popup.edge];
+		    const width = Math.max(160, popup.width ?? fallback.width);
+		    const height = Math.max(120, popup.height ?? fallback.height);
+		    return {
+		        width: `${String(width)}px`,
+		        height: `${String(height)}px`,
+		        maxWidth: 'calc(100vw - 24px)',
+		        maxHeight: 'calc(100vh - 24px)',
+		    };
+		}
+		/**
+		 * Whether the user asked the platform to minimize motion.
+		 * @returns true when animations should be skipped.
+		 */
+		function prefersReducedMotion() {
+		    return typeof window !== 'undefined'
+		        && typeof window.matchMedia === 'function'
+		        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		}
+		/**
+		 * Address of the view a popup shows.
+		 * @param popup - popup definition.
+		 * @returns the Host URL of the shape's view file.
+		 */
+		function viewUrl(popup) {
+		    const shape = encodeURIComponent(popup.shapeId);
+		    const file = popup.view.split('/').map(segment => encodeURIComponent(segment)).join('/');
+		    return `/dsh-shape/view/${shape}/${file}`;
+		}
+		/**
+		 * One edge popup window: entry animation, focus ownership, and dismissal.
+		 * @param props.popup - registered popup.
+		 * @param props.closing - whether the registry asked it to close.
+		 * @returns the window.
+		 */
+		function EdgeWindow({ popup, closing }) {
+		    const ref = react.useRef(null);
+		    /** Element focused before the popup opened; focus returns there on close. */
+		    const restore = react.useRef(null);
+		    react.useEffect(() => {
+		        const element = ref.current;
+		        if (element === null)
+		            return;
+		        restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		        element.focus({ preventScroll: true });
+		        const slide = SLIDE[popup.edge];
+		        if (typeof element.animate === 'function' && !prefersReducedMotion()) {
+		            const animation = element.animate([
+		                { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
+		                { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
+		            ], { duration: ENTER_MS, easing: ENTER_EASING });
+		            animation.finished.catch(() => { });
+		        }
+		        return () => {
+		            const previous = restore.current;
+		            if (previous !== null && previous.isConnected)
+		                previous.focus({ preventScroll: true });
+		        };
+		    }, [popup.edge]);
+		    react.useEffect(() => {
+		        if (!closing)
+		            return;
+		        const element = ref.current;
+		        let settled = false;
+		        const settle = () => {
+		            if (settled)
+		                return;
+		            settled = true;
+		            finishShapeEdgeClose(popup.id);
+		        };
+		        if (element === null || typeof element.animate !== 'function' || prefersReducedMotion()) {
+		            settle();
+		            return;
+		        }
+		        const slide = SLIDE[popup.edge];
+		        const animation = element.animate([
+		            { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
+		            { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
+		        ], { duration: EXIT_MS, easing: EXIT_EASING, fill: 'forwards' });
+		        animation.finished.then(settle, settle);
+		        // A tab switched to the background can starve `finished`; drop the window anyway.
+		        const timer = window.setTimeout(settle, EXIT_MS + 120);
+		        return () => {
+		            window.clearTimeout(timer);
+		            animation.cancel();
+		        };
+		    }, [closing, popup.edge, popup.id]);
+		    return (react_jsx_runtime.jsx("div", { style: stripStyle(popup.edge), "data-shape-edge-strip": popup.id, children: react_jsx_runtime.jsxs("div", { ref: ref, tabIndex: -1, role: "dialog", "aria-label": popup.title, style: { ...WINDOW, ...windowSize(popup) }, "data-testid": "dsh-shape-edge", "data-shape-edge": popup.id, "data-edge": popup.edge, children: [react_jsx_runtime.jsxs("div", { style: BAR, children: [react_jsx_runtime.jsx("span", { style: BAR_TITLE, title: popup.title, children: popup.title }), react_jsx_runtime.jsx("button", { type: "button", style: BAR_CLOSE, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED (Esc)", "data-testid": "dsh-shape-edge-close", onClick: () => { closeShapeEdge(popup.id); }, children: "\u00D7" })] }), react_jsx_runtime.jsx("iframe", { style: FRAME, title: popup.title, src: viewUrl(popup), referrerPolicy: "no-referrer", sandbox: "allow-scripts allow-forms allow-modals allow-popups" })] }) }));
+		}
+		/**
+		 * Render every open edge popup into a fixed layer above the app.
+		 * @returns the portal, or null when no popup is open.
+		 */
+		function ShapeEdgeLayer() {
+		    const [snapshot, setSnapshot] = react.useState(() => shapeEdgeSnapshot());
+		    react.useEffect(() => {
+		        const sync = () => { setSnapshot(shapeEdgeSnapshot()); };
+		        sync();
+		        return subscribeShapeEdges(sync);
+		    }, []);
+		    react.useEffect(() => {
+		        const onKeyDown = (event) => {
+		            if (event.key !== 'Escape' || event.defaultPrevented || event.repeat || event.isComposing)
+		                return;
+		            const popup = topShapeEdge();
+		            if (popup === undefined || !popup.esc)
+		                return;
+		            // Own the key while a popup accepts Escape: a dialog behind it must not
+		            // also close on the same press.
+		            event.preventDefault();
+		            event.stopPropagation();
+		            closeShapeEdge(popup.id);
+		        };
+		        document.addEventListener('keydown', onKeyDown, true);
+		        return () => { document.removeEventListener('keydown', onKeyDown, true); };
+		    }, []);
+		    if (snapshot.open.length === 0)
+		        return null;
+		    const windows = snapshot.open.map((id) => {
+		        const popup = shapeEdge(id);
+		        if (popup === undefined)
+		            return null;
+		        return react_jsx_runtime.jsx(EdgeWindow, { popup: popup, closing: snapshot.closing.includes(id) }, id);
+		    });
+		    return react_dom.createPortal(react_jsx_runtime.jsx(react_jsx_runtime.Fragment, { children: windows }), document.body);
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-surfaces.ts
@@ -3342,7 +3840,7 @@ window.__ModuleLoader__.load({
 		            container.replaceChildren();
 		        };
 		    }, [tab]);
-		    return react_jsx_runtime.react_jsx_runtime.jsx("div", { ref: ref, "data-shape-tab": tab.id, style: TAB_BODY_STYLE });
+		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-tab": tab.id, style: TAB_BODY_STYLE });
 		}
 		/**
 		 * Render one shape tab's chip label.
@@ -3350,7 +3848,7 @@ window.__ModuleLoader__.load({
 		 * @returns the label element.
 		 */
 		function ShapeTabTitle({ tab }) {
-		    return react_jsx_runtime.react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
+		    return react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
 		}
 		/**
 		 * Bind one tab to a slot component without an element factory in the caller.
@@ -3359,7 +3857,7 @@ window.__ModuleLoader__.load({
 		 */
 		function createTabComponent(tab) {
 		    return function ShapeTabSlotBody() {
-		        return react_jsx_runtime.react_jsx_runtime.jsx(ShapeTabBody, { tab: tab });
+		        return react_jsx_runtime.jsx(ShapeTabBody, { tab: tab });
 		    };
 		}
 		/**
@@ -3369,7 +3867,7 @@ window.__ModuleLoader__.load({
 		 */
 		function createTabTitleComponent(tab) {
 		    return function ShapeTabSlotTitle() {
-		        return react_jsx_runtime.react_jsx_runtime.jsx(ShapeTabTitle, { tab: tab });
+		        return react_jsx_runtime.jsx(ShapeTabTitle, { tab: tab });
 		    };
 		}
 		//#endregion
@@ -3641,6 +4139,13 @@ window.__ModuleLoader__.load({
 		            inject: () => ({ resolveShape, slot: spec.name }),
 		        }, ShapeSlotEntries));
 		    }
+		    // Edge popups get their own `shell.overlay` seat: the layer owns a fixed
+		    // position above the app frame, so it must not depend on a shape mount.
+		    ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+		        name: 'shell.overlay',
+		        id: 'dsh-shape-edge-layer',
+		        order: 19,
+		    }, ShapeEdgeLayer));
 		    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
 		        name: 'conversation.input.dock',
 		        id: 'dsh-shape-composer-bridge',

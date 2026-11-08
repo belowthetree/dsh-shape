@@ -49,6 +49,8 @@
 
 `views/index.html` 是这个形态的独立页面，通过 `/dsh-shape/view/<id>/` 提供。视图是普通网页，**拿不到客户端 API**；需要读宿主数据时用 `fetch('/dsh-shape/api/…')`。
 
+两处入口：在 Shape 浏览器里点形态卡片，第二个窗口会显示它；客户端模块也可以用 `api.edge({ view: 'index.html' })` 把同一个页面放进[边缘弹窗](#边缘弹窗)。
+
 ## 槽位条目（slots/）
 
 每个 JSON 文件声明一个槽位条目，例如聊天卡片：
@@ -98,7 +100,35 @@ export function activate(api) {
 - `api.shape` 是 `{ id, title, version }`；
 - `api.require(plugin, capability)` 返回能力对象，未声明或版本不符时抛错；
 - `api.mount(slot, render, options?)` 往槽位挂 DOM，`render(container)` 返回清理函数；
-- `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）。
+- `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）；
+- `api.edge(...)` 注册一个边缘弹窗，从屏幕边缘滑入并显示 `views/` 里的页面（见下）。
+
+## 边缘弹窗
+
+`api.edge()` 注册一个贴着屏幕边缘的窗口，`open()` 时从该边缘居中的位置滑入，内容是形态自己的视图页面，`Esc` 关闭。
+
+```js
+export function activate(api) {
+  const popup = api.edge({
+    id: 'dock',
+    title: '快捷面板',
+    edge: 'right',          // top | right | bottom | left，默认 right
+    view: 'index.html',     // views/ 下的文件，默认 index.html
+    width: 380,             // 可选；left/right 默认 380×560，top/bottom 默认 640×420
+    height: 560,
+    keys: 'Ctrl+Alt+E',     // 可选；绑定一个切换窗口的页面级快捷键
+    esc: true,              // 可选；默认 true
+  })
+  popup.open()
+  return () => popup.dispose()
+}
+```
+
+- 返回 `{ id, open, close, toggle, isOpen, dispose }`；`open()` 会把窗口提到最上方，多个弹窗可以同时开。
+- 窗口内容是 `/dsh-shape/view/<id>/<view>` 的 `iframe`，沙箱**不带 `allow-same-origin`**：视图拿不到宿主 DOM、cookie 或客户端 API，需要交互能力就把逻辑写在 `client/` 里。
+- `keys` 走页面级 `keydown`，不受 Web 组合键限制，也不会出现在设置里；要可重绑的命令，用 `dsh-shape#shortcuts` 注册并在 `run` 里调用 `popup.toggle()`。
+- `esc: false` 只关掉 `Esc`：标题栏的关闭按钮始终可用，鼠标点进视图内部后 `Esc` 也不会传到宿主（沙箱 iframe 是独立文档）。
+- 尺寸默认按边缘取，`width`/`height` 是像素；窗口不会超出视口。视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
 
 ## 行为与测试（actions.js）
 

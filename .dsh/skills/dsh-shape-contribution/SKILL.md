@@ -83,8 +83,12 @@ Strip `import` lines and `export ` prefixes, re-indent to the surrounding depth,
 
 Two traps that pass every gate and still break the UI, both hit while splicing `ShapeDialog.tsx`:
 
-- **Double rewriting.** Rewriting `_jsx(` → `react_jsx_runtime.jsx(` and then also rewriting bare `jsx(` produces `react_jsx_runtime.react_jsx_runtime.jsx(`. Apply one rule per identifier, and grep the result for `react_jsx_runtime.react_` and `react.react.`.
+- **Double rewriting.** Rewriting `_jsx(` → `react_jsx_runtime.jsx(` and then also rewriting bare `jsx(` produces `react_jsx_runtime.react_jsx_runtime.jsx(`. Apply one rule per identifier, and grep the result for `react_jsx_runtime.react_` and `react.react.`. Six such bindings shipped in `client.js` (the whole of `ShapeOverlay` and `ShapeTabHost`) and only surfaced when an overlay finally mounted; they were repaired while adding the edge layer. `node --check` cannot catch this — only rendering can.
 - **`createPortal` is on `react-dom`.** Rewriting it with the other React APIs yields `react.createPortal` — `undefined` at render. Map it to `react_dom.createPortal`.
+
+**One factory scope.** Every region is a statement list inside the same `factory`, so a new module must prefix its module-level identifiers: `edgePopups`/`edgeListeners`/`notifyEdges`, not `popups`/`listeners`/`notify` — the latter collided with the slot and panel registries and the bundle died with `Identifier 'listeners' has already been declared`. Rename before splicing, and check with a parser after: duplicate `function` declarations do not throw at parse time, they silently override.
+
+**A source edit that is not spliced changes nothing.** The bundle gate loads `apply(ctx)` and passes even when a whole new registration is missing from `client.js`; the harness showed the popup registry open with no window because the `index.ts` region still lacked the `dsh-shape-edge-layer` slot row. Re-splice every touched region, then diff the region against its source.
 
 `check-client-bundle.mjs` only loads the module and calls `apply(ctx)`; it never renders. After splicing a `.tsx` region, open the affected surface in the browser and confirm it appears — a region that renders `null` passes every automated gate.
 

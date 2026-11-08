@@ -61,7 +61,33 @@ Verified: a card appearing in the dock and running its action from a keyword mat
 
 Verified: a preference surviving a full page reload while other shapes kept their own keys.
 
-## 6. Regression pass before handing a shape over
+## 6. A view inside an edge popup
+
+1. Put the interface in `views/index.html`; it is a plain page with no client API.
+2. In `client/index.js`, register one popup per surface:
+   ```js
+   export function activate(api) {
+     const popup = api.edge({
+       id: 'dock',
+       title: '快捷面板',
+       edge: 'right',
+       view: 'index.html',
+       width: 360,
+       height: 520,
+       keys: 'Ctrl+Alt+E',
+     })
+     popup.open()
+     return () => popup.dispose()
+   }
+   ```
+3. `edge` is `top` / `right` / `bottom` / `left`; sides default to 380×560 and top/bottom to 640×420, and the window never leaves the viewport.
+4. `keys` binds a private page-level shortcut that toggles the window (any combination, invisible in Settings). For a rebindable command, register it through `dsh-shape#shortcuts` and call `popup.toggle()`.
+5. `Esc` closes the topmost popup; `esc: false` opts out, and `finishShapeEdgeClose` drops the window after its exit animation. The title bar's close button works even when focus is inside the sandboxed view.
+6. A shape may open several popups at once; the one opened last is on top, and `open()` raises an already-open window.
+
+Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. This has not yet been run inside the full DSH GUI.
+
+## 7. Regression pass before handing a shape over
 
 1. `shape_validate` and `shape_test` clean.
 2. Reload the page; the entry point exists and the primary action works.

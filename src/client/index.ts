@@ -25,6 +25,7 @@ import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { createConversation } from './shape-conversation.ts'
 import { ShapeOverlay } from './ShapeOverlay.tsx'
+import { ShapeEdgeLayer } from './ShapeEdgeLayer.tsx'
 import { createTabComponent, createTabTitleComponent } from './ShapeTabHost.tsx'
 import {
   setShapePanelOpener,
@@ -238,6 +239,14 @@ export function apply(ctx: Context): void {
     id: 'dsh-shape-composer-bridge',
     order: 0,
   }, ShapeComposerBridge))
+
+  // Edge popups get their own `shell.overlay` seat: the layer owns a fixed
+  // position above the app frame, so it must not depend on a shape mount.
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'dsh-shape-edge-layer',
+    order: 19,
+  }, ShapeEdgeLayer))
 
   // A panel is a floating window in the conversation input overlay: the `main`
   // slot does not commit a shape entry's subtree, so panels render through the

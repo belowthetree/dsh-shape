@@ -5,6 +5,15 @@ import { supportsShapeApiVersion } from '../shared/capabilities.ts'
 import { disposeShapeMounts, isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
 import { disposeShapeEvents } from './shape-events.ts'
 import {
+  closeShapeEdge,
+  disposeShapeEdges,
+  isShapeEdgeOpen,
+  openShapeEdge,
+  registerShapeEdge,
+  toggleShapeEdge,
+  type ShapeEdge,
+} from './shape-edges.ts'
+import {
   disposeShapePanels,
   disposeShapeTabs,
   openShapePanel,
@@ -22,6 +31,8 @@ interface ShapeInfo {
   shapeApiVersion?: number
   requirements?: ShapeRequirement[]
   clientEntry?: string
+  /** Files below `views/`, relative to that directory. */
+  views?: string[]
 }
 
 /** One shortcut a shape asks the runtime to own. */
@@ -62,6 +73,13 @@ export interface ShapeClientApi {
    * @returns a handle that opens the tab and releases it.
    */
   tab: (options: ShapeTabOptions) => ShapeTabHandle
+  /**
+   * Contribute an edge popup: a window that slides in from one viewport edge
+   * and renders one of the shape's `views/` pages.
+   * @param options - popup id, edge, view, size, shortcut, and Escape policy.
+   * @returns a handle that opens, closes, and releases the popup.
+   */
+  edge: (options: ShapeEdgeOptions) => ShapeEdgeHandle
   shortcuts: {
     register: (binding: ShapeShortcutBinding) => () => void
   }
@@ -114,6 +132,42 @@ export interface ShapeTabHandle {
   /** Open the tab in the right sidebar. */
   open: () => void
   /** Remove the tab type. */
+  dispose: () => void
+}
+
+/** Options accepted by `api.edge()`. */
+export interface ShapeEdgeOptions {
+  /** Popup id, namespaced per shape by the runtime. */
+  id: string
+  /** Window bar label; the shape title when omitted. */
+  title?: string
+  /** Viewport edge to anchor to; defaults to `right`. */
+  edge?: ShapeEdge
+  /** File below the shape's `views/` directory; defaults to `index.html`. */
+  view?: string
+  /** Window width in pixels; the edge default when omitted. */
+  width?: number
+  /** Window height in pixels; the edge default when omitted. */
+  height?: number
+  /** Combination(s) that toggle the popup, such as `Ctrl+Alt+E`. */
+  keys?: string | readonly string[]
+  /** Whether Escape closes the popup; defaults to true. */
+  esc?: boolean
+}
+
+/** Handle returned by `api.edge()`. */
+export interface ShapeEdgeHandle {
+  /** Namespaced popup id. */
+  readonly id: string
+  /** Show the window, raising it above the other open popups. */
+  open: () => void
+  /** Animate the window out and drop it. */
+  close: () => void
+  /** Open a closed popup or close an open one. */
+  toggle: () => void
+  /** Whether the window is currently shown. */
+  isOpen: () => boolean
+  /** Remove the popup and release its shortcut. */
   dispose: () => void
 }
 
@@ -231,6 +285,50 @@ function matchesShortcut(event: KeyboardEvent, shortcut: ParsedShortcut): boolea
 }
 
 /**
+ * Normalize the view path an edge popup declares.
+ * @param view - path relative to the shape's `views/` directory.
+ * @returns the posix path the Host serves.
+ */
+function normalizeView(view: string): string {
+  const normalized = view.trim().replaceAll('\\', '/').replace(/^\.\//u, '')
+  if (normalized === '' || normalized.startsWith('/')
+    || normalized.split('/').some(segment => segment === '' || segment === '.' || segment === '..')) {
+    throw new Error(`dsh-shape: invalid view path "${view}"`)
+  }
+  return normalized
+}
+
+/**
+ * Check a declared view against the shape's scanned file listing.
+ * @param shape - shape the popup belongs to.
+ * @param view - normalized view path.
+ * @throws when the shape has no such view; a host that does not report views skips the check.
+ */
+function assertShapeView(shape: ShapeInfo, view: string): void {
+  const views = shape.views
+  if (views === undefined) return
+  if (views.includes(view)) return
+  // The Host serves `index.html` as the shape's first top-level page.
+  if (view === 'index.html' && views.some(file => !file.includes('/') && /\.html?$/i.test(file))) return
+  const available = views.length === 0 ? 'no views/ directory' : views.join(', ')
+  throw new Error(`dsh-shape: shape "${shape.id}" has no view "${view}" (${available})`)
+}
+
+/**
+ * Validate one optional window dimension.
+ * @param value - pixels declared by the shape.
+ * @param field - field name for the error message.
+ * @returns the rounded size, or undefined when omitted.
+ */
+function positivePixels(value: number | undefined, field: string): number | undefined {
+  if (value === undefined) return undefined
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels`)
+  }
+  return Math.round(value)
+}
+
+/**
  * Create the shape Client runtime.
  * @param capabilities - registry used for startup dependency checks.
  * @returns a start function returning its disposer.
@@ -289,6 +387,40 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         cleanup: undefined as (() => void) | undefined,
       }
       const scopedCapabilities = scopeCapabilities(resolution.capabilities, shape)
+
+      /**
+       * Register one or more private page-level shortcuts for this shape.
+       * @param specs - combination or combinations.
+       * @param run - action invoked on a match.
+       * @returns a disposer releasing every combination.
+       */
+      const registerShortcuts = (
+        specs: string | readonly string[],
+        run: () => void | Promise<void>,
+      ): (() => void) => {
+        const list = typeof specs === 'string' ? [specs] : specs
+        const disposers: Array<() => void> = []
+        try {
+          for (const spec of list) {
+            const parsed = parseShortcut(spec)
+            const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`
+            if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`)
+            const registered: RegisteredShortcut = { ...parsed, run }
+            shortcuts.set(key, registered)
+            const off = (): void => {
+              if (shortcuts.get(key) === registered) shortcuts.delete(key)
+            }
+            disposers.push(off)
+            state.shortcuts.push(off)
+          }
+        } catch (cause) {
+          // A conflict halfway through must not leave the earlier combinations bound.
+          for (const off of disposers) off()
+          throw cause
+        }
+        return () => { for (const off of disposers) off() }
+      }
+
       const api: ShapeClientApi = {
         shape: { id: shape.id, title: shape.title, version: shape.version },
         capabilities: scopedCapabilities,
@@ -345,23 +477,57 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             dispose: off,
           }
         },
+        edge(options) {
+          const id = `shape:${shape.id}:${options.id}`
+          const edge = options.edge ?? 'right'
+          if (edge !== 'top' && edge !== 'right' && edge !== 'bottom' && edge !== 'left') {
+            throw new Error(`dsh-shape: edge must be top, right, bottom, or left: ${String(edge)}`)
+          }
+          const view = normalizeView(options.view ?? 'index.html')
+          assertShapeView(shape, view)
+          const width = positivePixels(options.width, 'width')
+          const height = positivePixels(options.height, 'height')
+          const offShortcut = options.keys === undefined
+            ? undefined
+            : registerShortcuts(options.keys, () => { toggleShapeEdge(id) })
+          const offPopup = registerShapeEdge({
+            shapeId: shape.id,
+            id,
+            title: options.title ?? shape.title,
+            edge,
+            view,
+            ...(width === undefined ? {} : { width }),
+            ...(height === undefined ? {} : { height }),
+            esc: options.esc !== false,
+          })
+          let disposed = false
+          const dispose = (): void => {
+            if (disposed) return
+            disposed = true
+            offShortcut?.()
+            offPopup()
+          }
+          state.mounts.push(dispose)
+          return {
+            id,
+            open() {
+              openShapeEdge(id)
+            },
+            close() {
+              closeShapeEdge(id)
+            },
+            toggle() {
+              toggleShapeEdge(id)
+            },
+            isOpen() {
+              return isShapeEdgeOpen(id)
+            },
+            dispose,
+          }
+        },
         shortcuts: {
           register(binding) {
-            const specs = typeof binding.keys === 'string' ? [binding.keys] : binding.keys
-            const disposers: Array<() => void> = []
-            for (const spec of specs) {
-              const parsed = parseShortcut(spec)
-              const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`
-              if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`)
-              const registered: RegisteredShortcut = { ...parsed, run: binding.run }
-              shortcuts.set(key, registered)
-              const off = (): void => {
-                if (shortcuts.get(key) === registered) shortcuts.delete(key)
-              }
-              disposers.push(off)
-              state.shortcuts.push(off)
-            }
-            return () => { for (const off of disposers) off() }
+            return registerShortcuts(binding.keys, binding.run)
           },
         },
       }
@@ -386,6 +552,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             disposeShapeEvents(shape.id)
             disposeShapePanels(shape.id)
             disposeShapeTabs(shape.id)
+            disposeShapeEdges(shape.id)
           },
         })
       } catch (cause) {
@@ -395,6 +562,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         disposeShapeEvents(shape.id)
         disposeShapePanels(shape.id)
         disposeShapeTabs(shape.id)
+        disposeShapeEdges(shape.id)
         state.cleanup?.()
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)
       }

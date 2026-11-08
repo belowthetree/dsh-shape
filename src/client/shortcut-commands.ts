@@ -78,9 +78,14 @@ export interface ShapeShortcutCommand {
   regions?: readonly ShapeShortcutRegion[]
   /** Modal ids the command fires in; defaults to none. */
   modals?: readonly string[]
+  /** Runtimes to bind by default; defaults to both. Use it when a Web profile already owns the combination. */
+  profiles?: readonly ShapeShortcutRuntime[]
   /** Action invoked when the combination matches. */
   run: () => void | Promise<void>
 }
+
+/** Shells a default binding may be declared for. */
+export type ShapeShortcutRuntime = 'desktop' | 'web'
 
 /** Regions DSH dispatches shortcuts in. */
 export type ShapeShortcutRegion = 'page' | 'editable' | 'terminal'
@@ -168,13 +173,18 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
               run: () => { void runAction(command.run) },
             }),
           })
-          const all = expandDefaults(command.keys)
+          const all = expandDefaults(command.keys, command.profiles)
           try {
             return service().register(definition(all))
           } catch (cause) {
-            // Web on Linux admits only a few combinations; keep the desktop
-            // defaults so the command still exists and stays rebindable.
-            if (!(cause instanceof Error) || !cause.message.includes('Unsupported Web shortcut')) throw cause
+            // A Web profile may reject the combination outright, or already own it:
+            // the whole catalog is validated at the IPC boundary, and one clash
+            // makes every definition unusable. Either way keep the desktop defaults
+            // so the command still exists and stays rebindable.
+            const message = cause instanceof Error ? cause.message : ''
+            if (!message.includes('Unsupported Web shortcut') && !message.includes('Conflicting shortcut defaults')) {
+              throw cause
+            }
             const desktopOnly = Object.fromEntries(
               Object.entries(all).filter(([profile]) => profile.startsWith('desktop:')),
             ) as Partial<Record<ShortcutProfile, ShortcutBinding>>
@@ -227,11 +237,15 @@ function webLinuxAllows(binding: ShortcutBinding): boolean {
  * @param spec - combination text.
  * @returns defaults keyed by profile; `web:linux` is omitted when it would reject the binding.
  */
-function expandDefaults(spec: string | undefined): Partial<Record<ShortcutProfile, ShortcutBinding>> {
+function expandDefaults(
+  spec: string | undefined,
+  only?: readonly ShapeShortcutRuntime[],
+): Partial<Record<ShortcutProfile, ShortcutBinding>> {
   if (spec === undefined) return {}
   const binding = parseBinding(spec)
   const defaults: Partial<Record<ShortcutProfile, ShortcutBinding>> = {}
   for (const profile of PROFILES) {
+    if (only !== undefined && !only.some(prefix => profile.startsWith(`${prefix}:`))) continue
     if (profile === 'web:linux' && !webLinuxAllows(binding)) continue
     defaults[profile] = binding
   }

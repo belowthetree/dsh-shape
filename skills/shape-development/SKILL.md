@@ -50,7 +50,7 @@ A capability that is absent from the list is absent from the runtime: do not cod
 3. Decide what the shape contributes:
    - `views/index.html`: content rendered in the Shape browser's second modal.
    - `slots/chat-card.json`: a card above the chat composer.
-   - `client/index.js`: page-level behavior such as shortcuts, using declared capabilities. It can also own UI surfaces directly: `api.mount()` renders into one of the ten conversation slots (`shell.overlay` covers the whole app), `api.panel()` adds a left sidebar panel, and `api.tab()` adds a right sidebar page.
+   - `client/index.js`: page-level behavior such as shortcuts, using declared capabilities. It can also own UI surfaces directly: `api.mount()` renders into one of the ten conversation slots (`shell.overlay` covers the whole app), `api.panel()` adds a floating panel over the composer, `api.tab()` adds a right sidebar page, and `api.edge()` adds a window that slides in from a viewport edge and shows a `views/` page.
    - `actions.js`: DOM-free behavior plus `tests`, so `shape_test` can run it without a browser.
    - `tools/`: metadata only today; do not assume these tools execute.
 4. Scaffold a new shape with `shape_scaffold`, then edit the generated files. Pass `withActions` to get an `actions.js` with one passing test.
@@ -92,7 +92,7 @@ export function activate(api) {
 }
 ```
 
-Use `api.shape`, `api.capabilities`, `api.require(plugin, capability)`, `api.mount(...)`, `api.panel(...)`, `api.tab(...)`, and the capabilities above. A shape whose requirements or `apiVersion` are not satisfied is never imported.
+Use `api.shape`, `api.capabilities`, `api.require(plugin, capability)`, `api.mount(...)`, `api.panel(...)`, `api.tab(...)`, `api.edge(...)`, and the capabilities above. A shape whose requirements or `apiVersion` are not satisfied is never imported.
 
 7. Run `shape_validate` and fix every error before testing.
 8. Run `shape_test` after changing `actions.js`; it runs every exported test without a browser and reports failures with messages.

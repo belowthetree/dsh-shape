@@ -33,6 +33,7 @@ export function activate(api) {
 | `api.mount(slot, render, options?)` | disposer | One of the ten slots; `options` is `{ placement, snap }` for `conversation.input.overlay`. |
 | `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Floating window over the conversation input; `open()` shows it. |
 | `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
+| `api.edge({ id, title?, edge?, view?, width?, height?, keys?, esc? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views. |
 | `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
 
 Capabilities are read with `api.require`, never off `api.capabilities` directly, so a missing declaration fails at the call site:
@@ -54,9 +55,11 @@ Details:
 - `api.capabilities`: object keyed by `plugin#capability`, containing resolved API objects.
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
+- `dsh-shape#shortcuts`'s `register` takes `{ id, label, keys?, regions?, profiles?, modals?, run }` and returns a disposer. `keys` becomes a rebindable default in every profile the runtime admits. `regions` defaults to `['page']`; add `'editable'` for a command that must fire while the composer has the caret. `profiles: ['desktop']` (or `['web']`) narrows the runtimes that get a default — use it when another command already owns the combination on the other runtime, because one overlapping default invalidates the whole catalog at the desktop IPC boundary.
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
 - `api.panel(options)`: registers a panel and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the panel as a floating window over the conversation input.
 - `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
+- `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, esc? }`; the window shows `views/<view>` in a sandboxed iframe.
 
 ## Panels
 
@@ -95,6 +98,32 @@ export function activate(api) {
 ```
 
 A tab is a page type: `open()` adds one to the right sidebar, and opening the same tab twice focuses the existing page instead of duplicating it. The body mounts only while the tab is visible, and the same cleanup rules as panels apply. `open()` throws when the host has no right sidebar service.
+
+## Edge popups
+
+An edge popup is a window anchored to the middle of one viewport edge. Its body is one of the shape's `views/` pages, so the shape browser and the popup show the same UI.
+
+```js
+export function activate(api) {
+  const popup = api.edge({
+    id: 'dock',
+    title: 'Quick dock',
+    edge: 'right',        // top | right | bottom | left; defaults to right
+    view: 'index.html',   // file below views/; defaults to index.html
+    width: 380,           // optional; sides default 380×560, top/bottom 640×420
+    height: 560,
+    keys: 'Ctrl+Alt+E',   // optional toggle shortcut
+    esc: true,            // optional; Escape closes by default
+  })
+  return () => popup.dispose()
+}
+```
+
+- `open()` slides the window in and raises it above the other open popups; `close()` animates it out; `toggle()` switches; `isOpen()` reports the shown state.
+- The iframe is sandboxed **without** `allow-same-origin`: the view cannot read the host DOM, cookies, or the client API. Put behavior in `client/index.js`, not in the view.
+- `keys` is a private page-level shortcut (not rebindable, invisible in Settings, any combination). For a rebindable command, register with `dsh-shape#shortcuts` and call `popup.toggle()` from `run`.
+- `Esc` is handled on the host page. Focus is inside the sandboxed iframe after the user clicks the view, so keystrokes there never reach the host — the title bar's close button always works.
+- A missing view file throws with the list of available views when the host reports them.
 
 ## Mounts
 
