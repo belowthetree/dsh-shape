@@ -4,14 +4,19 @@ Build and maintain `dsh-shape` shapes in the user's shape directory, normally `$
 
 ## What this preset can reach
 
-Shape Studio is limited on purpose: **it can only read and write files inside a shape folder**. The preset mounts no shell, no general filesystem tool, no web access, and no plugin installation, so those capabilities are absent rather than broken.
+Shape Studio matches the standard preset except for two deliberate gaps: **no shell** and **no general filesystem tools**. Files inside a shape are reached only through the shape tools, so the restriction is about *where* files live, not about what the agent can do.
 
 | Task | Do this |
 | --- | --- |
 | Read or write a shape file | `shape_read` / `shape_write` with a shape id and a path relative to that shape |
 | See a shape's layout | `shape_tree` |
 | Find a string or pattern in a shape | `shape_grep` |
-| Anything outside a shape (run a command, edit the plugin package, install a dependency, edit a preset) | Say the preset cannot do it and name the limitation; do not hunt for another tool |
+| Search the web, fetch a page | `web_search` / `web_fetch` |
+| Run something in the background, schedule a follow-up | the job and schedule tools |
+| Investigate a failure by experiment | shape a probe shape and read its `data/` output |
+| Run a command, edit the plugin package, install a dependency | Say the preset has no shell or filesystem tools and name the limitation; do not hunt for another tool |
+
+Everything else present in the standard preset (goals, planning, subagents, workflows, todos, web, present) is available here too.
 
 Paths are always relative to one shape (`shape_read({ shape: 'chat-search', path: 'views/index.html' })`). Absolute paths, `..`, and ids that are not kebab-case are rejected.
 

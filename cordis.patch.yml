@@ -3,11 +3,12 @@
 # A bundle entry only applies this patch; it does not load the package itself,
 # so the patch inserts both the plugin row and the preset row.
 #
-# Shape Studio reads and writes only the shapes directory: the preset mounts
-# the shape tools (which include shape_read/shape_write scoped to that root)
-# and the bundled shape-development skill, and no shell, filesystem, web, or
-# plugin-installation row. Both preset-local plugins register in the preset
-# scope, so other presets never see them.
+# Shape Studio mirrors the standard preset except for the two surfaces it must
+# not have: no shell (tool-bash/tool-pwsh) and no general filesystem access
+# (tool-fs/tool-fs-search). Shape files are reached through shape_read,
+# shape_write, shape_tree, and shape_grep, which are scoped to one shape folder.
+# Both preset-local plugins register in the preset scope, so other presets never
+# see them.
 - insert:
     - id: dsh-shape
       name: '@belowthetree/dsh-shape'
@@ -16,7 +17,7 @@
       config:
         id: shape
         name: Shape Studio
-        description: Read and write dsh-shape shapes inside the shapes directory, with preset-scoped shape tools and the shape-development skill.
+        description: Develop dsh-shape shapes with the shape tools and the shape-development skill, without shell or general filesystem access.
         order: 5
         plugins:
           - id: persona
@@ -25,14 +26,12 @@
               prefix: >-
                 You are a dsh-shape developer powered by the {{model}} model.
 
-                This preset can only reach the shapes directory.
-                It has no shell, no general file read/write, no network, and no
-                plugin installation, so those tools were removed on purpose
-                rather than being broken. Read and write shape files only with
-                shape_read, shape_write, shape_tree, and shape_grep, which take
-                a shape id and a path relative to that shape folder. When a task
-                needs anything outside a shape — running a command, editing the
-                plugin package, installing a dependency, editing a preset —
+                This preset has no shell and no general filesystem tools, so
+                those tools were removed on purpose rather than being broken.
+                Read and write shape files only with shape_read, shape_write,
+                shape_tree, and shape_grep, which take a shape id and a path
+                relative to that shape folder. When a task needs a command, a
+                file outside a shape, or a change to the plugin package itself,
                 explain that this preset cannot do it and name the limitation
                 instead of trying another tool.
           - id: agent-instructions
@@ -48,12 +47,35 @@
                 - !!js process.getBuiltinModule('node:path').join(process.getBuiltinModule('node:path').dirname(process.getBuiltinModule('node:module').createRequire(baseUrl).resolve('@deepseek-ai/dsh-agent-preset/package.json')), 'skills')
           - id: tool-skill
             name: '@deepseek-ai/dsh-tool-skill'
-          - id: tool-ask-user
-            name: '@deepseek-ai/dsh-tool-ask-user'
-          - id: tool-todo
-            name: '@deepseek-ai/dsh-tool-todo'
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+          - id: command-goal
+            name: '@deepseek-ai/dsh-command-goal'
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
             config:
-              allowParallelInProgress: true
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until the user approves your plan through exit_plan_mode or switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
           - id: compaction
             name: cordis:group
             group: true
@@ -71,6 +93,51 @@
                   thresholdChars: 8192
                   headChars: 4096
                   tailChars: 1024
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  modelSelection: true
+                  modelDiscovery: true
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000
+          - id: present
+            name: '@deepseek-ai/dsh-tool-present'
+          - id: tool-plugin-manager
+            name: '@deepseek-ai/dsh-plugin-manager/tools'
+            disabled: !!js "!ctx.get('profileContext')"
+          - id: tool-plugin-market
+            name: '@deepseek-ai/dsh-plugin-market/tools'
+            disabled: true
           - id: shape-tools
             name: '@belowthetree/dsh-shape/tools'
           - id: shape-skill

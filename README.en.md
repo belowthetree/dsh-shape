@@ -78,15 +78,16 @@ Three skills live in the repository: `skills/shape-development/` (authoring shap
 
 ## Shape Studio preset
 
-Installation adds the **Shape Studio** preset, scoped to shape development:
+Installation adds the **Shape Studio** preset: the standard preset with shell and general filesystem tools replaced by shape-scoped file tools.
 
 - List, inspect, scaffold, and validate shapes: `shape_list`, `shape_inspect`, `shape_scaffold`, `shape_validate`, `shape_test`
 - Shape-scoped file access: `shape_read` and `shape_write` take a shape id plus a path relative to that shape
 - Directory structure and text search: `shape_tree`, `shape_grep`
 - Capability catalog (`shape_capabilities`) and a topic-based spec (`shape_spec`, including the `playbook` topics)
 - Two skills: `shape-development` (the contract) and `shape-playbook` (verified workflows for each kind of shape, plus the traps that cost time)
+- Everything else matches the standard preset: web search and fetch, background jobs, schedules, goals and planning, subagents and workflows, todos, `present`, plugin management
 
-The preset mounts **no** shell, general filesystem, web, or plugin-installation tools, so it cannot reach files outside a shape. These tools and skills are visible only in Shape Studio; other presets never see them.
+**Two gaps only**: no `bash`/`pwsh` and no `tool-fs`/`tool-fs-search`, so it cannot reach files outside a shape — shape files always go through the shape tools. These tools and skills are visible only in Shape Studio; other presets never see them.
 
 ## Install
 

@@ -79,15 +79,16 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 
 ## Shape Studio 预设
 
-安装后新增 **Shape Studio** 预设，只做形态开发：
+安装后新增 **Shape Studio** 预设：在标准预设的基础上，去掉 shell 和通用文件读写，换成按形态限定的文件工具。
 
 - 查看、检查、创建、校验形态：`shape_list`、`shape_inspect`、`shape_scaffold`、`shape_validate`、`shape_test`
 - 按形态限定范围的文件访问：`shape_read`、`shape_write`（必须指定形态 id，路径相对该形态目录）
 - 目录结构与文本检索：`shape_tree`、`shape_grep`
 - 能力目录查询：`shape_capabilities`；规范查询：`shape_spec`（含 `playbook` 经验流程主题）
 - 附带两份 skill：`shape-development`（契约与写法）、`shape-playbook`（已验证的各类形态流程与踩过的坑）
+- 其余能力与标准预设一致：Web 搜索与抓取、后台任务、定时任务、目标与规划、子代理与工作流、待办、`present`、插件管理
 
-预设**不挂载** shell、通用文件系统、网络和插件安装工具，所以形态之外的文件它读写不到。这些工具和 skill 只在 Shape Studio 中可见，其他预设不会看到。
+**只有两处缺口**：没有 `bash`/`pwsh`，也没有 `tool-fs`/`tool-fs-search`——所以形态目录之外的文件它读写不到，形态文件一律走 shape 工具。这些工具和 skill 只在 Shape Studio 中可见，其他预设不会看到。
 
 ## 安装
 
