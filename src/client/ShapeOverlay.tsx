@@ -18,10 +18,10 @@ const ENTRY: CSSProperties = { pointerEvents: 'auto' }
 
 /**
  * Render every `shell.overlay` mount into one fixed layer above the app.
- * @param props.slot - overlay slot name.
+ * @param props.slot - overlay slot name; defaults to the only overlay slot.
  * @returns the portal, or null when nothing is mounted.
  */
-export function ShapeOverlay({ slot }: { slot: string }) {
+export function ShapeOverlay({ slot = 'shell.overlay' }: { slot?: string }) {
   const [list, setList] = useState(() => shapeMounts(slot))
   useEffect(() => {
     const sync = (): void => { setList(shapeMounts(slot)) }

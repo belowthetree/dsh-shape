@@ -3929,28 +3929,28 @@ window.__ModuleLoader__.load({
 		/** Full-screen layer that hosts `shell.overlay` mounts. */
 		/** The layer ignores pointer events; each mount re-enables them for its own content. */
 		const LAYER = {
-			position: 'fixed',
-			inset: 0,
-			zIndex: 2147483000,
-			display: 'block',
-			pointerEvents: 'none',
+		    position: 'fixed',
+		    inset: 0,
+		    zIndex: 2147483000,
+		    display: 'block',
+		    pointerEvents: 'none',
 		};
 		const ENTRY = { pointerEvents: 'auto' };
 		/**
 		 * Render every `shell.overlay` mount into one fixed layer above the app.
-		 * @param props.slot - overlay slot name.
+		 * @param props.slot - overlay slot name; defaults to the only overlay slot.
 		 * @returns the portal, or null when nothing is mounted.
 		 */
-		function ShapeOverlay({ slot }) {
-			const [list, setList] = react.useState(() => shapeMounts(slot));
-			react.useEffect(() => {
-				const sync = () => { setList(shapeMounts(slot)); };
-				sync();
-				return subscribeShapeMounts(slot, sync);
-			}, [slot]);
-			if (list.length === 0)
-				return null;
-			return react_dom.createPortal(react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
+		function ShapeOverlay({ slot = 'shell.overlay' }) {
+		    const [list, setList] = react.useState(() => shapeMounts(slot));
+		    react.useEffect(() => {
+		        const sync = () => { setList(shapeMounts(slot)); };
+		        sync();
+		        return subscribeShapeMounts(slot, sync);
+		    }, [slot]);
+		    if (list.length === 0)
+		        return null;
+		    return react.createPortal(react_jsx_runtime.react_jsx_runtime.jsx("div", { style: LAYER, "data-shape-overlay": slot, children: list.map(mount => (react_jsx_runtime.react_jsx_runtime.jsx(ShapeMountBox, { mount: mount, style: ENTRY }, `mount:${mount.shapeId}`))) }), document.body);
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-surfaces.ts
