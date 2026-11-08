@@ -46,6 +46,16 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 
 The `shape_capabilities` tool lists every capability with its version, purpose, usage, and API method names.
 
+## Documentation
+
+The reference docs under [`docs/`](docs/README.md) are written in Chinese:
+
+- [Architecture](docs/architecture.md) — host plugin, client bundle, shape loading, capabilities
+- [Shape folder](docs/shapes.md) — manifest fields, views, slot entries, client module
+- [Capabilities](docs/capabilities.md) — methods, return values, and failure behavior
+- [Development and release](docs/development.md) — local linking, pre-publish checks, `client.js` splicing
+- [Known issues](docs/known-issues.md) — APIs that do not work yet and the traps behind them
+
 ## Demo
 
 ![dsh-shape demo](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)

@@ -48,6 +48,15 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 
 `shape_capabilities` 工具会列出当前所有能力、版本、用途、用法和 API 方法名。
 
+## 文档
+
+- [文档索引](docs/README.md)
+- [架构](docs/architecture.md)：宿主插件、客户端 bundle、形态加载与能力系统
+- [形态目录](docs/shapes.md)：清单字段、视图、槽位条目、客户端模块
+- [能力参考](docs/capabilities.md)：9 个能力的方法、返回值与失败行为
+- [开发与发布](docs/development.md)：本地联调、发布前检查、client.js 拼接注意事项
+- [已知问题](docs/known-issues.md)：当前不可用的 API 与踩过的坑
+
 ## 演示
 
 ![dsh-shape 演示](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)
