@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workspace Tab Switch</title>
+<style>
+  :root { color-scheme: light dark; --accent: #3b6ff5; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 28px 32px 40px;
+    font: 14px/1.7 system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    color: #1f2328; background: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --accent: #7aa7ff; }
+    body { color: #e6edf3; background: #16181d; }
+    .lead { color: #9aa4b2; }
+    kbd { background: #23262e; border-color: #3a3f4b; border-bottom-color: #4a505c; box-shadow: none; }
+    .row { border-bottom-color: #262a32; }
+    .note { background: #1d2027; border-color: #2c313a; color: #9aa4b2; }
+    .demo { background: rgba(23, 25, 31, .92); border-color: #2c313a; box-shadow: 0 18px 40px rgba(0, 0, 0, .45); }
+    .demo .mini { background: rgba(255, 255, 255, .045); border-color: rgba(255, 255, 255, .09); }
+    .demo .mini[data-state="selected"] { background: rgba(23, 25, 31, .92); }
+    .demo .line { background: rgba(236, 241, 249, .16); }
+    .demo .ghost { color: rgba(233, 238, 246, .45); }
+    .demo .caption { color: rgba(233, 238, 246, .58); }
+    .demo .title { color: #eef1f6; }
+  }
+  h1 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  h2 { margin: 26px 0 10px; font-size: 14px; font-weight: 600; }
+  .lead { margin: 0 0 20px; color: #6b7280; }
+  ul.list { list-style: none; margin: 0; padding: 0; max-width: 660px; }
+  .row { display: flex; align-items: flex-start; gap: 16px; padding: 10px 0; border-bottom: 1px solid #e5e7eb; }
+  .row:last-child { border-bottom: 0; }
+  .keys { flex: 0 0 244px; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 2px; }
+  kbd {
+    font: inherit; font-size: 12px; padding: 1px 8px;
+    border: 1px solid #d0d7de; border-bottom-width: 2px; border-radius: 6px;
+    background: #f6f8fa; box-shadow: 0 1px 0 #d0d7de;
+  }
+  .note {
+    margin: 22px 0 0; max-width: 660px; padding: 12px 14px;
+    border: 1px solid #e5e7eb; border-radius: 8px;
+    background: #f8fafc; color: #57606a; font-size: 13px;
+  }
+  code { font: inherit; font-size: 12.5px; padding: 1px 5px; border-radius: 5px; background: rgba(127, 127, 127, .14); }
+
+  /* 静态示意：真实面板长这样 */
+  .demo {
+    position: relative; max-width: 660px; margin: 8px 0 4px; padding: 16px 18px 14px;
+    border: 1px solid #e5e7eb; border-radius: 16px; background: #fbfcfe;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, .10);
+    font-size: 12px; overflow: hidden;
+  }
+  .demo .kicker { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: #6b7280; }
+  .demo .kicker i { display: inline-block; width: 14px; height: 2px; border-radius: 2px; background: var(--accent); margin-right: 7px; vertical-align: middle; }
+  .demo .title { margin: 6px 0 2px; font-size: 17px; font-weight: 650; }
+  .demo .caption { color: #6b7280; }
+  .demo .caption b { font-weight: 600; color: var(--accent); }
+  .demo .strip { display: flex; align-items: flex-end; justify-content: center; gap: 10px; padding: 16px 0 4px; }
+  .demo .mini { flex: 0 0 96px; display: flex; flex-direction: column; gap: 0;
+    border: 1px solid #e5e7eb; border-radius: 9px; overflow: hidden; background: #fff; opacity: .7; }
+  .demo .mini[data-state="selected"] { opacity: 1; transform: translateY(-8px) scale(1.06); border-color: var(--accent);
+    box-shadow: 0 0 0 1.5px var(--accent), 0 14px 26px -12px var(--accent); }
+  .demo .barline { height: 16px; background: rgba(127, 127, 127, .10); }
+  .demo .screen { position: relative; height: 46px; padding: 8px; }
+  .demo .screen span { position: absolute; right: 5px; bottom: 0; font-size: 22px; font-weight: 700; color: var(--accent); opacity: .3; line-height: 1; }
+  .demo .line { height: 4px; border-radius: 2px; background: rgba(17, 24, 39, .16); margin-bottom: 5px; }
+  .demo .name { padding: 5px 2px; text-align: center; font-size: 10.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .demo .mini[data-state="selected"] .name { color: var(--accent); }
+  .demo .ghost { color: rgba(17, 24, 39, .35); align-self: center; }
+</style>
+</head>
+<body>
+  <h1>Workspace Tab Switch</h1>
+  <p class="lead">按住 Ctrl 连按 Tab，弹出工作区切换面板：前后各两个工作区以窗口缩略卡排列，高亮的那个放大并标出方向，松开 Ctrl 落到它上面。</p>
+
+  <h2>面板</h2>
+  <div class="demo">
+    <div class="kicker"><span><i></i>切换工作区</span><span>3 / 7</span></div>
+    <div class="title">界面重构</div>
+    <div class="caption">当前：dsh-shape&ensp;<b>→ 前进 1 个</b></div>
+    <div class="strip">
+      <span class="ghost">⋯</span>
+      <div class="mini" data-state="rest">
+        <div class="barline"></div>
+        <div class="screen"><div class="line" style="width:62%"></div><div class="line" style="width:34%"></div><div class="line" style="width:48%"></div><span>设</span></div>
+        <div class="name">设计稿</div>
+      </div>
+      <div class="mini" data-state="rest">
+        <div class="barline"></div>
+        <div class="screen"><div class="line" style="width:54%"></div><div class="line" style="width:40%"></div><div class="line" style="width:30%"></div><span>DS</span></div>
+        <div class="name">dsh-shape</div>
+      </div>
+      <div class="mini" data-state="selected">
+        <div class="barline"></div>
+        <div class="screen"><div class="line" style="width:66%"></div><div class="line" style="width:30%"></div><div class="line" style="width:52%"></div><span>界</span></div>
+        <div class="name">界面重构</div>
+      </div>
+      <div class="mini" data-state="rest">
+        <div class="barline"></div>
+        <div class="screen"><div class="line" style="width:48%"></div><div class="line" style="width:36%"></div><div class="line" style="width:58%"></div><span>插</span></div>
+        <div class="name">插件市场</div>
+      </div>
+      <div class="mini" data-state="rest">
+        <div class="barline"></div>
+        <div class="screen"><div class="line" style="width:58%"></div><div class="line" style="width:44%"></div><div class="line" style="width:26%"></div><span>RE</span></div>
+        <div class="name">Release</div>
+      </div>
+      <span class="ghost">⋯</span>
+    </div>
+  </div>
+  <p class="note">中间放大的卡片就是要落到的位置；标题栏里的「切换 / 当前」小标签、上方的大标题与「→ 前进 1 个」共同说明落点。列表超过五个时，两端用 ⋯ 表示还有别的工作区。</p>
+
+  <h2>操作</h2>
+  <ul class="list">
+    <li class="row">
+      <span class="keys"><kbd>Ctrl</kbd><kbd>Tab</kbd></span>
+      <span>按住 Ctrl、连按 Tab 依次向后走；<b>松开 Ctrl</b> 落到高亮的工作区</span>
+    </li>
+    <li class="row">
+      <span class="keys"><kbd>Ctrl</kbd><kbd>Shift</kbd><kbd>Tab</kbd></span>
+      <span>反向（向前）走</span>
+    </li>
+    <li class="row">
+      <span class="keys"><kbd>←</kbd><kbd>→</kbd></span>
+      <span>面板打开期间直接移动高亮</span>
+    </li>
+    <li class="row">
+      <span class="keys"><kbd>Enter</kbd></span>
+      <span>立刻切换，不用等松手</span>
+    </li>
+    <li class="row">
+      <span class="keys"><kbd>Esc</kbd></span>
+      <span>取消，留在原地</span>
+    </li>
+    <li class="row">
+      <span class="keys">点击卡片</span>
+      <span>直接跳到那一个工作区（任意距离）</span>
+    </li>
+  </ul>
+
+  <p class="note">
+    浏览器标签页会把 <kbd>Ctrl</kbd>+<kbd>Tab</kbd> 留给它自己的标签栏，事件根本到不了页面 —— 这不是本 shape 的问题，任何网页都收不到它。
+    所以在浏览器里用下面这组：按住 <kbd>Ctrl</kbd>+<kbd>Alt</kbd> 连按方向键，松手同样即切换；桌面 App 窗口里 <kbd>Ctrl</kbd>+<kbd>Tab</kbd> 可用。
+  </p>
+  <ul class="list">
+    <li class="row">
+      <span class="keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>→</kbd></span>
+      <span>下一个工作区（浏览器可用）</span>
+    </li>
+    <li class="row">
+      <span class="keys"><kbd>Ctrl</kbd><kbd>Alt</kbd><kbd>←</kbd></span>
+      <span>上一个工作区（浏览器可用）</span>
+    </li>
+    <li class="row">
+      <span class="keys">会话头部「⇥ 切换」</span>
+      <span>鼠标入口；头部没渲染时自动出现在右下角</span>
+    </li>
+  </ul>
+
+  <h2>说明</h2>
+  <ul class="list">
+    <li class="row">
+      <span class="keys">快捷键来源</span>
+      <span>
+        两层：<code>dsh-shape#shortcuts</code> 把 <kbd>Ctrl</kbd>+<kbd>Tab</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Tab</kbd>
+        注册成真正的 DSH 命令（带 <code>regions: ['page','editable']</code>，输入框聚焦时也生效；可在设置里改键），
+        另有一层 document 捕获监听负责同一组按键以及 <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+方向键。
+        两层对同一次按键都覆盖时由去重逻辑合并，不会连跳两格。
+      </span>
+    </li>
+    <li class="row">
+      <span class="keys">为什么还要监听</span>
+      <span>Web 宿主只接受多修饰键组合为命令默认值，单修饰键的 <kbd>Ctrl</kbd>+<kbd>Tab</kbd> 会被拒（命令仍存在，可改键绑定）；单修饰键要真正生效只能走页面级监听。</span>
+    </li>
+    <li class="row">
+      <span class="keys">切换效果</span>
+      <span>面板淡入；高亮卡上浮放大并带上该工作区的配色；翻动时卡片内容沿方向轻微位移；落点时一道白闪盖过面板，随后在顶部显示「已切换到「…」」，失败则显示橙色提示。</span>
+    </li>
+    <li class="row">
+      <span class="keys">跨距离跳转</span>
+      <span>相邻一步走 <code>workspace.next()</code>（顺带展开侧栏分组）；更远的卡片直接 <code>openWorkspace(id)</code> 打开，不会经过中间工作区。</span>
+    </li>
+    <li class="row">
+      <span class="keys">自检</span>
+      <span>控制台里能看到 <code>[workspace-tab-switch] 已激活</code>、<code>命令已注册：Ctrl+Tab</code> 以及 <code>shortcuts.list()</code> 回报的 keys / issue —— 若 keys 为空或带 issue，说明是该宿主没有绑定这个默认值。</span>
+    </li>
+    <li class="row">
+      <span class="keys">主题</span>
+      <span>面板按当前界面深浅自动选择配色（读取页面背景/文字亮度），不依赖额外能力。</span>
+    </li>
+  </ul>
+</body>
+</html>

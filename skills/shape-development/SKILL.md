@@ -13,7 +13,7 @@ Shape Studio is limited on purpose: **it can only read and write files inside a 
 | Find a string or pattern in a shape | `shape_grep` |
 | Anything outside a shape (run a command, edit the plugin package, install a dependency, edit a preset) | Say the preset cannot do it and name the limitation; do not hunt for another tool |
 
-Paths are always relative to one shape (`shape_read({ shape: 'hello', path: 'views/index.html' })`). Absolute paths, `..`, and ids that are not kebab-case are rejected.
+Paths are always relative to one shape (`shape_read({ shape: 'chat-search', path: 'views/index.html' })`). Absolute paths, `..`, and ids that are not kebab-case are rejected.
 
 ## Getting information
 

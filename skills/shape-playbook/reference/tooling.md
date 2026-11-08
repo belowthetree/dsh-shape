@@ -42,7 +42,7 @@ Verified by: `shape_capabilities` returning `catalog.entries` while its schema d
 Prefer one parameter that names the subject (`shape`) plus a path relative to it over one root-wide path. It keeps the blast radius obvious to the model and makes traversal checks trivial:
 
 ```js
-shape_read({ shape: 'hello', path: 'views/index.html' })
+shape_read({ shape: 'chat-search', path: 'views/index.html' })
 ```
 
 Reject absolute paths, `..`, and ids that are not kebab-case before touching the filesystem.

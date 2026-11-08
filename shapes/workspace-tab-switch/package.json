@@ -1,0 +1,39 @@
+{
+  "name": "workspace-tab-switch",
+  "version": "0.2.1",
+  "type": "module",
+  "title": "Workspace Tab Switch",
+  "description": "像 Windows 切换窗口一样切换 DSH 工作区：按住 Ctrl 连续切换，弹出工作区预览面板，松开即落到高亮的工作区。",
+  "output": "text",
+  "shape": {
+    "apiVersion": 1,
+    "requires": [
+      {
+        "plugin": "dsh-shape",
+        "capability": "core",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape",
+        "capability": "workspace",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape",
+        "capability": "slots",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape",
+        "capability": "shortcuts",
+        "version": "^1.0.0"
+      },
+      {
+        "plugin": "dsh-shape",
+        "capability": "ui",
+        "version": "^1.0.0",
+        "optional": true
+      }
+    ]
+  }
+}

@@ -8,7 +8,7 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 - User: `$DSH_HOME/dsh-shape/shapes/`.
 - A user shape with the same id overrides the bundled shape.
 - `shape_list` and `shape_inspect` report both roots; `shape_scaffold` writes to the user root.
-- `shape_read` and `shape_write` take a shape id plus a path relative to that shape (`shape_read({ shape: 'hello', path: 'views/index.html' })`); anything that escapes the shape folder is rejected. `shape_tree` lists one shape's directory structure and `shape_grep` searches its text files by literal or regular expression.
+- `shape_read` and `shape_write` take a shape id plus a path relative to that shape (`shape_read({ shape: 'chat-search', path: 'views/index.html' })`); anything that escapes the shape folder is rejected. `shape_tree` lists one shape's directory structure and `shape_grep` searches its text files by literal or regular expression.
 - Shape Studio mounts no shell, filesystem, web, or plugin-installation tools, so these four are the only file access the preset has.
 
 ## Current contributions
@@ -34,7 +34,7 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 
 ## Existing examples
 
-Use `shape_list` then `shape_inspect` on bundled shapes. `hello` is the minimal bundled example: a view, a header-slot declaration, and a tool module.
+Use `shape_list` then `shape_inspect` on bundled shapes. Two bundled examples ship with the package: `chat-search` (a floating find bar over the transcript) and `workspace-tab-switch` (a held-key switcher with a chat card). Neither is minimal, but both show the complete manifest, client, and slot wiring.
 
 ## Source access
 

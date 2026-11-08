@@ -942,7 +942,7 @@ export function apply(ctx, config) {
       additionalProperties: false,
       required: ['shape', 'path'],
       properties: {
-        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as chat-search.' },
         path: { type: 'string', description: 'Path relative to the shape folder, such as views/index.html.' },
       },
     },
@@ -986,7 +986,7 @@ export function apply(ctx, config) {
       additionalProperties: false,
       required: ['shape', 'path', 'content'],
       properties: {
-        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as chat-search.' },
         path: { type: 'string', description: 'Path relative to the shape folder, such as views/index.html.' },
         content: { type: 'string', description: 'Full file content; this replaces the file.' },
       },
@@ -1040,7 +1040,7 @@ export function apply(ctx, config) {
       additionalProperties: false,
       required: ['shape'],
       properties: {
-        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as chat-search.' },
         depth: { type: 'integer', description: 'Maximum directory depth, 1-8. Defaults to 4.' },
         limit: { type: 'integer', description: 'Maximum entries, 1-500. Defaults to 200.' },
       },
@@ -1088,7 +1088,7 @@ export function apply(ctx, config) {
       additionalProperties: false,
       required: ['shape', 'pattern'],
       properties: {
-        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as chat-search.' },
         pattern: { type: 'string', description: 'Literal text, or a regular expression when regex is true.' },
         regex: { type: 'boolean', description: 'Treat pattern as a JavaScript regular expression.' },
         caseSensitive: { type: 'boolean', description: 'Match case-sensitively. Defaults to false.' },
