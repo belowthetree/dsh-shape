@@ -20,6 +20,17 @@ dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extensio
 - **Bundled shapes**: `chat-search` (find in the conversation, Ctrl+F) and `workspace-tab-switch` (workspace switcher, Ctrl+Tab) ship with the package; enable, disable, or delete them from the shapes panel, and a user shape with the same id overrides either one
 - **Instant updates**: editing an existing file in a shape folder only needs a page reload; adding or deleting files needs a refresh from the shapes panel (or `POST /dsh-shape/api/refresh`), which reloads the page for you
 
+## Bundled shapes
+
+Ready to use after installation:
+
+| Shape | Trigger | What it does |
+| --- | --- | --- |
+| `chat-search` | `Ctrl + F`, or the 🔍 button in the header | Find text in the conversation: highlights hits, expands collapsed thinking blocks, scrolls to the match; `F3` / `Shift + F3` step through, `Esc` closes |
+| `workspace-tab-switch` | Hold `Ctrl` and tap `Tab` | Opens a workspace strip; releasing the key lands on the highlighted one. `Ctrl + Shift + Tab` reverses, arrows move, `Esc` cancels |
+
+Both live in the package's `shapes/`; enable, disable, or delete them from the shapes panel. To customize one, copy its folder into the user shape root under the same id — the user copy overrides the bundled one and survives plugin upgrades.
+
 ## Built-in capabilities
 
 A shape declares what it needs in `shape.requires` and reads it with `api.require('dsh-shape', '<capability>')`; a missing or mismatched capability keeps the shape from starting.
@@ -72,8 +83,8 @@ Installation adds the **Shape Studio** preset, scoped to shape development:
 - List, inspect, scaffold, and validate shapes: `shape_list`, `shape_inspect`, `shape_scaffold`, `shape_validate`, `shape_test`
 - Shape-scoped file access: `shape_read` and `shape_write` take a shape id plus a path relative to that shape
 - Directory structure and text search: `shape_tree`, `shape_grep`
-- Capability catalog (`shape_capabilities`) and a topic-based spec (`shape_spec`)
-- The shape-development skill for the full interfaces and rules
+- Capability catalog (`shape_capabilities`) and a topic-based spec (`shape_spec`, including the `playbook` topics)
+- Two skills: `shape-development` (the contract) and `shape-playbook` (verified workflows for each kind of shape, plus the traps that cost time)
 
 The preset mounts **no** shell, general filesystem, web, or plugin-installation tools, so it cannot reach files outside a shape. These tools and skills are visible only in Shape Studio; other presets never see them.
 

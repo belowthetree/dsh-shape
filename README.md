@@ -22,6 +22,17 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 - **内置形态**：随包提供 `chat-search`（对话内搜索，Ctrl+F）和 `workspace-tab-switch`（工作区切换器，Ctrl+Tab），可在形态面板里启停或删除；用户目录下同 id 的形态会覆盖它们
 - **即时生效**：修改形态目录里已有文件后刷新页面即可；新增或删除文件需先在形态面板点刷新（或 `POST /dsh-shape/api/refresh`），面板会自动重载页面
 
+## 内置形态
+
+装好即可用，不用自己创建：
+
+| 形态 | 触发 | 作用 |
+| --- | --- | --- |
+| `chat-search` | `Ctrl + F`，或顶栏 🔍 | 在对话里查找文本：命中高亮、折叠的思考内容自动展开、滚动到命中；`F3` / `Shift + F3` 上下一条，`Esc` 关闭 |
+| `workspace-tab-switch` | 按住 `Ctrl` 连按 `Tab` | 弹出工作区预览条，松手切到高亮项；`Ctrl + Shift + Tab` 反向，方向键移动，`Esc` 取消 |
+
+两者都在包内 `shapes/` 里，可在 Shapes 面板启停或删除。想改造就把目录复制到用户目录并保持同名 id——用户版本会覆盖内置版本，升级插件不会冲掉你的改动。
+
 ## 内置能力
 
 形态在 `package.json` 的 `shape.requires` 里声明需要的能力，再用 `api.require('dsh-shape', '<能力>')` 取用；缺少能力或版本不匹配时形态不会启动。
@@ -73,8 +84,8 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 - 查看、检查、创建、校验形态：`shape_list`、`shape_inspect`、`shape_scaffold`、`shape_validate`、`shape_test`
 - 按形态限定范围的文件访问：`shape_read`、`shape_write`（必须指定形态 id，路径相对该形态目录）
 - 目录结构与文本检索：`shape_tree`、`shape_grep`
-- 能力目录查询：`shape_capabilities`；规范查询：`shape_spec`
-- 附带形态开发 skill，可按主题读取完整接口与规范
+- 能力目录查询：`shape_capabilities`；规范查询：`shape_spec`（含 `playbook` 经验流程主题）
+- 附带两份 skill：`shape-development`（契约与写法）、`shape-playbook`（已验证的各类形态流程与踩过的坑）
 
 预设**不挂载** shell、通用文件系统、网络和插件安装工具，所以形态之外的文件它读写不到。这些工具和 skill 只在 Shape Studio 中可见，其他预设不会看到。
 

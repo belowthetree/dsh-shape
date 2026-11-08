@@ -17,10 +17,10 @@
 
 ```json
 {
-  "name": "hello",
+  "name": "my-shape",
   "version": "0.1.0",
   "type": "module",
-  "title": "Hello Shape",
+  "title": "My Shape",
   "description": "一句话说明这个形态做什么。",
   "output": "text",
   "shape": {
