@@ -39,3 +39,25 @@ export function ShapeTabBody({ tab }: { tab: ShapeTab }) {
 export function ShapeTabTitle({ tab }: { tab: ShapeTab }) {
   return <span data-shape-tab-label={tab.id} style={TAB_TITLE_STYLE}>{tab.title}</span>
 }
+
+/**
+ * Bind one tab to a slot component without an element factory in the caller.
+ * @param tab - tab registered by the shape.
+ * @returns component rendering that tab's body.
+ */
+export function createTabComponent(tab: ShapeTab) {
+  return function ShapeTabSlotBody() {
+    return <ShapeTabBody tab={tab} />
+  }
+}
+
+/**
+ * Bind one tab to a title component.
+ * @param tab - tab registered by the shape.
+ * @returns component rendering that tab's chip label.
+ */
+export function createTabTitleComponent(tab: ShapeTab) {
+  return function ShapeTabSlotTitle() {
+    return <ShapeTabTitle tab={tab} />
+  }
+}

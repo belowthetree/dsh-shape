@@ -34,3 +34,14 @@ export function ShapePanelBody({ panel }: { panel: ShapePanel }) {
   }, [panel])
   return <div ref={ref} data-shape-panel={panel.id} style={BODY} />
 }
+
+/**
+ * Bind one panel to a slot component without an element factory in the caller.
+ * @param panel - panel registered by the shape.
+ * @returns component rendering that panel's body.
+ */
+export function createPanelComponent(panel: ShapePanel) {
+  return function ShapePanelSlotBody() {
+    return <ShapePanelBody panel={panel} />
+  }
+}

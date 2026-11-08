@@ -20,14 +20,13 @@ import { createShapeRuntime } from './shape-runtime.ts'
 import { createShapeEvents } from './shape-events.ts'
 import { createShapeShortcuts } from './shortcut-commands.ts'
 import { createShapeSlots } from './slot-access.ts'
-import { createElement } from 'react'
 import { createShapeStorage } from './shape-storage.ts'
 import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { createConversation } from './shape-conversation.ts'
-import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
+import { ShapePanelEntry, createPanelComponent } from './ShapePanelHost.tsx'
 import { ShapeOverlay } from './ShapeOverlay.tsx'
-import { ShapeTabBody, ShapeTabTitle } from './ShapeTabHost.tsx'
+import { createTabComponent, createTabTitleComponent } from './ShapeTabHost.tsx'
 import {
   setShapePanelOpener,
   setShapeTabOpener,
@@ -272,7 +271,7 @@ export function apply(ctx: Context): void {
         disposers.push(ctx.slots.inject('main', () => {
           return ctx.slots.register({
             name: 'main', key: panel.id, id: panel.id, label: () => panel.title,
-          }, () => createElement(ShapePanelBody, { panel }))
+          }, createPanelComponent(panel))
         }))
       } catch (cause) {
         recordSurfaceError(`panel ${panel.id} main`, cause)
@@ -318,10 +317,10 @@ export function apply(ctx: Context): void {
       }
       disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
         name: 'sidebar.right.pane.tab', key: tab.id,
-      }, () => createElement(ShapeTabBody, { tab }))))
+      }, createTabComponent(tab))))
       disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
         name: 'sidebar.right.pane.tab.title', key: tab.id,
-      }, () => createElement(ShapeTabTitle, { tab }))))
+      }, createTabTitleComponent(tab))))
       tabSlots.set(tab.id, disposers)
     }
   }

@@ -4140,7 +4140,17 @@ window.__ModuleLoader__.load({
 		            container.replaceChildren();
 		        };
 		    }, [panel]);
-		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-panel": panel.id, style: BODY });
+		    return react_jsx_runtime.react_jsx_runtime.jsx("div", { ref: ref, "data-shape-panel": panel.id, style: BODY });
+		}
+		/**
+		 * Bind one panel to a slot component without an element factory in the caller.
+		 * @param panel - panel registered by the shape.
+		 * @returns component rendering that panel's body.
+		 */
+		function createPanelComponent(panel) {
+		    return function ShapePanelSlotBody() {
+		        return react_jsx_runtime.react_jsx_runtime.jsx(ShapePanelBody, { panel: panel });
+		    };
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-composer.ts
@@ -4252,7 +4262,7 @@ window.__ModuleLoader__.load({
 		            container.replaceChildren();
 		        };
 		    }, [tab]);
-		    return react_jsx_runtime.jsx("div", { ref: ref, "data-shape-tab": tab.id, style: TAB_BODY_STYLE });
+		    return react_jsx_runtime.react_jsx_runtime.jsx("div", { ref: ref, "data-shape-tab": tab.id, style: TAB_BODY_STYLE });
 		}
 		/**
 		 * Render one shape tab's chip label.
@@ -4260,7 +4270,27 @@ window.__ModuleLoader__.load({
 		 * @returns the label element.
 		 */
 		function ShapeTabTitle({ tab }) {
-		    return react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
+		    return react_jsx_runtime.react_jsx_runtime.jsx("span", { "data-shape-tab-label": tab.id, style: TAB_TITLE_STYLE, children: tab.title });
+		}
+		/**
+		 * Bind one tab to a slot component without an element factory in the caller.
+		 * @param tab - tab registered by the shape.
+		 * @returns component rendering that tab's body.
+		 */
+		function createTabComponent(tab) {
+		    return function ShapeTabSlotBody() {
+		        return react_jsx_runtime.react_jsx_runtime.jsx(ShapeTabBody, { tab: tab });
+		    };
+		}
+		/**
+		 * Bind one tab to a title component.
+		 * @param tab - tab registered by the shape.
+		 * @returns component rendering that tab's chip label.
+		 */
+		function createTabTitleComponent(tab) {
+		    return function ShapeTabSlotTitle() {
+		        return react_jsx_runtime.react_jsx_runtime.jsx(ShapeTabTitle, { tab: tab });
+		    };
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-conversation.ts
@@ -4571,7 +4601,7 @@ window.__ModuleLoader__.load({
 		                disposers.push(ctx.slots.inject('main', () => {
 		                    return ctx.slots.register({
 		                        name: 'main', key: panel.id, id: panel.id, label: () => panel.title,
-		                    }, () => createElement(ShapePanelBody, { panel }));
+		                    }, createPanelComponent(panel));
 		                }));
 		            }
 		            catch (cause) {
@@ -4621,10 +4651,10 @@ window.__ModuleLoader__.load({
 		            }
 		            disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
 		                name: 'sidebar.right.pane.tab', key: tab.id,
-		            }, () => createElement(ShapeTabBody, { tab }))));
+		            }, createTabComponent(tab))));
 		            disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
 		                name: 'sidebar.right.pane.tab.title', key: tab.id,
-		            }, () => createElement(ShapeTabTitle, { tab }))));
+		            }, createTabTitleComponent(tab))));
 		            tabSlots.set(tab.id, disposers);
 		        }
 		    };
