@@ -23,6 +23,7 @@ dsh-shape 是 DSH 插件，把「一个目录 + 一份清单 + 可选脚本」�
 | 位置 | 给谁用 | 谁看得到 |
 | --- | --- | --- |
 | `skills/shape-development/` | 在形态目录里**写形态**的 agent | 随包发布，Shape Studio 预设经 `skill.js` 注册，只有该预设可见 |
+| `skills/shape-pitfalls/` | 遇到「UI 不出现、快捷键不触发、搜索不到、预设消失」时的 agent | 同上，由 `skill.js` 一并注册；正文可按 `shape_spec` 的 `pitfalls*` 主题读取 |
 | `.dsh/skills/dsh-shape-contribution/` | **改这个包本身**的 agent（宿主插件、bundle、预设、工具、发布） | DSH 的**项目级** skill 目录：在本仓库里工作时，任何预设的 agent 都能用 |
 
 `.dsh/skills/` 是 DSH 扫描的项目技能根（`<projectRoot>/.dsh/skills`），不需要安装命令；想让它在别的项目里也可用，再复制到 `$DSH_HOME/skills/` 或 `~/.agents/skills/`。

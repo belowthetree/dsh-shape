@@ -56,7 +56,7 @@ The reference docs under [`docs/`](docs/README.md) are written in Chinese:
 - [Development and release](docs/development.md) — local linking, pre-publish checks, `client.js` splicing
 - [Known issues](docs/known-issues.md) — APIs that do not work yet and the traps behind them
 
-Two skills live in the repository: `skills/shape-development/` (bundled into the Shape Studio preset, for authoring shapes) and `.dsh/skills/dsh-shape-contribution/` (for changing the package itself). The second sits in DSH's **project-level** skill root, so any preset used in this repository can load it.
+Three skills live in the repository: `skills/shape-development/` (authoring shapes), `skills/shape-pitfalls/` (field notes on UI that never renders, rejected shortcuts, searching and expanding the transcript, and presets that break), both bundled into the Shape Studio preset, and `.dsh/skills/dsh-shape-contribution/` (changing the package itself). The last one sits in DSH's **project-level** skill root, so any preset used in this repository can load it.
 
 ## Demo
 
