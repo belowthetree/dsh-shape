@@ -16,6 +16,17 @@
 
 dsh-shape 是 DSH 插件，把「一个目录 + 一份清单 + 可选脚本」变成可以即时启停的界面扩展：形态可以有自己的视图、在 10 个会话槽位里渲染内容、注册快捷键、读写自己的 `data/` 目录，并通过 9 个能力访问宿主功能。
 
+## 技能（skills/）
+
+仓库里有两份 skill，面向不同对象：
+
+| 目录 | 给谁用 | 如何被加载 |
+| --- | --- | --- |
+| `skills/shape-development/` | 在形态目录里**写形态**的 agent | Shape Studio 预设通过 `skill.js` 自动注册 |
+| `skills/dsh-shape-contribution/` | **改这个包本身**的 agent（宿主插件、bundle、预设、工具） | 不随预设挂载，需要文件系统权限的预设自行指向 `skills/` |
+
+让普通预设也能用上贡献指南：在该预设的 `skill-filesystem` 里把 `customSkillDirs` 指向本仓库的 `skills/`。
+
 ## 版本
 
 - 包名：`@belowthetree/dsh-shape`
