@@ -1,6 +1,17 @@
+---
+name: dsh-shape-contribution
+description: Develop and maintain the dsh-shape plugin package itself — the Host plugin, the hand-maintained browser bundle, the Shape Studio preset, the tools, and the published artifacts. Use when changing dsh-shape source, splicing client.js, editing cordis.patch.yml or tools.js, fixing a preset that disappeared, or releasing a version. Not for authoring shapes; use shape-development for that.
+---
+
 # dsh-shape contribution
 
 Maintain the `dsh-shape` package itself: the Host plugin, the browser bundle, the Shape Studio preset, the tools, and the published artifacts. This is not the same job as building a shape — for that, use the `shape-development` skill.
+
+## Where this skill lives
+
+This is a DSH-level skill, not a Shape Studio one. It sits in the repository's `.dsh/skills/` — DSH's project-level skill root — so any preset used inside this repository loads it. Copy the directory into `$DSH_HOME/skills/` or `~/.agents/skills/` to make it available in other projects.
+
+The package's bundled `skills/shape-development/` is a different layer: it ships with the package and is mounted only by the Shape Studio preset.
 
 ## What this package is
 

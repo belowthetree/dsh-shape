@@ -1,6 +1,6 @@
 # 开发与发布
 
-改这个包本身时，先读 [`skills/dsh-shape-contribution/SKILL.md`](../skills/dsh-shape-contribution/SKILL.md)：它把下面这些规则按「动手前 / 三道门 / 拼接 / 预设 / 发布」组织好了。本文档保留同样的信息，供人直接翻阅。
+改这个包本身时，在本仓库里工作的 agent 会自动看到 `.dsh/skills/dsh-shape-contribution/` 这份项目级 skill（DSH 会扫描 `<projectRoot>/.dsh/skills`）：它把下面这些规则按「动手前 / 三道门 / 拼接 / 预设 / 发布」组织好了。本文档保留同样的信息，供人直接翻阅。
 
 ## 本地联调
 

@@ -16,16 +16,16 @@
 
 dsh-shape 是 DSH 插件，把「一个目录 + 一份清单 + 可选脚本」变成可以即时启停的界面扩展：形态可以有自己的视图、在 10 个会话槽位里渲染内容、注册快捷键、读写自己的 `data/` 目录，并通过 9 个能力访问宿主功能。
 
-## 技能（skills/）
+## 技能（skills/ 与 .dsh/skills/）
 
-仓库里有两份 skill，面向不同对象：
+两份 skill，装在不同层：
 
-| 目录 | 给谁用 | 如何被加载 |
+| 位置 | 给谁用 | 谁看得到 |
 | --- | --- | --- |
-| `skills/shape-development/` | 在形态目录里**写形态**的 agent | Shape Studio 预设通过 `skill.js` 自动注册 |
-| `skills/dsh-shape-contribution/` | **改这个包本身**的 agent（宿主插件、bundle、预设、工具） | 不随预设挂载，需要文件系统权限的预设自行指向 `skills/` |
+| `skills/shape-development/` | 在形态目录里**写形态**的 agent | 随包发布，Shape Studio 预设经 `skill.js` 注册，只有该预设可见 |
+| `.dsh/skills/dsh-shape-contribution/` | **改这个包本身**的 agent（宿主插件、bundle、预设、工具、发布） | DSH 的**项目级** skill 目录：在本仓库里工作时，任何预设的 agent 都能用 |
 
-让普通预设也能用上贡献指南：在该预设的 `skill-filesystem` 里把 `customSkillDirs` 指向本仓库的 `skills/`。
+`.dsh/skills/` 是 DSH 扫描的项目技能根（`<projectRoot>/.dsh/skills`），不需要安装命令；想让它在别的项目里也可用，再复制到 `$DSH_HOME/skills/` 或 `~/.agents/skills/`。
 
 ## 版本
 

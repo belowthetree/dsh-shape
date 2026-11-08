@@ -57,7 +57,7 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 - [开发与发布](docs/development.md)：本地联调、发布前检查、client.js 拼接注意事项
 - [已知问题](docs/known-issues.md)：当前不可用的 API 与踩过的坑
 
-仓库里有两份 skill：`skills/shape-development/` 教 agent 写形态（Shape Studio 预设内置），`skills/dsh-shape-contribution/` 教 agent 改这个包本身（宿主插件、bundle、预设、工具）。
+仓库里有两份 skill：`skills/shape-development/` 教 agent 写形态（Shape Studio 预设内置），`.dsh/skills/dsh-shape-contribution/` 教 agent 改这个包本身——后者放在 DSH 的**项目级技能目录**里，在本仓库工作时任何预设都能用。
 
 ## 演示
 
