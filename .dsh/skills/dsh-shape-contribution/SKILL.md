@@ -136,7 +136,10 @@ Do not record guesses, and do not leave the lesson only in a commit message — 
 dsh plugin --profile web add link:E:/Project/dsh-plugins/dsh-shape   # or copy the folder into the profile
 dsh web --no-open --port 0
 curl http://127.0.0.1:<port>/dsh-shape/api/health
+curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # after adding or deleting shape files
 ```
+
+Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 — and its importer then fails to load, which looks exactly like "the shape stopped working and refreshing did not help". Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
 
