@@ -20,12 +20,12 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `index.js` | Host plugin: HTTP routes, shape discovery, enable/disable, capability mirror |
 | `client.js` | Browser bundle (hand-maintained, region-spliced from `src/client/`) |
 | `src/client/*.ts(x)` | Sources behind each `client.js` region |
-| `tools.js` | Nine tools mounted only by the Shape Studio preset |
-| `skill.js` | Registers the `shape-development` skill into the preset scope |
+| `tools.js` | Eleven tools mounted only by the Shape Studio preset |
+| `skill.js` | Registers the `shape-development` and `shape-playbook` skills into the preset scope |
 | `cordis.patch.yml` | Bundle patch: inserts the plugin row and the `preset-shape` row |
 | `shapes/` | Bundled example shapes (user shapes override them by id) |
 | `docs/` | Reference docs (Chinese), not published to npm |
-| `skills/` | Agent skills (this one and `shape-development`) |
+| `skills/` | Agent skills: `shape-development` (contract), `shape-playbook` (verified workflows and traps), and this one |
 
 ## Before changing anything
 
@@ -108,11 +108,24 @@ curl https://registry.npmjs.org/@belowthetree%2Fdsh-shape/<version>
 
 - `files` decides what ships. `docs/` is intentionally excluded; `skills/`, `shapes/`, `src/`, and the four root `.js`/`.yml` files are included.
 
+## Recording experience
+
+`skills/shape-playbook/` is the package's experience record: verified end-to-end workflows plus the traps that cost time. It ships with the package and the preset reads it through `shape_spec` topics `playbook`, `playbook-workflows`, `playbook-rendering`, `playbook-keyboard`, `playbook-transcript`, `playbook-tooling`.
+
+**After any shape work verifies successfully, write the flow into `skills/shape-playbook/reference/workflows.md` in the same change.** That covers a new shape kind, a host behavior you had to work around, or a verification step that finally proved something. Record only what you ran:
+
+- numbered steps with the real paths, commands, and `data-testid` hooks;
+- a "verified" line stating what a successful run looked like;
+- for a workaround, the trap in the matching reference document: symptom, what the host actually does, the workaround, how it was verified.
+
+Do not record guesses, and do not leave the lesson only in a commit message — the next agent sees the playbook, not the history.
+
 ## Documentation duties
 
 - `README.md` (Chinese) and `README.en.md` mirror each other; user-visible capability lists and bullets change in both.
 - `docs/` holds the reference set: architecture, shape folder, capabilities, development, known issues. Fix the doc in the same change as the behavior.
 - `skills/shape-development/reference/*` is mounted into the preset — keep it accurate for the shape author, and keep ABI details out of `README`.
+- `skills/shape-playbook/` is mounted into the preset too; keep its index in `SKILL.md` in step with the documents it lists, and add the matching `shape_spec` topic in `tools.js` for any new document.
 
 ## Local verification loop
 

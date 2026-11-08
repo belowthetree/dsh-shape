@@ -25,10 +25,10 @@ const SKILLS = [
     content: readSkill('shape-development'),
   },
   {
-    name: 'shape-pitfalls',
-    description: 'Field notes from building dsh-shape shapes: where the host does not behave as the reference implies, and the workarounds that hold.',
-    whenToUse: 'Use when a shape\'s UI does not appear, a shortcut never fires, search or highlighting misses content, focus jumps, or a preset disappeared from the picker.',
-    content: readSkill('shape-pitfalls'),
+    name: 'shape-playbook',
+    description: 'Proven end-to-end workflows for building dsh-shape shapes, plus the traps that cost time on the way.',
+    whenToUse: 'Use when starting or rebuilding a shape (find bar, switcher, chat card, panel, stored state), or when a shape\'s UI does not appear, a shortcut never fires, search misses content, focus jumps, or a preset disappeared.',
+    content: readSkill('shape-playbook'),
   },
 ]
 

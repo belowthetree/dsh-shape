@@ -16,8 +16,8 @@ const VERSION_RANGE = /^[\^~]?\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/
 const BUNDLED_ROOT = fileURLToPath(new URL('./shapes/', import.meta.url))
 const PACKAGE_ROOT = fileURLToPath(new URL('./', import.meta.url))
 const REFERENCE_ROOT = fileURLToPath(new URL('./skills/shape-development/reference/', import.meta.url))
-/** Field notes from building shapes; reachable because the preset cannot read the package. */
-const PITFALL_ROOT = fileURLToPath(new URL('./skills/shape-pitfalls/reference/', import.meta.url))
+/** Proven workflows and traps; reachable because the preset cannot read the package. */
+const PLAYBOOK_ROOT = fileURLToPath(new URL('./skills/shape-playbook/reference/', import.meta.url))
 /** Static capability list generated from the shipped client bundle. */
 const FALLBACK_FILE = path.join(REFERENCE_ROOT, 'capabilities.generated.json')
 const SPEC_TOPICS = [
@@ -30,11 +30,12 @@ const SPEC_TOPICS = [
   'lifecycle',
   'testing',
   'plugin',
-  'pitfalls',
-  'pitfalls-rendering',
-  'pitfalls-keyboard',
-  'pitfalls-transcript',
-  'pitfalls-tooling',
+  'playbook',
+  'playbook-workflows',
+  'playbook-rendering',
+  'playbook-keyboard',
+  'playbook-transcript',
+  'playbook-tooling',
 ]
 const CAPABILITY_FILE = path.join(
   process.env.DSH_HOME ?? path.join(homedir(), '.dsh'),
@@ -382,10 +383,10 @@ async function inspectShapeInterface(id, roots) {
  */
 async function readSpec(topic) {
   if (!SPEC_TOPICS.includes(topic)) throw new Error(`unknown shape spec topic: ${topic}`)
-  // `pitfalls` is the skill's index; `pitfalls-<area>` is one field-notes doc.
-  if (topic === 'pitfalls') return readFile(path.join(PITFALL_ROOT, '..', 'SKILL.md'), 'utf8')
-  if (topic.startsWith('pitfalls-')) {
-    return readFile(path.join(PITFALL_ROOT, `${topic.slice('pitfalls-'.length)}.md`), 'utf8')
+  // `playbook` is the skill index; `playbook-<area>` is one document from it.
+  if (topic === 'playbook') return readFile(path.join(PLAYBOOK_ROOT, '..', 'SKILL.md'), 'utf8')
+  if (topic.startsWith('playbook-')) {
+    return readFile(path.join(PLAYBOOK_ROOT, `${topic.slice('playbook-'.length)}.md`), 'utf8')
   }
   return readFile(path.join(REFERENCE_ROOT, `${topic}.md`), 'utf8')
 }
@@ -791,7 +792,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_spec',
-    description: 'Read the bundled dsh-shape specification for one topic: manifest, client API, slots, views, capabilities, lifecycle, testing, extension plugins, or the field notes (pitfalls, pitfalls-rendering, pitfalls-keyboard, pitfalls-transcript, pitfalls-tooling).',
+    description: 'Read the bundled dsh-shape specification for one topic: manifest, client API, slots, views, capabilities, lifecycle, testing, extension plugins, or the playbook (playbook, playbook-workflows, playbook-rendering, playbook-keyboard, playbook-transcript, playbook-tooling).',
     parameters: {
       type: 'object',
       additionalProperties: false,

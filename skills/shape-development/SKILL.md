@@ -23,7 +23,8 @@ Never guess a contract from memory and never reverse-engineer the DSH frontend. 
 | --- | --- | --- |
 | Which capabilities exist right now? | `shape_capabilities` | Qualified ids, versions, purpose, usage, method names, and where the catalog came from. |
 | What is the exact contract? | `shape_spec` with `overview`, `manifest`, `client`, `slots`, `views`, `capabilities`, `lifecycle`, `testing`, or `plugin` | The bundled specification for that topic. |
-| Why did the host ignore my UI, shortcut, or preset? | `shape_spec` with `pitfalls`, then `pitfalls-rendering`, `pitfalls-keyboard`, `pitfalls-transcript`, or `pitfalls-tooling` | Field notes from building shapes: symptoms, what the host actually does, the workaround that holds. |
+| How do I build one of the known kinds? | `shape_spec` with `playbook`, then `playbook-workflows` | Verified end-to-end flows: new shape, find bar, switcher, chat card, stored state, regression pass. |
+| Why did the host ignore my UI, shortcut, or preset? | `shape_spec` with `playbook-rendering`, `playbook-keyboard`, `playbook-transcript`, or `playbook-tooling` | Field notes: symptoms, what the host actually does, the workaround that holds. |
 | How does an existing shape do it? | `shape_list`, then `shape_inspect` | Manifests, capability requirements, slot descriptors, client code. |
 | Is this shape valid? | `shape_validate` | Errors and warnings for the manifest, slots, and client entry. |
 | Does the logic work? | `shape_test` | Per-test results for `actions.js`. |
