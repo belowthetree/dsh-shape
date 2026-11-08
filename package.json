@@ -1,6 +1,6 @@
 {
   "name": "@belowthetree/dsh-shape",
-  "version": "0.4.29",
+  "version": "0.4.31",
   "type": "module",
   "description": "A DeepSeek Harness plugin that adds a dynamic lightweight extension form for customizing DSH UI and functionality.",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "./client": "./client.js",
     "./tools": "./tools.js",
     "./skill": "./skill.js",
-    "./capabilities": "./src/capabilities.ts",
+    "./capabilities": "./src/shared/capabilities.ts",
     "./cordis.patch.yml": "./cordis.patch.yml",
     "./package.json": "./package.json"
   },
@@ -42,7 +42,9 @@
     "tools.js",
     "skill.js",
     "cordis.patch.yml",
-    "src/capabilities.ts",
+    "src/host/**",
+    "src/shared/capabilities.ts",
+    "src/shared/version-range.ts",
     "shapes/**",
     "skills/**",
     "README.md",

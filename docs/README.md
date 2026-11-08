@@ -31,5 +31,5 @@ dsh-shape 是 DSH 插件，把「一个目录 + 一份清单 + 可选脚本」�
 ## 版本
 
 - 包名：`@belowthetree/dsh-shape`
-- 当前版本：`0.4.13`
+- 当前版本：`0.4.31`
 - 能力 ABI：`apiVersion: 1`

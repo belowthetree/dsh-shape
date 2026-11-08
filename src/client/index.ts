@@ -12,7 +12,7 @@ import {
   type ShapeCapabilityRegistry,
   type ShapeRequirement,
   type ShapeResolution,
-} from '../capabilities.ts'
+} from '../shared/capabilities.ts'
 import { SHAPE_SLOTS, registerShapeMount } from './shape-slots.ts'
 import { ShapeSlotEntries } from './ShapeSlotEntries.tsx'
 import { ShapeButton } from './ShapeButton.tsx'

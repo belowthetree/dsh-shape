@@ -36,7 +36,7 @@ export function apply(ctx) {
 
 ## Shape declaration
 
-Requirements live in `package.json` under `shape.requires`, using `plugin`, `capability`, `version`, and optional `optional: true`. They are matched with `semver.satisfies(..., { includePrerelease: true })`.
+Requirements live in `package.json` under `shape.requires`, using `plugin`, `capability`, `version`, and optional `optional: true`. `version` is a semver range (`^1.0.0`, `~1.2`, `1.x`, `>=1.0.0 <2.0.0`), matched with prereleases admitted — `1.2.3-rc.1` satisfies `^1.0.0`.
 
 ## Resolution
 

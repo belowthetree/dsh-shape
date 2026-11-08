@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ShapeRequirement, ShapeResolverInjected } from '../capabilities.ts'
-import { supportsShapeApiVersion } from '../capabilities.ts'
+import type { ShapeRequirement, ShapeResolverInjected } from '../shared/capabilities.ts'
+import { supportsShapeApiVersion } from '../shared/capabilities.ts'
 import {
   presentationOf,
   shapeMounts,

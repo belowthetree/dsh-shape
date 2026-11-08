@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { ShapeResolverInjected } from '../capabilities.ts'
+import type { ShapeResolverInjected } from '../shared/capabilities.ts'
 import { ShapeDialog } from './ShapeDialog.tsx'
 import { subscribeShapeBrowser } from './shape-browser.ts'
 

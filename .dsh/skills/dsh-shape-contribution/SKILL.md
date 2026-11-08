@@ -17,15 +17,25 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 
 | File | Role |
 | --- | --- |
-| `index.js` | Host plugin: HTTP routes, shape discovery, enable/disable, capability mirror |
-| `client.js` | Browser bundle (hand-maintained, region-spliced from `src/client/`) |
+| `index.js` | Package entry: a re-export of `src/host/plugin.js` and nothing else |
+| `src/host/plugin.js` | `name`, `inject`, `apply`, and the `/dsh-shape` route dispatch |
+| `src/host/http.js` | Route prefixes, `json`, `readJsonBody`, and the view/client static routes |
+| `src/host/shapes.js` | Shape discovery: folder scan, manifest parse, slot descriptors |
+| `src/host/data.js` | The `/api/data` storage route |
+| `src/host/state.js` | Enable/disable map and the capability mirror under `$DSH_HOME/dsh-shape` |
+| `client.js` | Browser bundle (hand-maintained, region-spliced from `src/client/` and `src/shared/`) |
+| `src/shared/capabilities.ts` | ABI, version types, and the capability registry, used by both halves and published as `./capabilities` |
+| `src/shared/version-range.ts` | Semver subset used for capability version matching |
 | `src/client/*.ts(x)` | Sources behind each `client.js` region |
-| `tools.js` | Eleven tools mounted only by the Shape Studio preset |
-| `skill.js` | Registers the `shape-development` and `shape-playbook` skills into the preset scope |
+| `tools.js` | Eleven tools mounted only by the Shape Studio preset (plain JS) |
+| `skill.js` | Registers the `shape-development` and `shape-playbook` skills into the preset scope (plain JS) |
 | `cordis.patch.yml` | Bundle patch: inserts the plugin row and the `preset-shape` row |
 | `shapes/` | Bundled example shapes (user shapes override them by id) |
 | `docs/` | Reference docs (Chinese), not published to npm |
-| `skills/` | Agent skills: `shape-development` (contract), `shape-playbook` (verified workflows and traps), and this one |
+| `scripts/` | The three gates plus `publish-decision.mjs`, used by CI; not published |
+| `skills/` | Agent skills: `shape-development` (contract), `shape-playbook` (verified workflows and traps) |
+
+Only `client.js` is a build artifact — JSX and CSS modules force a build. The host, `tools.js`, and `skill.js` are hand-written ESM: edit `src/host/*.js` and you are done. The host used to exist twice (`src/host/index.ts` plus a committed `index.js`), and `/api/data` reached only the artifact; there is one copy now, and `index.js` no longer carries logic.
 
 ## Before changing anything
 
@@ -35,7 +45,7 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | Changed | Verify by | Why a page refresh is not enough |
 | --- | --- | --- |
 | `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
-| `index.js`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
+| `index.js`, `src/host/`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
 | An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
 | A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page (the panel's refresh does both) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
 
@@ -118,7 +128,7 @@ DSH accepts a small JSON Schema subset. `type` must be a single string — `type
 curl https://registry.npmjs.org/@belowthetree%2Fdsh-shape/<version>
 ```
 
-- `files` decides what ships. `docs/` is intentionally excluded; `skills/`, `shapes/`, `src/`, and the four root `.js`/`.yml` files are included.
+- `files` decides what ships. `docs/`, `demo/`, `scripts/`, and `.dsh/` are intentionally excluded; `skills/`, `shapes/`, `src/shared/capabilities.ts`, and the four root `.js`/`.yml` files are included.
 
 ## Recording experience
 
@@ -161,5 +171,40 @@ curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # {"changed": true,
 The shape panel's refresh button reads that receipt and reloads the page itself when `changed` is `true`; when only file contents changed it just refreshes the list. If you drive the API yourself, do the same: rescan, then reload when `changed`. A page reloaded before the rescan must be reloaded **again** after it — restarting the Host works only because it does both at once.
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
+
+### Checking the host without a running DSH
+
+`index.js` boots standalone against a stub context, which is the fastest way to prove a host change and to drive its routes:
+
+```js
+// .smoke.mjs — node .smoke.mjs, then delete it
+import { Readable } from 'node:stream'
+import path from 'node:path'
+process.env.DSH_HOME = path.join(process.cwd(), '.smoke-home')   // never the real one
+const plugin = await import('./index.js')
+let registered
+await plugin.apply({
+  effect: (callback) => { callback(); return () => {} },
+  webServer: { register: (options) => { registered = options; return () => {} } },
+})
+// then call registered.handler(req, res) with a Readable body and
+// { writeHead() {}, end(value) { /* capture */ } }; kind is 'prefix', path '/dsh-shape'
+```
+
+Verified on `0.4.30` (31 checks, all routes): `GET /api/health` → `count` matches the roots; `op:'set'` on a bundled shape → `403 read-only`; `key: '../etc'` → `400`; unknown shape → `404`; `POST /api/refresh` receipt keys are `ok, shapes, roots, revision, changed`.
+
+**Trap:** the delete route accepts *bundled* shapes too — `isInsideRoot` holds for the package's own `shapes/` directory. A smoke test that calls `delete` on `hello` removes it from the working tree (recover with `git restore shapes/`). Test deletion on a shape created inside the throwaway `DSH_HOME` instead.
+
+### The version matcher
+
+`src/shared/version-range.ts` replaces the semver package that used to be inlined into `client.js` (1,283 lines, 28% of the bundle) with `valid`, `validRange`, and `satisfies`. It is pinned to semver 7.8.5 by a differential test; a local install exists at `E:\Project\deepseek-harness\node_modules\semver`, so verify rather than reason:
+
+```js
+const real = require('E:/Project/deepseek-harness/node_modules/semver')   // compare against this
+```
+
+Compare `valid()` normalization, `validRange()` null-ness, and `satisfies()` as a boolean for every version × range pair, in **both** `includePrerelease` modes, then fuzz generated ranges (`220 versions × 260 ranges × 2 = 114,400` cases passed, 0 failures). Test the shipped artifact too: cut the region out of `client.js` by its `//#region …/src/shared/version-range.ts` markers, `new Function` it, and run the same corpus (2,104 cases passed).
+
+Semantics that are easy to get wrong: `includePrerelease` widens x-range, tilde, and hyphen **lower** bounds to `-0` but leaves exact caret bounds alone (`^1.2.3` stays `>=1.2.3`, `~1.2` becomes `>=1.2.0-0`); a hyphen's exact upper bound becomes `<x.y.(z+1)-0` in that mode; `~>` is `~`; operators may be followed by spaces (`>= 1.0.0`); and `valid()` accepts a `v` prefix and surrounding whitespace while rejecting leading zeros.
 
 When a UI behavior is in doubt, prove it in the running app instead of reasoning from source: mount a probe shape that writes its results to `data/probe.json`, then read that file. DOM queries can miss the real mount point — a component's `useEffect` counter is the reliable signal that it mounted.

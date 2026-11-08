@@ -31,6 +31,21 @@ curl http://127.0.0.1:<port>/dsh-shape/api/health
 
 `ok` 为真但 `count` 或 `capabilities` 为 0，说明形态目录没扫到或客户端还没同步能力。
 
+## 目录与源码
+
+只有 `client.js` 需要构建，其余入口都是手写 ESM：
+
+| 入口 | 组成 |
+| --- | --- |
+| `index.js` | 八行 re-export，指向 `src/host/plugin.js` |
+| `src/host/` | `plugin`（装配与路由分派）、`http`（JSON 与静态文件）、`shapes`（扫描与清单解析）、`data`（`/api/data`）、`state`（启停开关与能力镜像） |
+| `client.js` | 由 `src/client/**` 与 `src/shared/**` 构建，按 `//#region` 分区 |
+| `tools.js`、`skill.js` | 手写 |
+
+`src/shared/` 被两侧共用：`capabilities.ts` 定义 ABI 与能力注册表，`version-range.ts` 是能力版本匹配用的 semver 子集。它替代了原先内联进 bundle 的 semver——那份占 `client.js` 的 28%，现在换成约 500 行自写实现，逐例行为由差分测试对齐。
+
+宿主改成手写 JavaScript 之前，`src/host/index.ts` 与 `index.js` 是两份：`/api/data` 只进了产物，源码缺 148 行。现在只有一份，`src/host/*.js` 就是真相，改行为改这里即可。
+
 ## 发布前的三道检查
 
 ```sh
@@ -64,11 +79,11 @@ node scripts/check-tool-schemas.mjs               # 工具 schema 在 DSH 支持
 - 查询发布结果以 registry 为准，npm CLI 缓存可能滞后：
 
 ```sh
-curl https://registry.npmjs.org/@belowthetree%2Fdsh-shape/0.4.13
+curl https://registry.npmjs.org/@belowthetree%2Fdsh-shape/0.4.31
 ```
 
 ## 包内容
 
-`files` 决定发布内容。新增目录时确认它被覆盖：`client.js`、`index.js`、`tools.js`、`skill.js`、`cordis.patch.yml`、`src/`、`shapes/`、`skills/`。
+`files` 决定发布内容。随包发布的只有根目录的四个入口、`cordis.patch.yml`、`src/shared/capabilities.ts`、`shapes/` 与 `skills/`；`docs/`、`demo/`、`scripts/`、`.dsh/` 都不发布。新增目录时确认它被上面这条覆盖。
 
 `shapes/` 里的内置形态随包发布，用户目录里的同名形态会覆盖它——调试内置形态时注意这一点，改的是哪一份。

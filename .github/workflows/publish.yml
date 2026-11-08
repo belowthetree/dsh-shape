@@ -51,7 +51,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PKG_NAME: ${{ steps.pkg.outputs.name }}
           PKG_VERSION: ${{ steps.pkg.outputs.version }}
-        run: node .github/scripts/publish-decision.mjs
+        run: node scripts/publish-decision.mjs
 
       - name: Verify tarball contents
         if: steps.decide.outputs.state == 'new'

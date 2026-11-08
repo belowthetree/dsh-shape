@@ -1,6 +1,6 @@
 /** Versioned capabilities that shape plugins can discover and depend on. */
 
-import { satisfies, valid, validRange } from 'semver'
+import { satisfies, valid, validRange } from './version-range.ts'
 
 /** Shape Client module ABI supported by this dsh-shape build. */
 export const SHAPE_API_VERSION = 1

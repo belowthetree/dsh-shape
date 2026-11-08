@@ -1,7 +1,7 @@
 /** Runtime that loads enabled shape Client modules after capability checks. */
 
-import type { ShapeCapabilityRegistry, ShapeRequirement } from '../capabilities.ts'
-import { supportsShapeApiVersion } from '../capabilities.ts'
+import type { ShapeCapabilityRegistry, ShapeRequirement } from '../shared/capabilities.ts'
+import { supportsShapeApiVersion } from '../shared/capabilities.ts'
 import { disposeShapeMounts, isShapeSlot, registerShapeMount, type ShapePlacementOptions } from './shape-slots.ts'
 import { disposeShapeEvents } from './shape-events.ts'
 import {

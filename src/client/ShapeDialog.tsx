@@ -12,8 +12,8 @@ import type {
   ShapeMissingCapability,
   ShapeRequirement,
   ShapeResolverInjected,
-} from '../capabilities.ts'
-import { SHAPE_API_VERSION, supportsShapeApiVersion } from '../capabilities.ts'
+} from '../shared/capabilities.ts'
+import { SHAPE_API_VERSION, supportsShapeApiVersion } from '../shared/capabilities.ts'
 import css from './shape-dialog.module.css'
 
 interface ShapeInfo {
