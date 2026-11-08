@@ -156,11 +156,11 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
           if (!/^[a-z0-9][a-z0-9-]*$/.test(command.id)) {
             throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`)
           }
-          return service().register({
+          const definition = (defaults: Partial<Record<ShortcutProfile, ShortcutBinding>>) => ({
             id: `${prefix}${command.id}` as ShortcutCommandId,
             label: () => command.label,
             aliases: command.aliases ?? [],
-            defaults: expandDefaults(command.keys),
+            defaults,
             regions: normalizeRegions(command.regions),
             modals: command.modals ?? [],
             resolve: () => ({
@@ -168,6 +168,18 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
               run: () => { void runAction(command.run) },
             }),
           })
+          const all = expandDefaults(command.keys)
+          try {
+            return service().register(definition(all))
+          } catch (cause) {
+            // Web on Linux admits only a few combinations; keep the desktop
+            // defaults so the command still exists and stays rebindable.
+            if (!(cause instanceof Error) || !cause.message.includes('Unsupported Web shortcut')) throw cause
+            const desktopOnly = Object.fromEntries(
+              Object.entries(all).filter(([profile]) => profile.startsWith('desktop:')),
+            ) as Partial<Record<ShortcutProfile, ShortcutBinding>>
+            return service().register(definition(desktopOnly))
+          }
         },
         list() {
           return service().catalog.getSnapshot()
@@ -191,11 +203,38 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
  * @param spec - combination such as `Ctrl+Alt+M`, or undefined for no default.
  * @returns defaults keyed by profile.
  */
+/** Combinations DSH admits for Web on Linux; every other profile admits more. */
+const WEB_LINUX_ALLOWED: ReadonlyArray<{ code: string, modifiers: readonly ShortcutModifier[] }> = [
+  { code: 'Slash', modifiers: ['primary'] },
+  { code: 'Comma', modifiers: ['primary', 'shift'] },
+  { code: 'Period', modifiers: ['primary', 'shift'] },
+]
+
+/**
+ * Check one binding against the Web-on-Linux admission rule.
+ * @param binding - candidate default.
+ * @returns whether the profile accepts it.
+ */
+function webLinuxAllows(binding: ShortcutBinding): boolean {
+  const key = [...binding.modifiers].sort().join('+') + '|' + binding.code
+  return WEB_LINUX_ALLOWED.some((candidate) => (
+    [...candidate.modifiers].sort().join('+') + '|' + candidate.code === key
+  ))
+}
+
+/**
+ * Expand one combination to every profile that admits it.
+ * @param spec - combination text.
+ * @returns defaults keyed by profile; `web:linux` is omitted when it would reject the binding.
+ */
 function expandDefaults(spec: string | undefined): Partial<Record<ShortcutProfile, ShortcutBinding>> {
   if (spec === undefined) return {}
   const binding = parseBinding(spec)
   const defaults: Partial<Record<ShortcutProfile, ShortcutBinding>> = {}
-  for (const profile of PROFILES) defaults[profile] = binding
+  for (const profile of PROFILES) {
+    if (profile === 'web:linux' && !webLinuxAllows(binding)) continue
+    defaults[profile] = binding
+  }
   return defaults
 }
 

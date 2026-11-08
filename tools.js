@@ -35,6 +35,26 @@ const CAPABILITY_FILE = path.join(
   'capabilities.json',
 )
 const CLIENT_CODE_LIMIT = 16000
+const SHAPE_FILE_LIMIT = 256 * 1024
+
+/**
+ * Resolve one path inside the writable shape root.
+ * @param root - absolute shape root.
+ * @param relative - caller-supplied relative path.
+ * @returns absolute path that stays inside the root.
+ */
+function resolveInsideRoot(root, relative) {
+  if (typeof relative !== 'string' || relative.trim() === '') throw new Error('path must be a non-empty string')
+  if (path.isAbsolute(relative)) throw new Error('path must be relative to the shapes directory')
+  const resolved = path.resolve(root, relative)
+  const prefix = root.endsWith(path.sep) ? root : `${root}${path.sep}`
+  const normalizedRoot = root.toLowerCase()
+  const normalizedResolved = resolved.toLowerCase()
+  if (normalizedResolved !== normalizedRoot && !normalizedResolved.startsWith(prefix.toLowerCase())) {
+    throw new Error('path escapes the shapes directory')
+  }
+  return resolved
+}
 
 /**
  * Resolve the writable shape directory.
@@ -575,12 +595,29 @@ export function apply(ctx, config) {
           catalog: {
             type: 'object',
             additionalProperties: false,
-            required: ['source', 'packageVersion', 'catalogVersion', 'syncedAt'],
+            required: ['source', 'packageVersion', 'catalogVersion', 'syncedAt', 'entries'],
             properties: {
               source: { type: 'string', enum: ['runtime', 'bundled', 'missing'] },
               packageVersion: { type: 'string' },
               catalogVersion: { type: 'string' },
               syncedAt: { type: 'string' },
+              entries: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['plugin', 'capability', 'version', 'methods', 'fields'],
+                  properties: {
+                    plugin: { type: 'string' },
+                    capability: { type: 'string' },
+                    version: { type: 'string' },
+                    description: { type: 'string' },
+                    usage: { type: 'string' },
+                    methods: { type: 'array', items: { type: 'string' } },
+                    fields: { type: 'array', items: { type: 'string' } },
+                  },
+                },
+              },
             },
           },
           capabilities: {
@@ -764,6 +801,90 @@ export function apply(ctx, config) {
       return scaffold(args, root)
     },
   }), 'dsh-shape: shape_scaffold tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_read',
+    description: 'Read one text file inside the shapes directory, relative to its root.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['path'],
+      properties: {
+        path: { type: 'string', description: 'Path relative to the shapes directory, such as hello/views/index.html.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['path', 'content', 'bytes'],
+        properties: {
+          path: { type: 'string' },
+          content: { type: 'string' },
+          bytes: { type: 'integer' },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `${value.path} (${String(value.bytes)} bytes)\n\n${value.content}`,
+      }],
+    },
+    async execute(args) {
+      const file = resolveInsideRoot(root, args.path)
+      const buffer = await readFile(file)
+      if (buffer.byteLength > SHAPE_FILE_LIMIT) {
+        throw new Error(`file is ${String(buffer.byteLength)} bytes; the limit is ${String(SHAPE_FILE_LIMIT)}`)
+      }
+      return { path: path.relative(root, file).split(path.sep).join('/'), content: buffer.toString('utf8'), bytes: buffer.byteLength }
+    },
+  }), 'dsh-shape: shape_read tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_write',
+    description: 'Write one text file inside the shapes directory, creating parent directories. Use it to edit a shape manifest, view, client entry, or slot declaration.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['path', 'content'],
+      properties: {
+        path: { type: 'string', description: 'Path relative to the shapes directory, such as hello/views/index.html.' },
+        content: { type: 'string', description: 'Full file content; this replaces the file.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['path', 'bytes', 'created'],
+        properties: {
+          path: { type: 'string' },
+          bytes: { type: 'integer' },
+          created: { type: 'boolean' },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `${value.created ? 'Created' : 'Updated'} ${value.path} (${String(value.bytes)} bytes)`,
+      }],
+    },
+    async execute(args) {
+      const file = resolveInsideRoot(root, args.path)
+      const bytes = Buffer.byteLength(args.content, 'utf8')
+      if (bytes > SHAPE_FILE_LIMIT) {
+        throw new Error(`content is ${String(bytes)} bytes; the limit is ${String(SHAPE_FILE_LIMIT)}`)
+      }
+      let created = true
+      try {
+        await stat(file)
+        created = false
+      } catch {
+        created = true
+      }
+      await mkdir(path.dirname(file), { recursive: true })
+      await writeFile(file, args.content, 'utf8')
+      return { path: path.relative(root, file).split(path.sep).join('/'), bytes, created }
+    },
+  }), 'dsh-shape: shape_write tool')
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_validate',

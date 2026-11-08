@@ -3,9 +3,11 @@
 # A bundle entry only applies this patch; it does not load the package itself,
 # so the patch inserts both the plugin row and the preset row.
 #
-# Shape Studio composes the ordinary coding tools and mounts two preset-local
-# plugins: shape tools and the bundled shape-development skill. Both register in
-# the preset scope, so other presets never see them.
+# Shape Studio reads and writes only the shapes directory: the preset mounts
+# the shape tools (which include shape_read/shape_write scoped to that root)
+# and the bundled shape-development skill, and no shell, filesystem, web, or
+# plugin-installation row. Both preset-local plugins register in the preset
+# scope, so other presets never see them.
 - insert:
     - id: dsh-shape
       name: '@belowthetree/dsh-shape'
@@ -14,7 +16,7 @@
       config:
         id: shape
         name: Shape Studio
-        description: Develop dsh-shape shapes and DSH extension plugins with preset-scoped tools and skills.
+        description: Read and write dsh-shape shapes inside the shapes directory, with preset-scoped shape tools and the shape-development skill.
         order: 5
         plugins:
           - id: persona
@@ -27,22 +29,6 @@
               maxBytes: 65536
           - id: time-context
             name: '@deepseek-ai/dsh-time-context'
-          - id: tool-bash
-            name: '@deepseek-ai/dsh-tool-bash'
-            disabled: !!js process.platform === 'win32'
-          - id: tool-pwsh
-            name: '@deepseek-ai/dsh-tool-pwsh'
-            disabled: !!js process.platform !== 'win32'
-          - id: tool-fs
-            name: '@deepseek-ai/dsh-tool-fs'
-            config:
-              applyPatch: false
-          - id: tool-fs-search
-            name: '@deepseek-ai/dsh-tool-fs-search'
-            config:
-              sampleOverCapGlobResults: false
-          - id: tool-jobs
-            name: '@deepseek-ai/dsh-tool-jobs'
           - id: skill-filesystem
             name: '@deepseek-ai/dsh-skill-filesystem'
             config:
@@ -56,21 +42,6 @@
             name: '@deepseek-ai/dsh-tool-todo'
             config:
               allowParallelInProgress: true
-          - id: tool-web
-            name: '@deepseek-ai/dsh-tool-web'
-            config:
-              fetch: true
-              searchTimeoutMs: 60000
-          - id: tool-cordis
-            name: '@deepseek-ai/dsh-tool-cordis'
-          - id: present
-            name: '@deepseek-ai/dsh-tool-present'
-          - id: tool-plugin-manager
-            name: '@deepseek-ai/dsh-plugin-manager/tools'
-            disabled: !!js "!ctx.get('profileContext')"
-          - id: tool-plugin-market
-            name: '@deepseek-ai/dsh-plugin-market/tools'
-            disabled: !!js "!ctx.get('profileContext')"
           - id: compaction
             name: cordis:group
             group: true

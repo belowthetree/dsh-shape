@@ -3626,11 +3626,11 @@ window.__ModuleLoader__.load({
 		                    if (!/^[a-z0-9][a-z0-9-]*$/.test(command.id)) {
 		                        throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`);
 		                    }
-		                    return service().register({
+		                    const definition = (defaults) => ({
 		                        id: `${prefix}${command.id}`,
 		                        label: () => command.label,
 		                        aliases: command.aliases ?? [],
-		                        defaults: expandDefaults(command.keys),
+		                        defaults,
 		                        regions: normalizeRegions(command.regions),
 		                        modals: command.modals ?? [],
 		                        resolve: () => ({
@@ -3638,6 +3638,18 @@ window.__ModuleLoader__.load({
 		                            run: () => { void runAction(command.run); },
 		                        }),
 		                    });
+		                    const all = expandDefaults(command.keys);
+		                    try {
+		                        return service().register(definition(all));
+		                    }
+		                    catch (cause) {
+		                        // Web on Linux admits only a few combinations; keep the desktop
+		                        // defaults so the command still exists and stays rebindable.
+		                        if (!(cause instanceof Error) || !cause.message.includes('Unsupported Web shortcut'))
+		                            throw cause;
+		                        const desktopOnly = Object.fromEntries(Object.entries(all).filter(([profile]) => profile.startsWith('desktop:')));
+		                        return service().register(definition(desktopOnly));
+		                    }
 		                },
 		                list() {
 		                    return service().catalog.getSnapshot()
@@ -3660,13 +3672,36 @@ window.__ModuleLoader__.load({
 		 * @param spec - combination such as `Ctrl+Alt+M`, or undefined for no default.
 		 * @returns defaults keyed by profile.
 		 */
+		/** Combinations DSH admits for Web on Linux; every other profile admits more. */
+		const WEB_LINUX_ALLOWED = [
+		    { code: 'Slash', modifiers: ['primary'] },
+		    { code: 'Comma', modifiers: ['primary', 'shift'] },
+		    { code: 'Period', modifiers: ['primary', 'shift'] },
+		];
+		/**
+		 * Check one binding against the Web-on-Linux admission rule.
+		 * @param binding - candidate default.
+		 * @returns whether the profile accepts it.
+		 */
+		function webLinuxAllows(binding) {
+		    const key = [...binding.modifiers].sort().join('+') + '|' + binding.code;
+		    return WEB_LINUX_ALLOWED.some((candidate) => ([...candidate.modifiers].sort().join('+') + '|' + candidate.code === key));
+		}
+		/**
+		 * Expand one combination to every profile that admits it.
+		 * @param spec - combination text.
+		 * @returns defaults keyed by profile; `web:linux` is omitted when it would reject the binding.
+		 */
 		function expandDefaults(spec) {
 		    if (spec === undefined)
 		        return {};
 		    const binding = parseBinding(spec);
 		    const defaults = {};
-		    for (const profile of PROFILES)
+		    for (const profile of PROFILES) {
+		        if (profile === 'web:linux' && !webLinuxAllows(binding))
+		            continue;
 		        defaults[profile] = binding;
+		    }
 		    return defaults;
 		}
 		/**
@@ -4311,258 +4346,300 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
+		/**
+		 * dsh-shape Client half: shape browser, composer cards, and the capability
+		 * registry providers use to extend shapes.
+		 * @module @deepseek-ai/dsh-shape/client
+		 */
 		/** The leading header seat and composer dock are owned by the conversation client. */
-		const inject = [
-			"slots",
-			"workspaces",
-			"sessions",
-			"uiWorkspace"
-		];
+		const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace'];
+		/** Surface registration failures, readable from the page for diagnosis. */
+		const surfaceErrors = [];
 		/**
-		* Describe one capability API without serializing its values.
-		* @param api - provider API object.
-		* @returns method names and typed field names.
-		*/
+		 * Record one surface registration failure.
+		 * @param label - what failed to register.
+		 * @param cause - thrown value.
+		 */
+		function recordSurfaceError(label, cause) {
+		    surfaceErrors.push(`${label}: ${cause instanceof Error ? cause.message : String(cause)}`);
+		    globalThis.__dshShapeSurfaceErrors = surfaceErrors;
+		    console.warn('dsh-shape:', label, cause);
+		}
+		/**
+		 * Describe one capability API without serializing its values.
+		 * @param api - provider API object.
+		 * @returns method names and typed field names.
+		 */
 		function describeApi(api) {
-			const record = typeof api === "object" && api !== null ? api : {};
-			// Providers with a per-shape view describe the view the shape actually receives.
-			const scoped = typeof record.forShape === "function" ? record.forShape("shape") : record;
-			const view = typeof scoped === "object" && scoped !== null ? scoped : {};
-			const methods = [];
-			const fields = [];
-			for (const [key, value] of Object.entries(view)) if (typeof value === "function") methods.push(key);
-			else fields.push(`${key}:${typeof value}`);
-			return {
-				methods: methods.sort(),
-				fields: fields.sort()
-			};
+		    const record = typeof api === 'object' && api !== null ? api : {};
+		    // Providers with a per-shape view describe the view the shape actually receives.
+		    const scoped = typeof record.forShape === 'function'
+		        ? record.forShape('shape')
+		        : record;
+		    const view = (typeof scoped === 'object' && scoped !== null ? scoped : {});
+		    const methods = [];
+		    const fields = [];
+		    for (const [key, value] of Object.entries(view)) {
+		        if (typeof value === 'function')
+		            methods.push(key);
+		        else
+		            fields.push(`${key}:${typeof value}`);
+		    }
+		    return { methods: methods.sort(), fields: fields.sort() };
 		}
 		/**
-		* Mirror the Client capability registry to the Host so shape tools can list it.
-		* @param registry - live client registry.
-		* @returns nothing.
-		*/
+		 * Mirror the Client capability registry to the Host so shape tools can list it.
+		 * @param registry - live client registry.
+		 * @returns nothing.
+		 */
 		async function syncCapabilities(registry) {
-			const capabilities = registry.list().map((entry) => {
-				const { methods, fields } = describeApi(entry.api);
-				return {
-					plugin: entry.plugin,
-					capability: entry.capability,
-					version: entry.version,
-					...entry.description === void 0 ? {} : { description: entry.description },
-					...entry.usage === void 0 ? {} : { usage: entry.usage },
-					methods,
-					fields
-				};
-			});
-			try {
-				await fetch("/dsh-shape/api/capabilities", {
-					method: "POST",
-					credentials: "same-origin",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ capabilities })
-				});
-			} catch {}
+		    const capabilities = registry.list().map((entry) => {
+		        const { methods, fields } = describeApi(entry.api);
+		        return {
+		            plugin: entry.plugin,
+		            capability: entry.capability,
+		            version: entry.version,
+		            ...(entry.description === undefined ? {} : { description: entry.description }),
+		            ...(entry.usage === undefined ? {} : { usage: entry.usage }),
+		            methods,
+		            fields,
+		        };
+		    });
+		    try {
+		        await fetch('/dsh-shape/api/capabilities', {
+		            method: 'POST',
+		            credentials: 'same-origin',
+		            headers: { 'content-type': 'application/json' },
+		            body: JSON.stringify({ capabilities }),
+		        });
+		    }
+		    catch {
+		        // The host may not have the mirror route yet; shapes still resolve locally.
+		    }
 		}
 		/**
-		* Register shape surfaces and expose the shape capability registry.
-		* @param ctx - client root context.
-		*/
+		 * Register shape surfaces and expose the shape capability registry.
+		 * @param ctx - client root context.
+		 */
 		function apply(ctx) {
-			const capabilities = createShapeCapabilityRegistry();
-			ctx.provide("shapeCapabilities", capabilities);
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "core",
-				version: "1.0.0",
-				description: "Shape ABI metadata provided by the dsh-shape runtime itself.",
-				usage: "Read apiVersion to branch on the shape ABI. Version 1 is the current ABI; no methods are exposed.",
-				api: { apiVersion: 1 }
-			}), "dsh-shape: core capability");
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "workspace",
-				version: "1.0.0",
-				description: "Navigate between DSH workspaces in registry order.",
-				usage: "Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace's most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.",
-				api: createWorkspaceSwitch(ctx)
-			}), "dsh-shape: workspace capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "ui",
-				version: "1.0.0",
-				description: "Control the DSH surface: navigate Sessions and Workspaces, toggle panels, read and switch the theme, send or cancel turns, show toasts, and open the shape browser.",
-				usage: "openSession(id) and openWorkspace(id) navigate; toggleSidebar() and selectPanel(id|null) move the layout; getTheme() returns { id, preference } and setTheme(id) switches it; send(text) and cancelTurn() act on the scoped Session; notify(text, { tone, timeout }) shows a toast; openShapeBrowser() raises the shape browser. Methods throw when the host lacks the underlying service.",
-				api: createUiControl(ctx)
-			}), "dsh-shape: ui capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "shortcuts",
-				version: "1.0.0",
-				description: "Register DSH keyboard commands that users can rebind, so shape actions appear in the shortcut settings and reference.",
-				usage: "register({ id, label, aliases, keys, run }) registers one command as shape:<shapeId>:<id>; keys is a combination such as \"Ctrl+Alt+M\" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape's catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.",
-				api: createShapeShortcuts(ctx)
-			}), "dsh-shape: shortcuts capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "slots",
-				version: "1.0.0",
-				description: "Discover the conversation slots this host renders, mount into them, and count the mounts a shape owns.",
-				usage: "list() returns every supported slot with its presentation, whether this host renders it, and how many mounts this shape and all shapes own. mount(slot, render, options) renders into a slot and returns a disposer; options.placement is anchored (default) or floating for conversation.input.overlay, and options.snap defaults to true. entries(slot) returns how many mounts this shape owns in that slot.",
-				api: createShapeSlots(ctx)
-			}), "dsh-shape: slots capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "events",
-				version: "1.0.0",
-				description: "Publish and subscribe to events shared by every running shape.",
-				usage: "emit(type, payload) publishes to every subscriber; on(type, handler) subscribes and returns an unsubscribe function. Names are plain strings namespaced by convention, for example \"mcp-manager/servers-changed\". Handler failures are contained and logged. A shape's subscriptions are released when it is disabled or reloaded.",
-				api: createShapeEvents()
-			}), "dsh-shape: events capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "storage",
-				version: "1.0.0",
-				description: "Persist JSON values in the shape's own data/ directory.",
-				usage: "get(key) returns the stored value or null; set(key, value) writes JSON; remove(key) deletes; keys() lists stored keys. Keys match [a-z0-9][a-z0-9._-]{0,63} and each value is limited to 256 KB. Files live under the shape directory as data/<key>.json; bundled shapes are read-only.",
-				api: createShapeStorage()
-			}), "dsh-shape: storage capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "composer",
-				version: "1.0.0",
-				description: "Read and write the active composer draft.",
-				usage: "getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.",
-				api: createComposer()
-			}), "dsh-shape: composer capability");
-
-			ctx.effect(() => capabilities.provide({
-				plugin: "dsh-shape",
-				capability: "conversation",
-				version: "1.0.0",
-				description: "Read the rendered conversation and reveal a message.",
-				usage: "messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.",
-				api: createConversation()
-			}), "dsh-shape: conversation capability");
-			capabilities.subscribe(() => {
-				window.dispatchEvent(new CustomEvent("dsh-shape:capabilities"));
-				syncCapabilities(capabilities);
-			});
-			syncCapabilities(capabilities);
-			const runtime = createShapeRuntime(capabilities);
-			ctx.effect(() => runtime.start(), "dsh-shape: shape client runtime");
-			const resolveShape = (requirements) => capabilities.resolve(requirements);
-			ctx.slots.inject("conversation.header.leading", () => ctx.slots.register({
-				name: "conversation.header.leading",
-				inject: () => ({ resolveShape })
-			}, ShapeButton));
-			for (const spec of SHAPE_SLOTS) ctx.slots.inject(spec.name, () => ctx.slots.register({
-				name: spec.name,
-				id: `dsh-shape-${spec.name.replaceAll(".", "-")}`,
-				order: 20,
-				inject: () => ({ resolveShape, slot: spec.name })
-			}, spec.presentation === "overlay" ? ShapeOverlay : ShapeSlotEntries));
-		ctx.slots.inject("conversation.input.dock", () => ctx.slots.register({
-			name: "conversation.input.dock",
-			id: "dsh-shape-composer-bridge",
-			order: 0
-		}, ShapeComposerBridge));
-		ctx.effect(() => {
-		    setShapePanelOpener((id) => {
-		        const layout = ctx.get('layout');
-		        if (layout === undefined)
-		            throw new Error('dsh-shape: the layout service is unavailable in this host');
-		        layout.selectPanel(id);
+		    const capabilities = createShapeCapabilityRegistry();
+		    ctx.provide('shapeCapabilities', capabilities);
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'core',
+		        version: '1.0.0',
+		        description: 'Shape ABI metadata provided by the dsh-shape runtime itself.',
+		        usage: 'Read apiVersion to branch on the shape ABI. Version 1 is the current ABI; no methods are exposed.',
+		        api: { apiVersion: 1 },
+		    }), 'dsh-shape: core capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'workspace',
+		        version: '1.0.0',
+		        description: 'Navigate between DSH workspaces in registry order.',
+		        usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.',
+		        api: createWorkspaceSwitch(ctx),
+		    }), 'dsh-shape: workspace capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'ui',
+		        version: '1.0.0',
+		        description: 'Control the DSH surface: navigate Sessions and Workspaces, toggle panels, read and switch the theme, send or cancel turns, show toasts, and open the shape browser.',
+		        usage: 'openSession(id) and openWorkspace(id) navigate; toggleSidebar() and selectPanel(id|null) move the layout; getTheme() returns { id, preference } and setTheme(id) switches it; send(text) and cancelTurn() act on the scoped Session; notify(text, { tone, timeout }) shows a toast; openShapeBrowser() raises the shape browser. Methods throw when the host lacks the underlying service.',
+		        api: createUiControl(ctx),
+		    }), 'dsh-shape: ui capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'shortcuts',
+		        version: '1.0.0',
+		        description: 'Register DSH keyboard commands that users can rebind, so shape actions appear in the shortcut settings and reference.',
+		        usage: 'register({ id, label, aliases, keys, run }) registers one command as shape:<shapeId>:<id>; keys is a combination such as "Ctrl+Alt+M" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape\'s catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.',
+		        api: createShapeShortcuts(ctx),
+		    }), 'dsh-shape: shortcuts capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'slots',
+		        version: '1.0.0',
+		        description: 'Discover the conversation slots this host renders, mount into them, and count the mounts a shape owns.',
+		        usage: 'list() returns every supported slot with its presentation, whether this host renders it, and how many mounts this shape and all shapes own. mount(slot, render, options) renders into a slot and returns a disposer; options.placement is anchored (default) or floating for conversation.input.overlay, and options.snap defaults to true. entries(slot) returns how many mounts this shape owns in that slot.',
+		        api: createShapeSlots(ctx),
+		    }), 'dsh-shape: slots capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'events',
+		        version: '1.0.0',
+		        description: 'Publish and subscribe to events shared by every running shape.',
+		        usage: 'emit(type, payload) publishes to every subscriber; on(type, handler) subscribes and returns an unsubscribe function. Names are plain strings namespaced by convention, for example "mcp-manager/servers-changed". Handler failures are contained and logged. A shape\'s subscriptions are released when it is disabled or reloaded.',
+		        api: createShapeEvents(),
+		    }), 'dsh-shape: events capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'storage',
+		        version: '1.0.0',
+		        description: 'Persist JSON values in the shape\'s own data/ directory.',
+		        usage: 'get(key) returns the stored value or null; set(key, value) writes JSON; remove(key) deletes; keys() lists stored keys. Keys match [a-z0-9][a-z0-9._-]{0,63} and each value is limited to 256 KB. Files live under the shape directory as data/<key>.json; bundled shapes are read-only.',
+		        api: createShapeStorage(),
+		    }), 'dsh-shape: storage capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'composer',
+		        version: '1.0.0',
+		        description: 'Read and write the active composer draft.',
+		        usage: 'getText() returns the draft, setText(text) replaces it, insert(text) adds text at the caret, submit() sends it, and sessionId() names the attached Session. The API follows the composer currently mounted in the conversation; calls throw when no composer is mounted.',
+		        api: createComposer(),
+		    }), 'dsh-shape: composer capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'conversation',
+		        version: '1.0.0',
+		        description: 'Read the rendered conversation and reveal a message.',
+		        usage: 'messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.',
+		        api: createConversation(),
+		    }), 'dsh-shape: conversation capability');
+		    capabilities.subscribe(() => {
+		        window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'));
+		        void syncCapabilities(capabilities);
 		    });
-		    return () => { setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host'); }); };
-		}, 'dsh-shape: panel opener');
-		const panelSlots = new Map();
-		const syncPanels = () => {
-		    const live = new Set(shapePanels().map(panel => panel.id));
-		    for (const [id, disposers] of panelSlots) {
-		        if (live.has(id))
+		    void syncCapabilities(capabilities);
+		    const runtime = createShapeRuntime(capabilities);
+		    ctx.effect(() => runtime.start(), 'dsh-shape: shape client runtime');
+		    const resolveShape = (requirements) => capabilities.resolve(requirements);
+		    ctx.slots.inject('conversation.header.leading', () => ctx.slots.register({
+		        name: 'conversation.header.leading',
+		        inject: () => ({ resolveShape }),
+		    }, ShapeButton));
+		    // One bridge per conversation slot a shape descriptor or mount may target:
+		    // the composer dock, its statistics row and floating anchor, the compact
+		    // tool rows, the Session header, and the New Session options.
+		    for (const spec of SHAPE_SLOTS) {
+		        if (spec.name === 'shell.overlay') {
+		            // Overlay mounts render into one fixed layer above the app, not inline.
+		            ctx.slots.inject('shell.overlay', () => {
+		                return ctx.slots.register({
+		                    name: 'shell.overlay',
+		                    id: 'dsh-shape-shell-overlay',
+		                    order: 20,
+		                    inject: () => ({ slot: spec.name }),
+		                }, ShapeOverlay);
+		            });
 		            continue;
-		        for (const off of disposers)
-		            off();
-		        panelSlots.delete(id);
-		    }
-		    for (const panel of shapePanels()) {
-		        if (panelSlots.has(panel.id))
-		            continue;
-		        panelSlots.set(panel.id, [
-		            ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-		                name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
-		            }, ShapePanelEntry)),
-		            ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: panel.id }, () => createElement(ShapePanelBody, { panel }))),
-		        ]);
-		    }
-		};
-		ctx.effect(() => {
-		    syncPanels();
-		    const off = subscribeShapePanels(syncPanels);
-		    return () => {
-		        off();
-		        for (const disposers of panelSlots.values()) {
-		            for (const dispose of disposers)
-		                dispose();
 		        }
-		        panelSlots.clear();
+		        ctx.slots.inject(spec.name, () => ctx.slots.register({
+		            name: spec.name,
+		            id: `dsh-shape-${spec.name.replaceAll('.', '-')}`,
+		            order: 20,
+		            inject: () => ({ resolveShape, slot: spec.name }),
+		        }, ShapeSlotEntries));
+		    }
+		    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
+		        name: 'conversation.input.dock',
+		        id: 'dsh-shape-composer-bridge',
+		        order: 0,
+		    }, ShapeComposerBridge));
+		    ctx.effect(() => {
+		        setShapePanelOpener((id) => {
+		            const layout = ctx.get('layout');
+		            if (layout === undefined)
+		                throw new Error('dsh-shape: the layout service is unavailable in this host');
+		            layout.selectPanel(id);
+		        });
+		        return () => { setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host'); }); };
+		    }, 'dsh-shape: panel opener');
+		    const panelSlots = new Map();
+		    const syncPanels = () => {
+		        const live = new Set(shapePanels().map(panel => panel.id));
+		        for (const [id, disposers] of panelSlots) {
+		            if (live.has(id))
+		                continue;
+		            for (const off of disposers)
+		                off();
+		            panelSlots.delete(id);
+		        }
+		        for (const panel of shapePanels()) {
+		            if (panelSlots.has(panel.id))
+		                continue;
+		            const disposers = [];
+		            try {
+		                disposers.push(ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+		                    name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
+		                }, ShapePanelEntry)));
+		            }
+		            catch (cause) {
+		                recordSurfaceError(`panel ${panel.id} panellist`, cause);
+		            }
+		            try {
+		                disposers.push(ctx.slots.inject('main', () => {
+		                    return ctx.slots.register({
+		                        name: 'main', key: panel.id, id: panel.id, label: () => panel.title,
+		                    }, () => createElement(ShapePanelBody, { panel }));
+		                }));
+		            }
+		            catch (cause) {
+		                recordSurfaceError(`panel ${panel.id} main`, cause);
+		            }
+		            panelSlots.set(panel.id, disposers);
+		        }
 		    };
-		}, 'dsh-shape: shape panels');
-		ctx.effect(() => {
-		    setShapeTabOpener((id) => {
-		        const service = ctx.get('sidebarRight');
-		        if (service === undefined)
-		            throw new Error('dsh-shape: the sidebarRight service is unavailable in this host');
-		        service.openTab(id);
-		    });
-		    return () => { setShapeTabOpener(() => { throw new Error('dsh-shape: tab opening is unavailable in this host'); }); };
-		}, 'dsh-shape: tab opener');
-		const tabSlots = new Map();
-		const syncTabs = () => {
-		    const live = new Set(shapeTabs().map(tab => tab.id));
-		    for (const [id, disposers] of tabSlots) {
-		        if (live.has(id))
-		            continue;
-		        for (const off of disposers)
+		    ctx.effect(() => {
+		        syncPanels();
+		        const off = subscribeShapePanels(syncPanels);
+		        return () => {
 		            off();
-		        tabSlots.delete(id);
-		    }
-		    for (const tab of shapeTabs()) {
-		        if (tabSlots.has(tab.id))
-		            continue;
-		        const disposers = [];
-		        const registry = ctx.get('sidebarRightTabs');
-		        if (registry !== undefined) {
-		            disposers.push(registry.register({ id: tab.id, kind: tab.id, title: () => tab.title }));
+		            for (const disposers of panelSlots.values()) {
+		                for (const dispose of disposers)
+		                    dispose();
+		            }
+		            panelSlots.clear();
+		        };
+		    }, 'dsh-shape: shape panels');
+		    ctx.effect(() => {
+		        setShapeTabOpener((id) => {
+		            const service = ctx.get('sidebarRight');
+		            if (service === undefined)
+		                throw new Error('dsh-shape: the sidebarRight service is unavailable in this host');
+		            service.openTab(id);
+		        });
+		        return () => { setShapeTabOpener(() => { throw new Error('dsh-shape: tab opening is unavailable in this host'); }); };
+		    }, 'dsh-shape: tab opener');
+		    const tabSlots = new Map();
+		    const syncTabs = () => {
+		        const live = new Set(shapeTabs().map(tab => tab.id));
+		        for (const [id, disposers] of tabSlots) {
+		            if (live.has(id))
+		                continue;
+		            for (const off of disposers)
+		                off();
+		            tabSlots.delete(id);
 		        }
-		        disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-		            name: 'sidebar.right.pane.tab', key: tab.id,
-		        }, () => createElement(ShapeTabBody, { tab }))));
-		        disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
-		            name: 'sidebar.right.pane.tab.title', key: tab.id,
-		        }, () => createElement(ShapeTabTitle, { tab }))));
-		        tabSlots.set(tab.id, disposers);
-		    }
-		};
-		ctx.effect(() => {
-		    syncTabs();
-		    const off = subscribeShapeTabs(syncTabs);
-		    return () => {
-		        off();
-		        for (const disposers of tabSlots.values()) {
-		            for (const dispose of disposers)
-		                dispose();
+		        for (const tab of shapeTabs()) {
+		            if (tabSlots.has(tab.id))
+		                continue;
+		            const disposers = [];
+		            const registry = ctx.get('sidebarRightTabs');
+		            if (registry !== undefined) {
+		                disposers.push(registry.register({ id: tab.id, kind: tab.id, title: () => tab.title }));
+		            }
+		            disposers.push(ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+		                name: 'sidebar.right.pane.tab', key: tab.id,
+		            }, () => createElement(ShapeTabBody, { tab }))));
+		            disposers.push(ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+		                name: 'sidebar.right.pane.tab.title', key: tab.id,
+		            }, () => createElement(ShapeTabTitle, { tab }))));
+		            tabSlots.set(tab.id, disposers);
 		        }
-		        tabSlots.clear();
 		    };
-		}, 'dsh-shape: shape tabs');
+		    ctx.effect(() => {
+		        syncTabs();
+		        const off = subscribeShapeTabs(syncTabs);
+		        return () => {
+		            off();
+		            for (const disposers of tabSlots.values()) {
+		                for (const dispose of disposers)
+		                    dispose();
+		            }
+		            tabSlots.clear();
+		        };
+		    }, 'dsh-shape: shape tabs');
 		}
 		//#endregion
 		exports.apply = apply;

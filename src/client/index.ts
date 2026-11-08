@@ -26,6 +26,7 @@ import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { createConversation } from './shape-conversation.ts'
 import { ShapePanelBody, ShapePanelEntry } from './ShapePanelHost.tsx'
+import { ShapeOverlay } from './ShapeOverlay.tsx'
 import { ShapeTabBody, ShapeTabTitle } from './ShapeTabHost.tsx'
 import {
   setShapePanelOpener,
@@ -40,6 +41,20 @@ import { createWorkspaceSwitch } from './workspace.ts'
 
 /** The leading header seat and composer dock are owned by the conversation client. */
 export const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace']
+
+/** Surface registration failures, readable from the page for diagnosis. */
+const surfaceErrors: string[] = []
+
+/**
+ * Record one surface registration failure.
+ * @param label - what failed to register.
+ * @param cause - thrown value.
+ */
+function recordSurfaceError(label: string, cause: unknown): void {
+  surfaceErrors.push(`${label}: ${cause instanceof Error ? cause.message : String(cause)}`)
+  ;(globalThis as { __dshShapeSurfaceErrors?: string[] }).__dshShapeSurfaceErrors = surfaceErrors
+  console.warn('dsh-shape:', label, cause)
+}
 
 /**
  * Describe one capability API without serializing its values.
@@ -200,6 +215,18 @@ export function apply(ctx: Context): void {
   // the composer dock, its statistics row and floating anchor, the compact
   // tool rows, the Session header, and the New Session options.
   for (const spec of SHAPE_SLOTS) {
+    if (spec.name === 'shell.overlay') {
+      // Overlay mounts render into one fixed layer above the app, not inline.
+      ctx.slots.inject('shell.overlay', () => {
+        return ctx.slots.register({
+          name: 'shell.overlay',
+          id: 'dsh-shape-shell-overlay',
+          order: 20,
+          inject: () => ({ slot: spec.name }),
+        }, ShapeOverlay)
+      })
+      continue
+    }
     ctx.slots.inject(spec.name, () => ctx.slots.register({
       name: spec.name,
       id: `dsh-shape-${spec.name.replaceAll('.', '-')}`,
@@ -233,12 +260,24 @@ export function apply(ctx: Context): void {
     }
     for (const panel of shapePanels()) {
       if (panelSlots.has(panel.id)) continue
-      panelSlots.set(panel.id, [
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+      const disposers: Array<() => void> = []
+      try {
+        disposers.push(ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
           name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
-        }, ShapePanelEntry)),
-        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: panel.id }, () => createElement(ShapePanelBody, { panel }))),
-      ])
+        }, ShapePanelEntry)))
+      } catch (cause) {
+        recordSurfaceError(`panel ${panel.id} panellist`, cause)
+      }
+      try {
+        disposers.push(ctx.slots.inject('main', () => {
+          return ctx.slots.register({
+            name: 'main', key: panel.id, id: panel.id, label: () => panel.title,
+          }, () => createElement(ShapePanelBody, { panel }))
+        }))
+      } catch (cause) {
+        recordSurfaceError(`panel ${panel.id} main`, cause)
+      }
+      panelSlots.set(panel.id, disposers)
     }
   }
   ctx.effect(() => {
