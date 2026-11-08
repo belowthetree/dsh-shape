@@ -67,14 +67,15 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 
 ## Shape Studio 预设
 
-安装后新增 **Shape Studio** 预设，用于开发形态和扩展插件：
+安装后新增 **Shape Studio** 预设，只做形态开发：
 
-- 提供查看、检查、创建和校验形态的工具，以及可查询形态能力目录的工具
-- 附带形态开发 skill，并可按主题读取完整接口与规范
-- 提供 Cordis 检查、插件安装与管理、插件市场
-- 附带插件开发与预设编辑相关的 skill
+- 查看、检查、创建、校验形态：`shape_list`、`shape_inspect`、`shape_scaffold`、`shape_validate`、`shape_test`
+- 按形态限定范围的文件访问：`shape_read`、`shape_write`（必须指定形态 id，路径相对该形态目录）
+- 目录结构与文本检索：`shape_tree`、`shape_grep`
+- 能力目录查询：`shape_capabilities`；规范查询：`shape_spec`
+- 附带形态开发 skill，可按主题读取完整接口与规范
 
-这些工具和 skill 只在 Shape Studio 中可见，其他预设不会看到。
+预设**不挂载** shell、通用文件系统、网络和插件安装工具，所以形态之外的文件它读写不到。这些工具和 skill 只在 Shape Studio 中可见，其他预设不会看到。
 
 ## 安装
 

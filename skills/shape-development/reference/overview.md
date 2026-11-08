@@ -8,7 +8,8 @@ A shape is a folder under a shape root. dsh-shape discovers it, exposes its view
 - User: `$DSH_HOME/dsh-shape/shapes/`.
 - A user shape with the same id overrides the bundled shape.
 - `shape_list` and `shape_inspect` report both roots; `shape_scaffold` writes to the user root.
-- `shape_read` and `shape_write` read and write text files under the user root only; paths are relative to it and anything that escapes the root is rejected. Shape Studio mounts no shell, filesystem, web, or plugin-installation tools, so these two are the only file access the preset has.
+- `shape_read` and `shape_write` take a shape id plus a path relative to that shape (`shape_read({ shape: 'hello', path: 'views/index.html' })`); anything that escapes the shape folder is rejected. `shape_tree` lists one shape's directory structure and `shape_grep` searches its text files by literal or regular expression.
+- Shape Studio mounts no shell, filesystem, web, or plugin-installation tools, so these four are the only file access the preset has.
 
 ## Current contributions
 

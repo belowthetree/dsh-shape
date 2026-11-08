@@ -66,14 +66,15 @@ Two skills live in the repository: `skills/shape-development/` (bundled into the
 
 ## Shape Studio preset
 
-Installation adds the **Shape Studio** preset for developing shapes and extension plugins:
+Installation adds the **Shape Studio** preset, scoped to shape development:
 
-- Tools to list, inspect, scaffold, and validate shapes, plus a shape capability catalog
-- A shape-development skill plus a topic-based reference for the full interfaces and rules
-- Cordis inspection, plugin installation/management, and the plugin market
-- Skills for plugin development and preset editing
+- List, inspect, scaffold, and validate shapes: `shape_list`, `shape_inspect`, `shape_scaffold`, `shape_validate`, `shape_test`
+- Shape-scoped file access: `shape_read` and `shape_write` take a shape id plus a path relative to that shape
+- Directory structure and text search: `shape_tree`, `shape_grep`
+- Capability catalog (`shape_capabilities`) and a topic-based spec (`shape_spec`)
+- The shape-development skill for the full interfaces and rules
 
-These tools and skills are visible only in Shape Studio; other presets never see them.
+The preset mounts **no** shell, general filesystem, web, or plugin-installation tools, so it cannot reach files outside a shape. These tools and skills are visible only in Shape Studio; other presets never see them.
 
 ## Install
 

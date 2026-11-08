@@ -38,6 +38,121 @@ const CLIENT_CODE_LIMIT = 16000
 const SHAPE_FILE_LIMIT = 256 * 1024
 
 /**
+ * Resolve one shape folder under the writable root.
+ * @param root - absolute shapes root.
+ * @param shape - shape id.
+ * @returns absolute shape directory.
+ */
+function shapeDir(root, shape) {
+  if (typeof shape !== 'string' || !SHAPE_ID.test(shape)) {
+    throw new Error(`shape must be a kebab-case id, got ${JSON.stringify(shape)}`)
+  }
+  return path.join(root, shape)
+}
+
+/**
+ * Resolve one path inside a shape folder.
+ * @param root - absolute shapes root.
+ * @param shape - shape id.
+ * @param relative - caller-supplied path relative to the shape.
+ * @returns absolute path that stays inside the shape folder.
+ */
+function resolveShapeFile(root, shape, relative) {
+  return resolveInsideRoot(shapeDir(root, shape), relative)
+}
+
+/**
+ * Walk one shape folder.
+ * @param root - absolute shapes root.
+ * @param shape - shape id.
+ * @param depth - maximum depth.
+ * @param limit - maximum entries.
+ * @returns entries in walk order plus a truncation flag.
+ */
+async function treeOf(root, shape, depth, limit) {
+  const base = shapeDir(root, shape)
+  const maxDepth = Math.min(Math.max(depth, 1), 8)
+  const maxEntries = Math.min(Math.max(limit, 1), 500)
+  const entries = []
+  let truncated = false
+  const walk = async (dir, level) => {
+    if (truncated || level > maxDepth) return
+    let children
+    try {
+      children = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    children.sort((left, right) => left.name.localeCompare(right.name))
+    for (const child of children) {
+      if (entries.length >= maxEntries) { truncated = true; return }
+      const full = path.join(dir, child.name)
+      const relative = path.relative(base, full).split(path.sep).join('/')
+      if (child.isDirectory()) {
+        entries.push({ path: relative, type: 'directory' })
+        await walk(full, level + 1)
+        continue
+      }
+      if (!child.isFile()) continue
+      const info = await stat(full).catch(() => undefined)
+      entries.push({ path: relative, type: 'file', ...(info === undefined ? {} : { bytes: info.size }) })
+    }
+  }
+  await walk(base, 1)
+  return { shape, entries, truncated }
+}
+
+/**
+ * Search the text files of one shape folder.
+ * @param root - absolute shapes root.
+ * @param args - shape, pattern, regex, caseSensitive, limit.
+ * @returns matching lines with their file and line number.
+ */
+async function grepShape(root, args) {
+  const base = shapeDir(root, args.shape)
+  const limit = Math.min(Math.max(args.limit ?? 100, 1), 500)
+  const flags = args.caseSensitive === true ? '' : 'i'
+  const pattern = args.regex === true
+    ? new RegExp(args.pattern, flags)
+    : new RegExp(args.pattern.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'), flags)
+  const matches = []
+  let truncated = false
+  const walk = async (dir) => {
+    if (truncated) return
+    let children
+    try {
+      children = await readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    children.sort((left, right) => left.name.localeCompare(right.name))
+    for (const child of children) {
+      if (truncated) return
+      const full = path.join(dir, child.name)
+      if (child.isDirectory()) {
+        await walk(full)
+        continue
+      }
+      if (!child.isFile()) continue
+      const info = await stat(full).catch(() => undefined)
+      if (info === undefined || info.size > SHAPE_FILE_LIMIT) continue
+      const buffer = await readFile(full).catch(() => undefined)
+      if (buffer === undefined || buffer.includes(0)) continue
+      const lines = buffer.toString('utf8').split('\n')
+      const relative = path.relative(base, full).split(path.sep).join('/')
+      for (let index = 0; index < lines.length; index += 1) {
+        pattern.lastIndex = 0
+        if (!pattern.test(lines[index])) continue
+        if (matches.length >= limit) { truncated = true; return }
+        matches.push({ path: relative, line: index + 1, text: lines[index].trim().slice(0, 300) })
+      }
+    }
+  }
+  await walk(base)
+  return { shape: args.shape, pattern: args.pattern, matches, truncated }
+}
+
+/**
  * Resolve one path inside the writable shape root.
  * @param root - absolute shape root.
  * @param relative - caller-supplied relative path.
@@ -808,21 +923,23 @@ export function apply(ctx, config) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_read',
-    description: 'Read one text file inside the shapes directory, relative to its root.',
+    description: 'Read one text file inside a named shape folder. `path` is relative to that shape, never to the shapes root.',
     parameters: {
       type: 'object',
       additionalProperties: false,
-      required: ['path'],
+      required: ['shape', 'path'],
       properties: {
-        path: { type: 'string', description: 'Path relative to the shapes directory, such as hello/views/index.html.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        path: { type: 'string', description: 'Path relative to the shape folder, such as views/index.html.' },
       },
     },
     output: {
       schema: {
         type: 'object',
         additionalProperties: false,
-        required: ['path', 'content', 'bytes'],
+        required: ['shape', 'path', 'content', 'bytes'],
         properties: {
+          shape: { type: 'string' },
           path: { type: 'string' },
           content: { type: 'string' },
           bytes: { type: 'integer' },
@@ -830,28 +947,34 @@ export function apply(ctx, config) {
       },
       render: (_args, value) => [{
         type: 'text',
-        text: `${value.path} (${String(value.bytes)} bytes)\n\n${value.content}`,
+        text: `${value.shape}/${value.path} (${String(value.bytes)} bytes)\n\n${value.content}`,
       }],
     },
     async execute(args) {
-      const file = resolveInsideRoot(root, args.path)
+      const file = resolveShapeFile(root, args.shape, args.path)
       const buffer = await readFile(file)
       if (buffer.byteLength > SHAPE_FILE_LIMIT) {
         throw new Error(`file is ${String(buffer.byteLength)} bytes; the limit is ${String(SHAPE_FILE_LIMIT)}`)
       }
-      return { path: path.relative(root, file).split(path.sep).join('/'), content: buffer.toString('utf8'), bytes: buffer.byteLength }
+      return {
+        shape: args.shape,
+        path: path.relative(shapeDir(root, args.shape), file).split(path.sep).join('/'),
+        content: buffer.toString('utf8'),
+        bytes: buffer.byteLength,
+      }
     },
   }), 'dsh-shape: shape_read tool')
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_write',
-    description: 'Write one text file inside the shapes directory, creating parent directories. Use it to edit a shape manifest, view, client entry, or slot declaration.',
+    description: 'Write one text file inside a named shape folder, creating parent directories. Use it to edit that shape\'s manifest, view, client entry, or slot declaration.',
     parameters: {
       type: 'object',
       additionalProperties: false,
-      required: ['path', 'content'],
+      required: ['shape', 'path', 'content'],
       properties: {
-        path: { type: 'string', description: 'Path relative to the shapes directory, such as hello/views/index.html.' },
+        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        path: { type: 'string', description: 'Path relative to the shape folder, such as views/index.html.' },
         content: { type: 'string', description: 'Full file content; this replaces the file.' },
       },
     },
@@ -859,8 +982,9 @@ export function apply(ctx, config) {
       schema: {
         type: 'object',
         additionalProperties: false,
-        required: ['path', 'bytes', 'created'],
+        required: ['shape', 'path', 'bytes', 'created'],
         properties: {
+          shape: { type: 'string' },
           path: { type: 'string' },
           bytes: { type: 'integer' },
           created: { type: 'boolean' },
@@ -868,11 +992,11 @@ export function apply(ctx, config) {
       },
       render: (_args, value) => [{
         type: 'text',
-        text: `${value.created ? 'Created' : 'Updated'} ${value.path} (${String(value.bytes)} bytes)`,
+        text: `${value.created ? 'Created' : 'Updated'} ${value.shape}/${value.path} (${String(value.bytes)} bytes)`,
       }],
     },
     async execute(args) {
-      const file = resolveInsideRoot(root, args.path)
+      const file = resolveShapeFile(root, args.shape, args.path)
       const bytes = Buffer.byteLength(args.content, 'utf8')
       if (bytes > SHAPE_FILE_LIMIT) {
         throw new Error(`content is ${String(bytes)} bytes; the limit is ${String(SHAPE_FILE_LIMIT)}`)
@@ -886,9 +1010,114 @@ export function apply(ctx, config) {
       }
       await mkdir(path.dirname(file), { recursive: true })
       await writeFile(file, args.content, 'utf8')
-      return { path: path.relative(root, file).split(path.sep).join('/'), bytes, created }
+      return {
+        shape: args.shape,
+        path: path.relative(shapeDir(root, args.shape), file).split(path.sep).join('/'),
+        bytes,
+        created,
+      }
     },
   }), 'dsh-shape: shape_write tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_tree',
+    description: 'List the directory structure of one shape folder.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['shape'],
+      properties: {
+        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        depth: { type: 'integer', description: 'Maximum directory depth, 1-8. Defaults to 4.' },
+        limit: { type: 'integer', description: 'Maximum entries, 1-500. Defaults to 200.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['shape', 'entries', 'truncated'],
+        properties: {
+          shape: { type: 'string' },
+          truncated: { type: 'boolean' },
+          entries: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['path', 'type'],
+              properties: {
+                path: { type: 'string' },
+                type: { type: 'string', enum: ['file', 'directory'] },
+                bytes: { type: 'integer' },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: `${value.shape}\n${value.entries.map(entry => (entry.type === 'directory'
+          ? `${entry.path}/`
+          : `${entry.path} (${String(entry.bytes ?? 0)} bytes)`)).join('\n')}${value.truncated ? '\n… truncated' : ''}`,
+      }],
+    },
+    async execute(args) {
+      return treeOf(root, args.shape, args.depth ?? 4, args.limit ?? 200)
+    },
+  }), 'dsh-shape: shape_tree tool')
+
+  ctx.effect(() => ctx.tools.register({
+    name: 'shape_grep',
+    description: 'Search text inside one shape folder for a string or regular expression, returning matching lines.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['shape', 'pattern'],
+      properties: {
+        shape: { type: 'string', description: 'Shape id (its folder name), such as hello.' },
+        pattern: { type: 'string', description: 'Literal text, or a regular expression when regex is true.' },
+        regex: { type: 'boolean', description: 'Treat pattern as a JavaScript regular expression.' },
+        caseSensitive: { type: 'boolean', description: 'Match case-sensitively. Defaults to false.' },
+        limit: { type: 'integer', description: 'Maximum matching lines, 1-500. Defaults to 100.' },
+      },
+    },
+    output: {
+      schema: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['shape', 'pattern', 'matches', 'truncated'],
+        properties: {
+          shape: { type: 'string' },
+          pattern: { type: 'string' },
+          truncated: { type: 'boolean' },
+          matches: {
+            type: 'array',
+            items: {
+              type: 'object',
+              additionalProperties: false,
+              required: ['path', 'line', 'text'],
+              properties: {
+                path: { type: 'string' },
+                line: { type: 'integer' },
+                text: { type: 'string' },
+              },
+            },
+          },
+        },
+      },
+      render: (_args, value) => [{
+        type: 'text',
+        text: value.matches.length === 0
+          ? `${value.shape}: no match for ${value.pattern}`
+          : `${value.shape}: ${String(value.matches.length)} match(es)${value.truncated ? ' (truncated)' : ''}\n${value.matches.map(match => `${match.path}:${String(match.line)}: ${match.text}`).join('\n')}`,
+      }],
+    },
+    async execute(args) {
+      return grepShape(root, args)
+    },
+  }), 'dsh-shape: shape_grep tool')
+
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_validate',
