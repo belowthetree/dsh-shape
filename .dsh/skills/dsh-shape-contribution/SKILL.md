@@ -32,11 +32,14 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 1. Read [`docs/architecture.md`](../../docs/architecture.md) — it explains how a bundle entry, the patch, and the client bundle fit together.
 2. Decide which surface you are touching; each has its own reload rule:
 
-| Changed | Verify by |
-| --- | --- |
-| `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` |
-| `index.js`, `tools.js`, `cordis.patch.yml` | Restart `dsh web`; check `/dsh-shape/api/health` |
-| A shape under the user root | Reload the page, or `POST /dsh-shape/api/refresh` |
+| Changed | Verify by | Why a page refresh is not enough |
+| --- | --- | --- |
+| `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
+| `index.js`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
+| An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
+| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, then reload | The shape list and each shape's `clientFiles` come from an in-memory scan done at load; a brand-new client module 404s until it is rescanned |
+
+The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`.
 
 ## The three gates
 
