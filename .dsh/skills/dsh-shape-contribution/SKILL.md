@@ -37,7 +37,7 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
 | `index.js`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
 | An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
-| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page (the panel's refresh does both) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
+| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
 
 The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`.
 
@@ -70,6 +70,13 @@ When you replace a region with `tsc` output, three bindings must be rewritten or
 | Components exported from a `.tsx` region | `createElement(...)` inside a `.ts` region — export a bound component instead |
 
 Strip `import` lines and `export ` prefixes, re-indent to the surrounding depth, then always run `node --check client.js` and the bundle gate. A misplaced brace that closes `apply` early is the failure mode that once shipped a fatal bundle.
+
+Two traps that pass every gate and still break the UI, both hit while splicing `ShapeDialog.tsx`:
+
+- **Double rewriting.** Rewriting `_jsx(` → `react_jsx_runtime.jsx(` and then also rewriting bare `jsx(` produces `react_jsx_runtime.react_jsx_runtime.jsx(`. Apply one rule per identifier, and grep the result for `react_jsx_runtime.react_` and `react.react.`.
+- **`createPortal` is on `react-dom`.** Rewriting it with the other React APIs yields `react.createPortal` — `undefined` at render. Map it to `react_dom.createPortal`.
+
+`check-client-bundle.mjs` only loads the module and calls `apply(ctx)`; it never renders. After splicing a `.tsx` region, open the affected surface in the browser and confirm it appears — a region that renders `null` passes every automated gate.
 
 ## The patch must load the plugin
 
@@ -141,12 +148,18 @@ curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # after adding or d
 
 Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 — and its importer then fails to load, which looks exactly like "the shape stopped working and refreshing did not help". Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
 
-**Order matters, and the shape panel handles it for you.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
+**Order matters.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
 
-`POST /api/refresh` reports a `clientRevision` signature plus `changed`. When the signature differs, the shape panel's refresh button reloads the page itself; when only file contents changed, it just refreshes the list. If you drive the API yourself:
+`POST /api/refresh` reports a `revision` signature plus `changed`, which tells you whether the module set moved:
 
-1. `POST /dsh-shape/api/refresh`, and check `changed` in the receipt;
-2. reload the page when `changed` is `true`.
+```sh
+curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # {"changed": true, ...}
+```
+
+When `changed` is `true`:
+
+1. the Host now serves the new module set;
+2. reload the page (F5) — the shape panel's refresh button only reloads the list, it does not re-import modules.
 
 If the page was reloaded before the rescan, it must be reloaded **again** after it. Restarting the Host works only because it does both at once.
 

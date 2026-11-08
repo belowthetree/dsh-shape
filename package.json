@@ -1,6 +1,6 @@
 {
   "name": "@belowthetree/dsh-shape",
-  "version": "0.4.27",
+  "version": "0.4.28",
   "type": "module",
   "description": "A DeepSeek Harness plugin that adds a dynamic lightweight extension form for customizing DSH UI and functionality.",
   "license": "MIT",
