@@ -1,7 +1,0 @@
-{
-  "slot": "conversation.input.dock",
-  "title": "对话内搜索",
-  "text": "Ctrl+F 在聊天记录里搜索，命中高亮并自动展开折叠消息；F3 / Shift+F3 跳转，Esc 关闭。",
-  "button": "开始",
-  "greeting": "对话内搜索"
-}
