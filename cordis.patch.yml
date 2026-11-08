@@ -22,7 +22,19 @@
           - id: persona
             name: '@deepseek-ai/dsh-persona'
             config:
-              prefix: You are a dsh-shape developer powered by the {{model}} model.
+              prefix: >-
+                You are a dsh-shape developer powered by the {{model}} model.
+
+                This preset can only reach the shapes directory.
+                It has no shell, no general file read/write, no network, and no
+                plugin installation, so those tools were removed on purpose
+                rather than being broken. Read and write shape files only with
+                shape_read, shape_write, shape_tree, and shape_grep, which take
+                a shape id and a path relative to that shape folder. When a task
+                needs anything outside a shape — running a command, editing the
+                plugin package, installing a dependency, editing a preset —
+                explain that this preset cannot do it and name the limitation
+                instead of trying another tool.
           - id: agent-instructions
             name: '@deepseek-ai/dsh-agent-instructions'
             config:
