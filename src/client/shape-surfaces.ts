@@ -23,7 +23,7 @@ const panelListeners = new Set<() => void>()
 let opener: ((id: string) => void) | undefined
 
 /**
- * Install the function that selects a panel in the main area.
+ * Install the function that shows a panel.
  * @param open - receives a namespaced panel id.
  */
 export function setShapePanelOpener(open: (id: string) => void): void {
@@ -31,7 +31,7 @@ export function setShapePanelOpener(open: (id: string) => void): void {
 }
 
 /**
- * Select one registered panel in the main area.
+ * Show one registered panel.
  * @param id - namespaced panel id.
  */
 export function openShapePanel(id: string): void {

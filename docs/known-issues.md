@@ -2,13 +2,12 @@
 
 按影响面排序。修好一条就删一条。
 
-## api.panel() 在 Web 宿主不渲染正文
+## 面板不走 main 槽位
 
-- **现象**：侧栏出现条目，点击后主区域被选中（高亮），但正文是空白；`open()` 不抛错。
-- **证据**：`slots.entries('main')` 里有该 key；包装组件被 React 调用多次；但 `ShapePanelBody` 的 `useEffect` 一次都没执行——子树在提交前被丢弃。
-- **已排除**：补 `locale`、补 `inject`、用 `ctx.effect` 包裹注册、去掉 `id`/`label`，都无效。
-- **状态**：未修复。要定位需要在 `ui-renderer` 的 keyed 分发里打点，而这台机器重建客户端 bundle 会因 ACL 报 `os error 5`。
-- **绕法**：把面板内容挂到 `api.mount('conversation.input.overlay', …)`（已验证可用）。
+- **现象**：`api.panel()` 的实现**不使用**主区域的 `main` 槽位。
+- **原因**：shape 注册到 `main` 的 keyed 条目能注册、组件也会被 React 调用，但整棵子树在提交前被丢弃——`useEffect` 一次都不执行，渲染出来是空锚点。补 `locale`、补 `inject`、用 `ctx.effect` 包裹注册、去掉 `id`/`label` 都无效。
+- **现状**：面板改为挂在 `conversation.input.overlay` 上，表现为会话输入区上方的浮动窗口（可拖动、边缘吸附、记住位置）。见[形态目录](shapes.md)。
+- **影响**：面板只在会话可见时存在，且不再出现在左侧栏。
 
 ## 工具 schema 只支持单一 type
 

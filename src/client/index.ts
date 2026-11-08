@@ -13,7 +13,7 @@ import {
   type ShapeRequirement,
   type ShapeResolution,
 } from '../capabilities.ts'
-import { SHAPE_SLOTS } from './shape-slots.ts'
+import { SHAPE_SLOTS, registerShapeMount } from './shape-slots.ts'
 import { ShapeSlotEntries } from './ShapeSlotEntries.tsx'
 import { ShapeButton } from './ShapeButton.tsx'
 import { createShapeRuntime } from './shape-runtime.ts'
@@ -24,7 +24,6 @@ import { createShapeStorage } from './shape-storage.ts'
 import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { createConversation } from './shape-conversation.ts'
-import { ShapePanelEntry, createPanelComponent } from './ShapePanelHost.tsx'
 import { ShapeOverlay } from './ShapeOverlay.tsx'
 import { createTabComponent, createTabTitleComponent } from './ShapeTabHost.tsx'
 import {
@@ -240,54 +239,54 @@ export function apply(ctx: Context): void {
     order: 0,
   }, ShapeComposerBridge))
 
-  ctx.effect(() => {
-    setShapePanelOpener((id) => {
-      const layout = ctx.get('layout')
-      if (layout === undefined) throw new Error('dsh-shape: the layout service is unavailable in this host')
-      layout.selectPanel(id)
-    })
-    return () => { setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host') }) }
-  }, 'dsh-shape: panel opener')
-
-  const panelSlots = new Map<string, Array<() => void>>()
-  const syncPanels = (): void => {
-    const live = new Set(shapePanels().map(panel => panel.id))
-    for (const [id, disposers] of panelSlots) {
-      if (live.has(id)) continue
-      for (const off of disposers) off()
-      panelSlots.delete(id)
-    }
-    for (const panel of shapePanels()) {
-      if (panelSlots.has(panel.id)) continue
-      const disposers: Array<() => void> = []
-      try {
-        disposers.push(ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist', id: panel.id, order: panel.order, label: () => panel.title,
-        }, ShapePanelEntry)))
-      } catch (cause) {
-        recordSurfaceError(`panel ${panel.id} panellist`, cause)
-      }
-      try {
-        disposers.push(ctx.slots.inject('main', () => {
-          return ctx.slots.register({
-            name: 'main', key: panel.id, id: panel.id, label: () => panel.title,
-          }, createPanelComponent(panel))
-        }))
-      } catch (cause) {
-        recordSurfaceError(`panel ${panel.id} main`, cause)
-      }
-      panelSlots.set(panel.id, disposers)
-    }
+  // A panel is a floating window in the conversation input overlay: the `main`
+  // slot does not commit a shape entry's subtree, so panels render through the
+  // slot that already hosts floating mounts.
+  const panelWindows = new Map<string, () => void>()
+  const closePanelWindow = (id: string): void => {
+    const close = panelWindows.get(id)
+    if (close === undefined) return
+    panelWindows.delete(id)
+    close()
   }
   ctx.effect(() => {
-    syncPanels()
-    const off = subscribeShapePanels(syncPanels)
+    setShapePanelOpener((id) => {
+      const panel = shapePanels().find(candidate => candidate.id === id)
+      if (panel === undefined) throw new Error(`dsh-shape: no panel "${id}" is registered`)
+      closePanelWindow(id)
+      try {
+        const off = registerShapeMount({
+          slot: 'conversation.input.overlay',
+          shapeId: id,
+          title: panel.title,
+          placement: 'floating',
+          snap: true,
+          render: panel.render,
+        })
+        panelWindows.set(id, off)
+      } catch (cause) {
+        recordSurfaceError(`panel ${id}`, cause)
+        throw cause
+      }
+    })
+    return () => {
+      setShapePanelOpener(() => { throw new Error('dsh-shape: panel opening is unavailable in this host') })
+      for (const id of [...panelWindows.keys()]) closePanelWindow(id)
+    }
+  }, 'dsh-shape: panel opener')
+
+  ctx.effect(() => {
+    const sync = (): void => {
+      const live = new Set(shapePanels().map(panel => panel.id))
+      for (const id of [...panelWindows.keys()]) {
+        if (!live.has(id)) closePanelWindow(id)
+      }
+    }
+    sync()
+    const off = subscribeShapePanels(sync)
     return () => {
       off()
-      for (const disposers of panelSlots.values()) {
-        for (const dispose of disposers) dispose()
-      }
-      panelSlots.clear()
+      for (const id of [...panelWindows.keys()]) closePanelWindow(id)
     }
   }, 'dsh-shape: shape panels')
 

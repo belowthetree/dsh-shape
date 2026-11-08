@@ -31,7 +31,7 @@ export function activate(api) {
 | `api.capabilities` | `Record<'plugin#capability', unknown>` | Every declared capability API. |
 | `api.require(plugin, capability)` | capability API | Throws when the shape did not declare it. |
 | `api.mount(slot, render, options?)` | disposer | One of the ten slots; `options` is `{ placement, snap }` for `conversation.input.overlay`. |
-| `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Left sidebar panel; `open()` selects it in the main area. |
+| `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Floating window over the conversation input; `open()` shows it. |
 | `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
 | `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
 
@@ -55,7 +55,7 @@ Details:
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
-- `api.panel(options)`: adds a panel to the left sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` selects it in the main area.
+- `api.panel(options)`: registers a panel and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the panel as a floating window over the conversation input.
 - `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
 
 ## Panels
@@ -75,9 +75,9 @@ export function activate(api) {
 }
 ```
 
-The panel id is namespaced as `shape:<shapeId>:<id>`, so two shapes can use the same local id. Registration is lazy: the sidebar entry appears as soon as the shape activates and disappears with it. `open()` throws when the host has no layout service.
+The panel id is namespaced as `shape:<shapeId>:<id>`, so two shapes can use the same local id. `open()` mounts the panel as a floating window in `conversation.input.overlay`: it has a drag bar, snaps to viewport edges, and remembers its position. The window only exists while a conversation is on screen, and `open()` again re-creates it.
 
-> **Not usable on the Web host yet.** The sidebar entry registers and `open()` selects it, but the panel body never mounts: the `main` slot drops the entry's subtree before commit, so `render()` is never called. Until that is fixed, mount panel content with `api.mount('conversation.input.overlay', …)` instead.
+Panels do not use the `main` slot: a shape's `main` entry renders but never commits, so panel content is hosted by the overlay slot instead.
 
 ## Tabs
 

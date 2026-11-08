@@ -98,7 +98,7 @@ export function activate(api) {
 - `api.shape` 是 `{ id, title, version }`；
 - `api.require(plugin, capability)` 返回能力对象，未声明或版本不符时抛错；
 - `api.mount(slot, render, options?)` 往槽位挂 DOM，`render(container)` 返回清理函数；
-- `api.panel(...)` / `api.tab(...)` 注册侧栏面板与右侧页签（**面板当前不可用**，见[已知问题](known-issues.md)）。
+- `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）。
 
 ## 行为与测试（actions.js）
 
