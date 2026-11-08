@@ -2134,6 +2134,7 @@ window.__ModuleLoader__.load({
 		* @returns the snapshot.
 		*/
 		async function readShapes(refresh) {
+			let changed = false;
 			if (refresh) {
 				const rescan = await fetch("/dsh-shape/api/refresh", {
 					method: "POST",
@@ -2141,6 +2142,8 @@ window.__ModuleLoader__.load({
 					headers: { accept: "application/json" }
 				});
 				if (!rescan.ok) throw new Error(`refresh failed (${String(rescan.status)})`);
+				const receipt = await rescan.json().catch(() => null);
+				changed = receipt?.changed === true;
 			}
 			const response = await fetch("/dsh-shape/api/shapes", {
 				credentials: "same-origin",
@@ -2150,12 +2153,18 @@ window.__ModuleLoader__.load({
 			if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
 			const payload = await response.json();
 			if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error("invalid shape response");
+			// A shape's client modules are imported once per page load and a module URL
+			// that answered 404 keeps failing, so a changed module set needs a reload;
+			// no in-page call can recover it.
+			if (changed) {
+				window.location.reload();
+				return { shapes: [], roots: {} };
+			}
 			return {
 				shapes: payload.shapes,
 				...payload.roots === void 0 ? {} : { roots: payload.roots }
 			};
-		}
-		/**
+		}		/**
 		* Render the read-only grid of registered folder-based shapes.
 		* @param props.open - whether the window is showing.
 		* @param props.onClose - closes the window.

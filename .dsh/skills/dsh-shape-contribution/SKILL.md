@@ -37,7 +37,7 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
 | `index.js`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
 | An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
-| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
+| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page (the panel's refresh does both) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
 
 The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`.
 
@@ -77,6 +77,8 @@ Two traps that pass every gate and still break the UI, both hit while splicing `
 - **`createPortal` is on `react-dom`.** Rewriting it with the other React APIs yields `react.createPortal` — `undefined` at render. Map it to `react_dom.createPortal`.
 
 `check-client-bundle.mjs` only loads the module and calls `apply(ctx)`; it never renders. After splicing a `.tsx` region, open the affected surface in the browser and confirm it appears — a region that renders `null` passes every automated gate.
+
+When only one function changes, **edit that function inside the existing region** instead of replacing the whole region with compiler output. The surrounding text keeps its working bindings, and the diff stays reviewable. That is how the `readShapes` reload landed after the whole-region swap broke the dialog.
 
 ## The patch must load the plugin
 
@@ -148,20 +150,15 @@ curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # after adding or d
 
 Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 — and its importer then fails to load, which looks exactly like "the shape stopped working and refreshing did not help". Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
 
-**Order matters.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
+**Order matters, and the shape panel now handles it.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
 
-`POST /api/refresh` reports a `revision` signature plus `changed`, which tells you whether the module set moved:
+`POST /api/refresh` reports a `revision` signature plus `changed`:
 
 ```sh
 curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # {"changed": true, ...}
 ```
 
-When `changed` is `true`:
-
-1. the Host now serves the new module set;
-2. reload the page (F5) — the shape panel's refresh button only reloads the list, it does not re-import modules.
-
-If the page was reloaded before the rescan, it must be reloaded **again** after it. Restarting the Host works only because it does both at once.
+The shape panel's refresh button reads that receipt and reloads the page itself when `changed` is `true`; when only file contents changed it just refreshes the list. If you drive the API yourself, do the same: rescan, then reload when `changed`. A page reloaded before the rescan must be reloaded **again** after it — restarting the Host works only because it does both at once.
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
 
