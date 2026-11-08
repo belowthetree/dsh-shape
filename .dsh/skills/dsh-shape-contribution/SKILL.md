@@ -37,7 +37,7 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
 | `index.js`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
 | An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
-| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
+| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page (the panel's refresh does both) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
 
 The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`.
 
@@ -141,14 +141,14 @@ curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # after adding or d
 
 Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 — and its importer then fails to load, which looks exactly like "the shape stopped working and refreshing did not help". Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
 
-**Order matters, and the shape panel's refresh button is only half the job.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page. The panel's refresh rescans the Host and reloads the shape list, but it never re-imports a client module.
+**Order matters, and the shape panel handles it for you.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
 
-After adding or deleting any file inside a shape:
+`POST /api/refresh` reports a `clientRevision` signature plus `changed`. When the signature differs, the shape panel's refresh button reloads the page itself; when only file contents changed, it just refreshes the list. If you drive the API yourself:
 
-1. `POST /dsh-shape/api/refresh` (or the shape panel's refresh button);
-2. reload the page (F5).
+1. `POST /dsh-shape/api/refresh`, and check `changed` in the receipt;
+2. reload the page when `changed` is `true`.
 
-If the page was already reloaded before the rescan, it must be reloaded **again** after it. Restarting the Host works only because it does both at once.
+If the page was reloaded before the rescan, it must be reloaded **again** after it. Restarting the Host works only because it does both at once.
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
 

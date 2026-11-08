@@ -57,9 +57,10 @@ function describeMissing(item: ShapeMissingCapability): string {
 /**
  * Read the current shape list.
  * @param refresh - ask the Host to rescan the shape roots first.
- * @returns the snapshot.
+ * @returns the snapshot, or null when the page is reloading to pick up changed client modules.
  */
-async function readShapes(refresh: boolean): Promise<Snapshot> {
+async function readShapes(refresh: boolean): Promise<Snapshot | null> {
+  let rescanChanged = false
   if (refresh) {
     const rescan = await fetch('/dsh-shape/api/refresh', {
       method: 'POST',
@@ -67,6 +68,8 @@ async function readShapes(refresh: boolean): Promise<Snapshot> {
       headers: { accept: 'application/json' },
     })
     if (!rescan.ok) throw new Error(`refresh failed (${String(rescan.status)})`)
+    const receipt = await rescan.json().catch(() => null) as { changed?: boolean } | null
+    rescanChanged = receipt?.changed === true
   }
 
   const response = await fetch('/dsh-shape/api/shapes', {
@@ -77,6 +80,12 @@ async function readShapes(refresh: boolean): Promise<Snapshot> {
   if (!response.ok) throw new Error(`HTTP ${String(response.status)}`)
   const payload = await response.json() as { ok?: boolean; shapes?: ShapeInfo[]; roots?: Snapshot['roots'] }
   if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error('invalid shape response')
+  // A shape's client modules are imported once per page load, and a module URL
+  // that answered 404 keeps failing; only a reload can pick up a changed set.
+  if (rescanChanged) {
+    window.location.reload()
+    return null
+  }
   return {
     shapes: payload.shapes,
     ...(payload.roots === undefined ? {} : { roots: payload.roots }),
@@ -122,6 +131,7 @@ export function ShapeDialog({
     setError('')
     try {
       const snapshot = await readShapes(refresh)
+      if (snapshot === null) return
       setShapes(snapshot.shapes)
       setRoots(snapshot.roots)
       setStatus('ready')

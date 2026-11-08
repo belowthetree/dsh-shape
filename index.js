@@ -361,6 +361,11 @@ async function apply(ctx, config = {}) {
 		await mkdir(userDir, { recursive: true });
 	} catch {}
 	let shapes = [];
+	/** Signature of every module URL a loaded page may have imported. */
+	const clientRevision = () => shapes
+		.map((shape) => `${shape.id}[${shape.enabled === false ? "off" : "on"}](${shape.clientFiles.join("|")})`)
+		.join("\n");
+	let revision = clientRevision();
 	const refresh = async () => {
 		const bundled = await readRoot(bundledDir, "bundled");
 		const user = await readRoot(userDir, "user");
@@ -370,7 +375,10 @@ async function apply(ctx, config = {}) {
 			...shape,
 			enabled: enabledById.get(shape.id) !== false
 		})).sort((left, right) => left.id.localeCompare(right.id));
-		return shapes;
+		const next = clientRevision();
+		const changed = next !== revision;
+		revision = next;
+		return { shapes, revision, changed };
 	};
 	const snapshot = () => ({
 		ok: true,
@@ -617,8 +625,12 @@ async function apply(ctx, config = {}) {
 			return;
 		}
 		if (req.method === "POST" && url.pathname === `${API}/refresh`) {
-			await refresh();
-			json(res, 200, snapshot());
+			const result = await refresh();
+			json(res, 200, {
+				...snapshot(),
+				revision: result.revision,
+				changed: result.changed
+			});
 			return;
 		}
 		if (req.method === "POST" && url.pathname === `${API}/toggle`) {

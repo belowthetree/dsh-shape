@@ -2118,623 +2118,275 @@ window.__ModuleLoader__.load({
 		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeDialog.tsx
 		/** Shape browser: a large launcher-style window with a responsive app grid. */
 		/**
-		* Format one unresolved capability for the card.
-		* @param item - missing requirement.
-		* @returns compact diagnostic text.
-		*/
+		 * Format one unresolved capability for the card.
+		 * @param item - missing requirement.
+		 * @returns compact diagnostic text.
+		 */
 		function describeMissing(item) {
-			const id = `${item.plugin}#${item.capability}`;
-			if (item.reason === "version-mismatch") return `${id} 需要 ${item.range}，当前 ${item.found ?? "未知"}`;
-			if (item.reason === "invalid-range") return `${id} 的版本范围无效：${item.range}`;
-			return `${id} ${item.range}`;
+		    const id = `${item.plugin}#${item.capability}`;
+		    if (item.reason === 'version-mismatch')
+		        return `${id} 需要 ${item.range}，当前 ${item.found ?? '未知'}`;
+		    if (item.reason === 'invalid-range')
+		        return `${id} 的版本范围无效：${item.range}`;
+		    return `${id} ${item.range}`;
 		}
 		/**
-		* Read the current shape list.
-		* @param refresh - ask the Host to rescan the shape roots first.
-		* @returns the snapshot.
-		*/
+		 * Read the current shape list.
+		 * @param refresh - ask the Host to rescan the shape roots first.
+		 * @returns the snapshot, or null when the page is reloading to pick up changed client modules.
+		 */
 		async function readShapes(refresh) {
-			if (refresh) {
-				const rescan = await fetch("/dsh-shape/api/refresh", {
-					method: "POST",
-					credentials: "same-origin",
-					headers: { accept: "application/json" }
-				});
-				if (!rescan.ok) throw new Error(`refresh failed (${String(rescan.status)})`);
-			}
-			const response = await fetch("/dsh-shape/api/shapes", {
-				credentials: "same-origin",
-				cache: "no-store",
-				headers: { accept: "application/json" }
-			});
-			if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
-			const payload = await response.json();
-			if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error("invalid shape response");
-			return {
-				shapes: payload.shapes,
-				...payload.roots === void 0 ? {} : { roots: payload.roots }
-			};
+		    let rescanChanged = false;
+		    if (refresh) {
+		        const rescan = await fetch('/dsh-shape/api/refresh', {
+		            method: 'POST',
+		            credentials: 'same-origin',
+		            headers: { accept: 'application/json' },
+		        });
+		        if (!rescan.ok)
+		            throw new Error(`refresh failed (${String(rescan.status)})`);
+		        const receipt = await rescan.json().catch(() => null);
+		        rescanChanged = receipt?.changed === true;
+		    }
+		    const response = await fetch('/dsh-shape/api/shapes', {
+		        credentials: 'same-origin',
+		        cache: 'no-store',
+		        headers: { accept: 'application/json' },
+		    });
+		    if (!response.ok)
+		        throw new Error(`HTTP ${String(response.status)}`);
+		    const payload = await response.json();
+		    if (payload.ok !== true || !Array.isArray(payload.shapes))
+		        throw new Error('invalid shape response');
+		    // A shape's client modules are imported once per page load, and a module URL
+		    // that answered 404 keeps failing; only a reload can pick up a changed set.
+		    if (rescanChanged) {
+		        window.location.reload();
+		        return null;
+		    }
+		    return {
+		        shapes: payload.shapes,
+		        ...(payload.roots === undefined ? {} : { roots: payload.roots }),
+		    };
 		}
 		/**
-		* Render the read-only grid of registered folder-based shapes.
-		* @param props.open - whether the window is showing.
-		* @param props.onClose - closes the window.
-		* @param props.resolveShape - resolves declared capability requirements.
-		* @returns the window, or null while closed.
-		*/
-		function ShapeDialog({ open, onClose, resolveShape }) {
-			const [status, setStatus] = (0, react.useState)("loading");
-			const [shapes, setShapes] = (0, react.useState)([]);
-			const [roots, setRoots] = (0, react.useState)();
-			const [error, setError] = (0, react.useState)("");
-			const [selected, setSelected] = (0, react.useState)(null);
-			const [viewLoading, setViewLoading] = (0, react.useState)(false);
-			const [viewError, setViewError] = (0, react.useState)("");
-			const [busyId, setBusyId] = (0, react.useState)("");
-			const [toggleError, setToggleError] = (0, react.useState)("");
-			const [pendingDelete, setPendingDelete] = (0, react.useState)(null);
-			const [deleteError, setDeleteError] = (0, react.useState)("");
-			const windowRef = (0, react.useRef)(null);
-			const viewRef = (0, react.useRef)(null);
-			const onCloseRef = (0, react.useRef)(onClose);
-			const selectedRef = (0, react.useRef)(selected);
-			onCloseRef.current = onClose;
-			selectedRef.current = selected;
-			const load = (0, react.useCallback)(async (refresh) => {
-				setStatus("loading");
-				setError("");
-				try {
-					const snapshot = await readShapes(refresh);
-					setShapes(snapshot.shapes);
-					setRoots(snapshot.roots);
-					setStatus("ready");
-					window.dispatchEvent(new CustomEvent("dsh-shape:refresh"));
-				} catch (cause) {
-					setError(cause instanceof Error ? cause.message : String(cause));
-					setStatus("error");
-				}
-			}, []);
-			const openView = (0, react.useCallback)(async (shape) => {
-				if (shape.enabled === false) return;
-				setSelected(shape);
-				setViewError("");
-				if (shape.views.length === 0) {
-					setViewLoading(false);
-					return;
-				}
-				setViewLoading(true);
-				try {
-					const response = await fetch(`/dsh-shape/view/${encodeURIComponent(shape.id)}/`, { cache: "no-store" });
-					if (!response.ok) {
-						let message = `Host 返回 HTTP ${String(response.status)}。`;
-						if (response.status === 404) message = (await response.json().catch(() => null))?.error?.message === "unknown dsh-shape route" ? "Host 视图路由未加载（HTTP 404）。请重启 DSH 后重试。" : "这个 shape 没有可打开的 views/index.html。";
-						throw new Error(message);
-					}
-					if (!(response.headers.get("content-type") ?? "").includes("text/html")) throw new Error("Host 返回的不是 HTML 页面。");
-					setViewError("");
-				} catch (cause) {
-					setViewError(cause instanceof Error ? cause.message : String(cause));
-				} finally {
-					setViewLoading(false);
-				}
-			}, []);
-			const closeView = (0, react.useCallback)(() => {
-				setSelected(null);
-				setViewError("");
-				setViewLoading(false);
-			}, []);
-			const toggleShape = (0, react.useCallback)(async (shape) => {
-				const enabled = shape.enabled === false;
-				setBusyId(shape.id);
-				setToggleError("");
-				try {
-					const response = await fetch("/dsh-shape/api/toggle", {
-						method: "POST",
-						credentials: "same-origin",
-						headers: {
-							"content-type": "application/json",
-							accept: "application/json"
-						},
-						body: JSON.stringify({
-							id: shape.id,
-							enabled
-						})
-					});
-					if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
-					const payload = await response.json();
-					if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error("invalid toggle response");
-					setShapes(payload.shapes);
-					window.dispatchEvent(new CustomEvent("dsh-shape:refresh"));
-				} catch (cause) {
-					setToggleError(cause instanceof Error ? cause.message : String(cause));
-				} finally {
-					setBusyId("");
-				}
-			}, []);
-			const deleteShape = (0, react.useCallback)(async (shape) => {
-				setBusyId(shape.id);
-				setDeleteError("");
-				try {
-					const response = await fetch("/dsh-shape/api/delete", {
-						method: "POST",
-						credentials: "same-origin",
-						headers: {
-							"content-type": "application/json",
-							accept: "application/json"
-						},
-						body: JSON.stringify({ id: shape.id })
-					});
-					const payload = await response.json().catch(() => null);
-					if (payload?.ok !== true || !Array.isArray(payload.shapes)) {
-						const message = typeof payload?.error?.message === "string" ? payload.error.message : `HTTP ${String(response.status)}`;
-						throw new Error(message);
-					}
-					setShapes(payload.shapes);
-					setPendingDelete(null);
-					window.dispatchEvent(new CustomEvent("dsh-shape:refresh"));
-				} catch (cause) {
-					setDeleteError(cause instanceof Error ? cause.message : String(cause));
-				} finally {
-					setBusyId("");
-				}
-			}, []);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				load(false);
-			}, [load, open]);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				const reload = () => {
-					load(false);
-				};
-				window.addEventListener("dsh-shape:capabilities", reload);
-				return () => {
-					window.removeEventListener("dsh-shape:capabilities", reload);
-				};
-			}, [load, open]);
-			(0, react.useEffect)(() => {
-				if (!open) {
-					setSelected(null);
-					setViewError("");
-					setViewLoading(false);
-					setPendingDelete(null);
-					setDeleteError("");
-				}
-			}, [open]);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				if (selected === null) windowRef.current?.focus();
-				else viewRef.current?.focus();
-			}, [open, selected]);
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-				const previousOverflow = document.body.style.overflow;
-				document.body.style.overflow = "hidden";
-				const onKeyDown = (event) => {
-					if (event.key !== "Escape") return;
-					event.preventDefault();
-					if (selectedRef.current !== null) {
-						closeView();
-						return;
-					}
-					onCloseRef.current();
-				};
-				document.addEventListener("keydown", onKeyDown);
-				return () => {
-					document.removeEventListener("keydown", onKeyDown);
-					document.body.style.overflow = previousOverflow;
-					previous?.focus();
-				};
-			}, [closeView, open]);
-			if (!open) return null;
-			const subtitle = status === "loading" ? "正在读取 shape…" : status === "error" ? "读取失败" : `${String(shapes.length)} 个 shape`;
-			return (0, react_dom.createPortal)(/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-				className: shape_dialog_module_css_default.backdrop,
-				role: "presentation",
-				onMouseDown: (event) => {
-					if (event.target === event.currentTarget) onClose();
-				},
-				children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-					ref: windowRef,
-					tabIndex: -1,
-					className: shape_dialog_module_css_default.window,
-					role: "dialog",
-					"aria-modal": "true",
-					"aria-labelledby": "dsh-shape-title",
-					"data-testid": "dsh-shape-dialog",
-					children: [
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-							className: shape_dialog_module_css_default.header,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: shape_dialog_module_css_default.heading,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: shape_dialog_module_css_default.appMark,
-									"aria-hidden": "true",
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: shape_dialog_module_css_default.appMarkGrid,
-										children: [
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {}),
-											/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {})
-										]
-									})
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.headingText,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h2", {
-										className: shape_dialog_module_css_default.title,
-										id: "dsh-shape-title",
-										children: "Shapes"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-										className: shape_dialog_module_css_default.subtitle,
-										children: subtitle
-									})]
-								})]
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-								className: shape_dialog_module_css_default.actions,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: shape_dialog_module_css_default.iconButton,
-									"aria-label": "刷新",
-									title: "刷新",
-									"data-testid": "dsh-shape-refresh",
-									onClick: () => {
-										load(true);
-									},
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, {})
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: shape_dialog_module_css_default.iconButton,
-									"aria-label": "关闭",
-									title: "关闭",
-									"data-testid": "dsh-shape-close",
-									onClick: onClose,
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutlineRegular, {})
-								})]
-							})]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-							className: shape_dialog_module_css_default.content,
-							children: [
-								toggleError !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.toggleError,
-									role: "alert",
-									children: ["切换 shape 失败：", toggleError]
-								}),
-								deleteError !== "" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.toggleError,
-									role: "alert",
-									children: ["删除 shape 失败：", deleteError]
-								}),
-								pendingDelete !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.confirmBar,
-									role: "group",
-									"aria-label": `删除 ${pendingDelete.title}`,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-										className: shape_dialog_module_css_default.confirmText,
-										children: [
-											"删除「",
-											pendingDelete.title,
-											"」？",
-											pendingDelete.origin === "bundled" ? "内置 shape 会从插件目录移除，重新安装插件才能恢复。" : "该 shape 目录会从磁盘移除，无法撤销。"
-										]
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: shape_dialog_module_css_default.confirmActions,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-											variant: "ghost",
-											size: "sm",
-											onClick: () => {
-												setPendingDelete(null);
-												setDeleteError("");
-											},
-											children: "取消"
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-											variant: "outline",
-											size: "sm",
-											className: shape_dialog_module_css_default.confirmDelete,
-											disabled: busyId === pendingDelete.id,
-											onClick: () => {
-												deleteShape(pendingDelete);
-											},
-											children: busyId === pendingDelete.id ? "删除中…" : "删除"
-										})]
-									})]
-								}),
-								status === "loading" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: shape_dialog_module_css_default.grid,
-									"aria-label": "正在读取 shape",
-									children: Array.from({ length: 8 }, (_, index) => /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", { className: shape_dialog_module_css_default.skeletonCard }, index))
-								}),
-								status === "error" && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.placeholder,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: shape_dialog_module_css_default.placeholderMark,
-											"aria-hidden": "true",
-											children: "!"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "无法读取 shape" }),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: error }),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-											variant: "outline",
-											size: "sm",
-											onClick: () => {
-												load(false);
-											},
-											children: "重试"
-										})
-									]
-								}),
-								status === "ready" && shapes.length === 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.placeholder,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: shape_dialog_module_css_default.placeholderMark,
-											"aria-hidden": "true",
-											children: "＋"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "还没有 shape" }),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "把 shape 文件夹放进用户目录，然后点刷新。" }),
-										roots !== void 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-											className: shape_dialog_module_css_default.placeholderPath,
-											children: roots.user
-										})
-									]
-								}),
-								status === "ready" && shapes.length > 0 && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-									className: shape_dialog_module_css_default.grid,
-									"data-testid": "dsh-shape-grid",
-									children: shapes.map((shape) => {
-										const initial = Array.from(shape.title.trim())[0] ?? "?";
-										const enabled = shape.enabled !== false;
-										const resolution = resolveShape?.(shape.requirements ?? []) ?? {
-											ok: true,
-											capabilities: {},
-											missing: []
-										};
-										const apiSupported = supportsShapeApiVersion(shape.shapeApiVersion);
-										const blocked = !resolution.ok || !apiSupported;
-										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-											className: shape_dialog_module_css_default.cardShell,
-											"data-enabled": enabled ? "true" : "false",
-											"data-blocked": blocked ? "true" : "false",
-											children: [
-												/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("button", {
-													type: "button",
-													className: shape_dialog_module_css_default.card,
-													"data-testid": "dsh-shape-card",
-													"data-shape-id": shape.id,
-													"aria-haspopup": "dialog",
-													"aria-label": `打开 ${shape.title}`,
-													disabled: !enabled || blocked,
-													onClick: () => {
-														openView(shape);
-													},
-													children: [
-														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-															className: shape_dialog_module_css_default.cardHead,
-															children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																className: shape_dialog_module_css_default.appIcon,
-																"aria-hidden": "true",
-																children: initial.toLocaleUpperCase()
-															}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-																className: shape_dialog_module_css_default.cardIdentity,
-																children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-																	className: shape_dialog_module_css_default.cardTitle,
-																	title: shape.title,
-																	children: shape.title
-																}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("code", {
-																	className: shape_dialog_module_css_default.cardId,
-																	title: shape.id,
-																	children: shape.id
-																})]
-															})]
-														}),
-														/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
-															className: shape_dialog_module_css_default.description,
-															children: shape.description.length > 0 ? shape.description : "暂无描述"
-														}),
-														blocked && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-															className: shape_dialog_module_css_default.blocked,
-															children: !apiSupported ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(1)}）` : `缺少 ${resolution.missing.map(describeMissing).join("、")}`
-														}),
-														!shape.valid && /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-															className: shape_dialog_module_css_default.invalid,
-															children: ["无效 package.json：", shape.error ?? "缺少 id 或 name"]
-														}),
-														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-															className: shape_dialog_module_css_default.cardFooter,
-															children: [
-																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																	className: shape_dialog_module_css_default.origin,
-																	children: shape.origin === "bundled" ? "内置" : "用户"
-																}),
-																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																	className: shape_dialog_module_css_default.badge,
-																	children: ["v", shape.version]
-																}),
-																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																	className: shape_dialog_module_css_default.badge,
-																	children: [String(shape.views.length), " views"]
-																}),
-																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																	className: shape_dialog_module_css_default.badge,
-																	children: [String(shape.slots.length), " slots"]
-																}),
-																/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-																	className: shape_dialog_module_css_default.badge,
-																	children: [String(shape.tools.length), " tools"]
-																}),
-																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-																	className: shape_dialog_module_css_default.badge,
-																	children: shape.output
-																})
-															]
-														})
-													]
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-													type: "button",
-													className: shape_dialog_module_css_default.switch,
-													role: "switch",
-													"aria-checked": enabled,
-													"aria-busy": busyId === shape.id,
-													"aria-label": `${enabled ? "停用" : "启用"} ${shape.title}`,
-													title: `${enabled ? "停用" : "启用"} ${shape.title}`,
-													"data-testid": "dsh-shape-toggle",
-													"data-toggle-shape-id": shape.id,
-													disabled: busyId === shape.id,
-													onClick: () => {
-														toggleShape(shape);
-													}
-												}),
-												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-													type: "button",
-													className: shape_dialog_module_css_default.deleteButton,
-													"aria-label": `删除 ${shape.title}`,
-													title: `删除 ${shape.title}`,
-													"data-testid": "dsh-shape-delete",
-													"data-delete-shape-id": shape.id,
-													disabled: busyId === shape.id,
-													onClick: () => {
-														setDeleteError("");
-														setPendingDelete(shape);
-													},
-													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconTrashOutlineRegular, {})
-												})
-											]
-										}, shape.id);
-									})
-								})
-							]
-						}),
-						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
-							className: shape_dialog_module_css_default.footer,
-							children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-								className: shape_dialog_module_css_default.footerPath,
-								title: roots?.user,
-								children: roots?.user ?? "shape 目录"
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
-								className: shape_dialog_module_css_default.footerCount,
-								children: [String(shapes.length), " registered"]
-							})]
-						})
-					]
-				}), selected !== null && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-					className: shape_dialog_module_css_default.viewBackdrop,
-					role: "presentation",
-					onMouseDown: (event) => {
-						if (event.target === event.currentTarget) closeView();
-					},
-					children: /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("section", {
-						ref: viewRef,
-						tabIndex: -1,
-						className: shape_dialog_module_css_default.viewWindow,
-						role: "dialog",
-						"aria-modal": "true",
-						"aria-labelledby": "dsh-shape-view-title",
-						"data-testid": "dsh-shape-view",
-						children: [
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("header", {
-								className: shape_dialog_module_css_default.viewHeader,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.viewHeading,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: shape_dialog_module_css_default.appIcon,
-										"aria-hidden": "true",
-										children: (Array.from(selected.title.trim())[0] ?? "?").toLocaleUpperCase()
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-										className: shape_dialog_module_css_default.viewHeadingText,
-										children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("h3", {
-											className: shape_dialog_module_css_default.viewTitle,
-											id: "dsh-shape-view-title",
-											children: selected.title
-										}), /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("p", {
-											className: shape_dialog_module_css_default.viewSubtitle,
-											children: [
-												selected.id,
-												" · ",
-												String(selected.views.length),
-												" views"
-											]
-										})]
-									})]
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
-									type: "button",
-									className: shape_dialog_module_css_default.iconButton,
-									"aria-label": "关闭",
-									title: "关闭",
-									"data-testid": "dsh-shape-view-close",
-									onClick: closeView,
-									children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconCloseOutlineRegular, {})
-								})]
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
-								className: shape_dialog_module_css_default.viewBody,
-								children: selected.views.length === 0 ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.placeholder,
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: shape_dialog_module_css_default.placeholderMark,
-											"aria-hidden": "true",
-											children: "◇"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "这个 shape 没有 views/ 界面" }),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "在 shape 目录下添加 `views/index.html` 后再试。" })
-									]
-								}) : viewLoading ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.placeholder,
-									children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-										className: shape_dialog_module_css_default.placeholderMark,
-										"aria-hidden": "true",
-										children: "…"
-									}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", { children: "正在打开界面…" })]
-								}) : viewError !== "" ? /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
-									className: shape_dialog_module_css_default.placeholder,
-									"data-testid": "dsh-shape-view-error",
-									children: [
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: shape_dialog_module_css_default.placeholderMark,
-											"aria-hidden": "true",
-											children: "!"
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("strong", { children: "无法打开 shape 界面" }),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-											className: shape_dialog_module_css_default.placeholderMessage,
-											children: viewError
-										}),
-										/* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {
-											variant: "outline",
-											size: "sm",
-											onClick: () => {
-												openView(selected);
-											},
-											children: "重试"
-										})
-									]
-								}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("iframe", {
-									className: shape_dialog_module_css_default.viewFrame,
-									title: selected.title,
-									src: `/dsh-shape/view/${encodeURIComponent(selected.id)}/`,
-									sandbox: "allow-scripts allow-forms allow-modals allow-popups"
-								})
-							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("footer", {
-								className: shape_dialog_module_css_default.footer,
-								children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: shape_dialog_module_css_default.footerPath,
-									title: selected.dir,
-									children: selected.dir
-								}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
-									className: shape_dialog_module_css_default.footerCount,
-									children: selected.views[0] ?? "no views"
-								})]
-							})
-						]
-					})
-				})]
-			}), document.body);
+		 * Render the read-only grid of registered folder-based shapes.
+		 * @param props.open - whether the window is showing.
+		 * @param props.onClose - closes the window.
+		 * @param props.resolveShape - resolves declared capability requirements.
+		 * @returns the window, or null while closed.
+		 */
+		function ShapeDialog({ open, onClose, resolveShape, }) {
+		    const [status, setStatus] = react.useState('loading');
+		    const [shapes, setShapes] = react.useState([]);
+		    const [roots, setRoots] = react.useState();
+		    const [error, setError] = react.useState('');
+		    const [selected, setSelected] = react.useState(null);
+		    const [viewLoading, setViewLoading] = react.useState(false);
+		    const [viewError, setViewError] = react.useState('');
+		    const [busyId, setBusyId] = react.useState('');
+		    const [toggleError, setToggleError] = react.useState('');
+		    const [pendingDelete, setPendingDelete] = react.useState(null);
+		    const [deleteError, setDeleteError] = react.useState('');
+		    const windowRef = react.useRef(null);
+		    const viewRef = react.useRef(null);
+		    const onCloseRef = react.useRef(onClose);
+		    const selectedRef = react.useRef(selected);
+		    onCloseRef.current = onClose;
+		    selectedRef.current = selected;
+		    const load = react.useCallback(async (refresh) => {
+		        setStatus('loading');
+		        setError('');
+		        try {
+		            const snapshot = await readShapes(refresh);
+		            if (snapshot === null)
+		                return;
+		            setShapes(snapshot.shapes);
+		            setRoots(snapshot.roots);
+		            setStatus('ready');
+		            window.dispatchEvent(new CustomEvent('dsh-shape:refresh'));
+		        }
+		        catch (cause) {
+		            setError(cause instanceof Error ? cause.message : String(cause));
+		            setStatus('error');
+		        }
+		    }, []);
+		    const openView = react.useCallback(async (shape) => {
+		        if (shape.enabled === false)
+		            return;
+		        setSelected(shape);
+		        setViewError('');
+		        if (shape.views.length === 0) {
+		            setViewLoading(false);
+		            return;
+		        }
+		        setViewLoading(true);
+		        try {
+		            const response = await fetch(`/dsh-shape/view/${encodeURIComponent(shape.id)}/`, { cache: 'no-store' });
+		            if (!response.ok) {
+		                let message = `Host 返回 HTTP ${String(response.status)}。`;
+		                if (response.status === 404) {
+		                    const payload = await response.json().catch(() => null);
+		                    message = payload?.error?.message === 'unknown dsh-shape route'
+		                        ? 'Host 视图路由未加载（HTTP 404）。请重启 DSH 后重试。'
+		                        : '这个 shape 没有可打开的 views/index.html。';
+		                }
+		                throw new Error(message);
+		            }
+		            if (!(response.headers.get('content-type') ?? '').includes('text/html')) {
+		                throw new Error('Host 返回的不是 HTML 页面。');
+		            }
+		            setViewError('');
+		        }
+		        catch (cause) {
+		            setViewError(cause instanceof Error ? cause.message : String(cause));
+		        }
+		        finally {
+		            setViewLoading(false);
+		        }
+		    }, []);
+		    const closeView = react.useCallback(() => {
+		        setSelected(null);
+		        setViewError('');
+		        setViewLoading(false);
+		    }, []);
+		    const toggleShape = react.useCallback(async (shape) => {
+		        const enabled = shape.enabled === false;
+		        setBusyId(shape.id);
+		        setToggleError('');
+		        try {
+		            const response = await fetch('/dsh-shape/api/toggle', {
+		                method: 'POST',
+		                credentials: 'same-origin',
+		                headers: { 'content-type': 'application/json', accept: 'application/json' },
+		                body: JSON.stringify({ id: shape.id, enabled }),
+		            });
+		            if (!response.ok)
+		                throw new Error(`HTTP ${String(response.status)}`);
+		            const payload = await response.json();
+		            if (payload.ok !== true || !Array.isArray(payload.shapes))
+		                throw new Error('invalid toggle response');
+		            setShapes(payload.shapes);
+		            window.dispatchEvent(new CustomEvent('dsh-shape:refresh'));
+		        }
+		        catch (cause) {
+		            setToggleError(cause instanceof Error ? cause.message : String(cause));
+		        }
+		        finally {
+		            setBusyId('');
+		        }
+		    }, []);
+		    const deleteShape = react.useCallback(async (shape) => {
+		        setBusyId(shape.id);
+		        setDeleteError('');
+		        try {
+		            const response = await fetch('/dsh-shape/api/delete', {
+		                method: 'POST',
+		                credentials: 'same-origin',
+		                headers: { 'content-type': 'application/json', accept: 'application/json' },
+		                body: JSON.stringify({ id: shape.id }),
+		            });
+		            const payload = await response.json().catch(() => null);
+		            if (payload?.ok !== true || !Array.isArray(payload.shapes)) {
+		                const message = typeof payload?.error?.message === 'string'
+		                    ? payload.error.message
+		                    : `HTTP ${String(response.status)}`;
+		                throw new Error(message);
+		            }
+		            setShapes(payload.shapes);
+		            setPendingDelete(null);
+		            window.dispatchEvent(new CustomEvent('dsh-shape:refresh'));
+		        }
+		        catch (cause) {
+		            setDeleteError(cause instanceof Error ? cause.message : String(cause));
+		        }
+		        finally {
+		            setBusyId('');
+		        }
+		    }, []);
+		    react.useEffect(() => {
+		        if (!open)
+		            return;
+		        void load(false);
+		    }, [load, open]);
+		    react.useEffect(() => {
+		        if (!open)
+		            return;
+		        const reload = () => { void load(false); };
+		        window.addEventListener('dsh-shape:capabilities', reload);
+		        return () => { window.removeEventListener('dsh-shape:capabilities', reload); };
+		    }, [load, open]);
+		    react.useEffect(() => {
+		        if (!open) {
+		            setSelected(null);
+		            setViewError('');
+		            setViewLoading(false);
+		            setPendingDelete(null);
+		            setDeleteError('');
+		        }
+		    }, [open]);
+		    react.useEffect(() => {
+		        if (!open)
+		            return;
+		        if (selected === null)
+		            windowRef.current?.focus();
+		        else
+		            viewRef.current?.focus();
+		    }, [open, selected]);
+		    react.useEffect(() => {
+		        if (!open)
+		            return;
+		        const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		        const previousOverflow = document.body.style.overflow;
+		        document.body.style.overflow = 'hidden';
+		        const onKeyDown = (event) => {
+		            if (event.key !== 'Escape')
+		                return;
+		            event.preventDefault();
+		            if (selectedRef.current !== null) {
+		                closeView();
+		                return;
+		            }
+		            onCloseRef.current();
+		        };
+		        document.addEventListener('keydown', onKeyDown);
+		        return () => {
+		            document.removeEventListener('keydown', onKeyDown);
+		            document.body.style.overflow = previousOverflow;
+		            previous?.focus();
+		        };
+		    }, [closeView, open]);
+		    if (!open)
+		        return null;
+		    const subtitle = status === 'loading'
+		        ? '正在读取 shape…'
+		        : status === 'error'
+		            ? '读取失败'
+		            : `${String(shapes.length)} 个 shape`;
+		    return react.createPortal((react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.backdrop, role: "presentation", onMouseDown: (event) => { if (event.target === event.currentTarget)
+		            onClose(); }, children: [react_jsx_runtime.react_jsx_runtime.jsxs("section", { ref: windowRef, tabIndex: -1, className: css.window, role: "dialog", "aria-modal": "true", "aria-labelledby": "dsh-shape-title", "data-testid": "dsh-shape-dialog", children: [react_jsx_runtime.react_jsx_runtime.jsxs("header", { className: css.header, children: [react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.heading, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.appMark, "aria-hidden": "true", children: react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.appMarkGrid, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", {}), react_jsx_runtime.react_jsx_runtime.jsx("span", {}), react_jsx_runtime.react_jsx_runtime.jsx("span", {}), react_jsx_runtime.react_jsx_runtime.jsx("span", {})] }) }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.headingText, children: [react_jsx_runtime.react_jsx_runtime.jsx("h2", { className: css.title, id: "dsh-shape-title", children: "Shapes" }), react_jsx_runtime.react_jsx_runtime.jsx("p", { className: css.subtitle, children: subtitle })] })] }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.actions, children: [react_jsx_runtime.react_jsx_runtime.jsx("button", { type: "button", className: css.iconButton, "aria-label": "\u5237\u65B0", title: "\u5237\u65B0", "data-testid": "dsh-shape-refresh", onClick: () => { void load(true); }, children: react_jsx_runtime.react_jsx_runtime.jsx(IconRefreshOutlineRegular, {}) }), react_jsx_runtime.react_jsx_runtime.jsx("button", { type: "button", className: css.iconButton, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED", "data-testid": "dsh-shape-close", onClick: onClose, children: react_jsx_runtime.react_jsx_runtime.jsx(IconCloseOutlineRegular, {}) })] })] }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.content, children: [toggleError !== '' && (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.toggleError, role: "alert", children: ["\u5207\u6362 shape \u5931\u8D25\uFF1A", toggleError] })), deleteError !== '' && (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.toggleError, role: "alert", children: ["\u5220\u9664 shape \u5931\u8D25\uFF1A", deleteError] })), pendingDelete !== null && (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.confirmBar, role: "group", "aria-label": `删除 ${pendingDelete.title}`, children: [react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.confirmText, children: ["\u5220\u9664\u300C", pendingDelete.title, "\u300D\uFF1F", pendingDelete.origin === 'bundled'
+		                                                ? '内置 shape 会从插件目录移除，重新安装插件才能恢复。'
+		                                                : '该 shape 目录会从磁盘移除，无法撤销。'] }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.confirmActions, children: [react_jsx_runtime.react_jsx_runtime.jsx(Button, { variant: "ghost", size: "sm", onClick: () => {
+		                                                    setPendingDelete(null);
+		                                                    setDeleteError('');
+		                                                }, children: "\u53D6\u6D88" }), react_jsx_runtime.react_jsx_runtime.jsx(Button, { variant: "outline", size: "sm", className: css.confirmDelete, disabled: busyId === pendingDelete.id, onClick: () => { void deleteShape(pendingDelete); }, children: busyId === pendingDelete.id ? '删除中…' : '删除' })] })] })), status === 'loading' && (react_jsx_runtime.react_jsx_runtime.jsx("div", { className: css.grid, "aria-label": "\u6B63\u5728\u8BFB\u53D6 shape", children: Array.from({ length: 8 }, (_, index) => (react_jsx_runtime.react_jsx_runtime.jsx("div", { className: css.skeletonCard }, index))) })), status === 'error' && (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.placeholder, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMark, "aria-hidden": "true", children: "!" }), react_jsx_runtime.react_jsx_runtime.jsx("strong", { children: "\u65E0\u6CD5\u8BFB\u53D6 shape" }), react_jsx_runtime.react_jsx_runtime.jsx("span", { children: error }), react_jsx_runtime.react_jsx_runtime.jsx(Button, { variant: "outline", size: "sm", onClick: () => { void load(false); }, children: "\u91CD\u8BD5" })] })), status === 'ready' && shapes.length === 0 && (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.placeholder, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMark, "aria-hidden": "true", children: "\uFF0B" }), react_jsx_runtime.react_jsx_runtime.jsx("strong", { children: "\u8FD8\u6CA1\u6709 shape" }), react_jsx_runtime.react_jsx_runtime.jsx("span", { children: "\u628A shape \u6587\u4EF6\u5939\u653E\u8FDB\u7528\u6237\u76EE\u5F55\uFF0C\u7136\u540E\u70B9\u5237\u65B0\u3002" }), roots !== undefined && react_jsx_runtime.react_jsx_runtime.jsx("code", { className: css.placeholderPath, children: roots.user })] })), status === 'ready' && shapes.length > 0 && (react_jsx_runtime.react_jsx_runtime.jsx("div", { className: css.grid, "data-testid": "dsh-shape-grid", children: shapes.map((shape) => {
+		                                    const initial = Array.from(shape.title.trim())[0] ?? '?';
+		                                    const enabled = shape.enabled !== false;
+		                                    const resolution = resolveShape?.(shape.requirements ?? []) ?? {
+		                                        ok: true,
+		                                        capabilities: {},
+		                                        missing: [],
+		                                    };
+		                                    const apiSupported = supportsShapeApiVersion(shape.shapeApiVersion);
+		                                    const blocked = !resolution.ok || !apiSupported;
+		                                    return (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.cardShell, "data-enabled": enabled ? 'true' : 'false', "data-blocked": blocked ? 'true' : 'false', children: [react_jsx_runtime.react_jsx_runtime.jsxs("button", { type: "button", className: css.card, "data-testid": "dsh-shape-card", "data-shape-id": shape.id, "aria-haspopup": "dialog", "aria-label": `打开 ${shape.title}`, disabled: !enabled || blocked, onClick: () => { void openView(shape); }, children: [react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.cardHead, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.appIcon, "aria-hidden": "true", children: initial.toLocaleUpperCase() }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.cardIdentity, children: [react_jsx_runtime.react_jsx_runtime.jsx("h3", { className: css.cardTitle, title: shape.title, children: shape.title }), react_jsx_runtime.react_jsx_runtime.jsx("code", { className: css.cardId, title: shape.id, children: shape.id })] })] }), react_jsx_runtime.react_jsx_runtime.jsx("p", { className: css.description, children: shape.description.length > 0 ? shape.description : '暂无描述' }), blocked && (react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.blocked, children: !apiSupported
+		                                                            ? `不支持的 shape apiVersion ${String(shape.shapeApiVersion ?? 0)}（需要 ${String(SHAPE_API_VERSION)}）`
+		                                                            : `缺少 ${resolution.missing.map(describeMissing).join('、')}` })), !shape.valid && (react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.invalid, children: ["\u65E0\u6548 package.json\uFF1A", shape.error ?? '缺少 id 或 name'] })), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.cardFooter, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.origin, children: shape.origin === 'bundled' ? '内置' : '用户' }), react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.badge, children: ["v", shape.version] }), react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.badge, children: [String(shape.views.length), " views"] }), react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.badge, children: [String(shape.slots.length), " slots"] }), react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.badge, children: [String(shape.tools.length), " tools"] }), react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.badge, children: shape.output })] })] }), react_jsx_runtime.react_jsx_runtime.jsx("button", { type: "button", className: css.switch, role: "switch", "aria-checked": enabled, "aria-busy": busyId === shape.id, "aria-label": `${enabled ? '停用' : '启用'} ${shape.title}`, title: `${enabled ? '停用' : '启用'} ${shape.title}`, "data-testid": "dsh-shape-toggle", "data-toggle-shape-id": shape.id, disabled: busyId === shape.id, onClick: () => { void toggleShape(shape); } }), react_jsx_runtime.react_jsx_runtime.jsx("button", { type: "button", className: css.deleteButton, "aria-label": `删除 ${shape.title}`, title: `删除 ${shape.title}`, "data-testid": "dsh-shape-delete", "data-delete-shape-id": shape.id, disabled: busyId === shape.id, onClick: () => {
+		                                                    setDeleteError('');
+		                                                    setPendingDelete(shape);
+		                                                }, children: react_jsx_runtime.react_jsx_runtime.jsx(IconTrashOutlineRegular, {}) })] }, shape.id));
+		                                }) }))] }), react_jsx_runtime.react_jsx_runtime.jsxs("footer", { className: css.footer, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.footerPath, title: roots?.user, children: roots?.user ?? 'shape 目录' }), react_jsx_runtime.react_jsx_runtime.jsxs("span", { className: css.footerCount, children: [String(shapes.length), " registered"] })] })] }), selected !== null && (react_jsx_runtime.react_jsx_runtime.jsx("div", { className: css.viewBackdrop, role: "presentation", onMouseDown: (event) => { if (event.target === event.currentTarget)
+		                    closeView(); }, children: react_jsx_runtime.react_jsx_runtime.jsxs("section", { ref: viewRef, tabIndex: -1, className: css.viewWindow, role: "dialog", "aria-modal": "true", "aria-labelledby": "dsh-shape-view-title", "data-testid": "dsh-shape-view", children: [react_jsx_runtime.react_jsx_runtime.jsxs("header", { className: css.viewHeader, children: [react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.viewHeading, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.appIcon, "aria-hidden": "true", children: (Array.from(selected.title.trim())[0] ?? '?').toLocaleUpperCase() }), react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.viewHeadingText, children: [react_jsx_runtime.react_jsx_runtime.jsx("h3", { className: css.viewTitle, id: "dsh-shape-view-title", children: selected.title }), react_jsx_runtime.react_jsx_runtime.jsxs("p", { className: css.viewSubtitle, children: [selected.id, " \u00B7 ", String(selected.views.length), " views"] })] })] }), react_jsx_runtime.react_jsx_runtime.jsx("button", { type: "button", className: css.iconButton, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED", "data-testid": "dsh-shape-view-close", onClick: closeView, children: react_jsx_runtime.react_jsx_runtime.jsx(IconCloseOutlineRegular, {}) })] }), react_jsx_runtime.react_jsx_runtime.jsx("div", { className: css.viewBody, children: selected.views.length === 0 ? (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.placeholder, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMark, "aria-hidden": "true", children: "\u25C7" }), react_jsx_runtime.react_jsx_runtime.jsx("strong", { children: "\u8FD9\u4E2A shape \u6CA1\u6709 views/ \u754C\u9762" }), react_jsx_runtime.react_jsx_runtime.jsx("span", { children: "\u5728 shape \u76EE\u5F55\u4E0B\u6DFB\u52A0 `views/index.html` \u540E\u518D\u8BD5\u3002" })] })) : viewLoading ? (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.placeholder, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMark, "aria-hidden": "true", children: "\u2026" }), react_jsx_runtime.react_jsx_runtime.jsx("span", { children: "\u6B63\u5728\u6253\u5F00\u754C\u9762\u2026" })] })) : viewError !== '' ? (react_jsx_runtime.react_jsx_runtime.jsxs("div", { className: css.placeholder, "data-testid": "dsh-shape-view-error", children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMark, "aria-hidden": "true", children: "!" }), react_jsx_runtime.react_jsx_runtime.jsx("strong", { children: "\u65E0\u6CD5\u6253\u5F00 shape \u754C\u9762" }), react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.placeholderMessage, children: viewError }), react_jsx_runtime.react_jsx_runtime.jsx(Button, { variant: "outline", size: "sm", onClick: () => { void openView(selected); }, children: "\u91CD\u8BD5" })] })) : (react_jsx_runtime.react_jsx_runtime.jsx("iframe", { className: css.viewFrame, title: selected.title, src: `/dsh-shape/view/${encodeURIComponent(selected.id)}/`, sandbox: "allow-scripts allow-forms allow-modals allow-popups" })) }), react_jsx_runtime.react_jsx_runtime.jsxs("footer", { className: css.footer, children: [react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.footerPath, title: selected.dir, children: selected.dir }), react_jsx_runtime.react_jsx_runtime.jsx("span", { className: css.footerCount, children: selected.views[0] ?? 'no views' })] })] }) }))] })), document.body);
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeButton.tsx
