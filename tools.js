@@ -116,8 +116,12 @@ async function inspectShape(dir, origin) {
   const warnings = []
   if (manifest.name !== id) errors.push(`package name should be "${id}"`)
   if (typeof manifest.title !== 'string' || manifest.title.trim() === '') warnings.push('missing title')
-  if (shape === null || typeof shape !== 'object' || Array.isArray(shape)) {
-    errors.push('missing shape object')
+  if (shape === undefined) {
+    // The Host treats a missing block as apiVersion 1 with no requirements, so
+    // this stays a warning rather than an error.
+    warnings.push('no shape object; defaults to apiVersion 1 and no requirements')
+  } else if (shape === null || typeof shape !== 'object' || Array.isArray(shape)) {
+    errors.push('shape must be an object')
   } else {
     if (shape.apiVersion !== 1) errors.push('shape.apiVersion must be 1')
     if (shape.requires !== undefined && !Array.isArray(shape.requires)) errors.push('shape.requires must be an array')
