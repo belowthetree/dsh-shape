@@ -77,6 +77,8 @@ export function activate(api) {
 
 The panel id is namespaced as `shape:<shapeId>:<id>`, so two shapes can use the same local id. Registration is lazy: the sidebar entry appears as soon as the shape activates and disappears with it. `open()` throws when the host has no layout service.
 
+> **Not usable on the Web host yet.** The sidebar entry registers and `open()` selects it, but the panel body never mounts: the `main` slot drops the entry's subtree before commit, so `render()` is never called. Until that is fixed, mount panel content with `api.mount('conversation.input.overlay', …)` instead.
+
 ## Tabs
 
 ```js
