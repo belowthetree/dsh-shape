@@ -33,7 +33,7 @@ export function activate(api) {
 | `api.mount(slot, render, options?)` | disposer | One of the ten slots; `options` is `{ placement, snap }` for `conversation.input.overlay`. |
 | `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Floating window over the conversation input; `open()` shows it. |
 | `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
-| `api.edge({ id, title?, edge?, view?, width?, height?, keys?, esc? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views. |
+| `api.edge({ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views. |
 | `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
 
 Capabilities are read with `api.require`, never off `api.capabilities` directly, so a missing declaration fails at the call site:
@@ -59,7 +59,7 @@ Details:
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
 - `api.panel(options)`: registers a panel and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the panel as a floating window over the conversation input.
 - `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
-- `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, esc? }`; the window shows `views/<view>` in a sandboxed iframe.
+- `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? }`; the window shows `views/<view>` in a sandboxed iframe. `width`/`height` accept pixels or `'full'` to span the viewport axis.
 
 ## Panels
 
@@ -108,11 +108,12 @@ export function activate(api) {
   const popup = api.edge({
     id: 'dock',
     title: 'Quick dock',
-    edge: 'right',        // top | right | bottom | left; defaults to right
+    edge: 'top',          // top | right | bottom | left; defaults to right
     view: 'index.html',   // file below views/; defaults to index.html
-    width: 380,           // optional; sides default 380×560, top/bottom 640×420
-    height: 560,
+    width: 'full',        // pixels or 'full'; full spans the viewport axis
+    height: 300,          // sides default 380×560, top/bottom 640×420
     keys: 'Ctrl+Alt+E',   // optional toggle shortcut
+    resizable: true,      // optional; dragging the inner edge resizes, default true
     esc: true,            // optional; Escape closes by default
   })
   return () => popup.dispose()
@@ -121,6 +122,9 @@ export function activate(api) {
 
 - `open()` slides the window in and raises it above the other open popups; `close()` animates it out; `toggle()` switches; `isOpen()` reports the shown state.
 - The iframe is sandboxed **without** `allow-same-origin`: the view cannot read the host DOM, cookies, or the client API. Put behavior in `client/index.js`, not in the view.
+- `width`/`height` are `number | 'full'`; `'full'` spans that viewport axis (the anchored edge keeps its 12px gap), so `edge: 'top'` + `width: 'full'` is a full-width bar and `edge: 'right'` + `height: 'full'` fills the viewport height.
+- The inner edge is a resize strip: drag the left edge of a right window, the right edge of a left window, the bottom edge of a top window, or the top edge of a bottom window. Sizes are clamped to the viewport with a 240×160 minimum, remembered per popup in `localStorage`, and restored on the next open. `resizable: false` removes the strip; a `'full'` axis is not resizable.
+- Edge windows stay below the desktop shell's top bar: a top window starts 12px under the Windows caption row, and side or full-height windows start at its bottom edge. The boundary comes from `--dsh-frame-chrome-top` (0 while fullscreen), so a plain browser and macOS keep the viewport edge.
 - `keys` is a private page-level shortcut (not rebindable, invisible in Settings, any combination). For a rebindable command, register with `dsh-shape#shortcuts` and call `popup.toggle()` from `run`.
 - `Esc` is handled on the host page. Focus is inside the sandboxed iframe after the user clicks the view, so keystrokes there never reach the host — the title bar's close button always works.
 - A missing view file throws with the list of available views when the host reports them.

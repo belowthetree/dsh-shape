@@ -1,6 +1,12 @@
 /** Fixed layer that renders shape edge popups and owns their Escape handling. */
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
   closeShapeEdge,
@@ -19,6 +25,32 @@ const LAYER_Z = 1100
 
 /** Gap kept between a window and the viewport edge it sits on. */
 const EDGE_MARGIN = 12
+
+/**
+ * Top boundary published by the DSH frame: the Windows caption row, 0 while
+ * fullscreen. The fallback keeps Web and macOS at the plain viewport edge, so
+ * the same expression works in a browser and inside the desktop shell.
+ */
+const FRAME_TOP = 'var(--dsh-frame-chrome-top, 0px)'
+
+/** Thickness of the invisible strip that resizes a window. */
+const RESIZE_EDGE = 6
+
+/** Smallest size a user drag can produce. */
+const MIN_WIDTH = 240
+const MIN_HEIGHT = 160
+
+/** Key prefix for a window size the user dragged. */
+const SIZE_STORAGE_PREFIX = 'dsh-shape:edge-size:'
+
+/** One window dimension: pixels, or the whole viewport. */
+type Dimension = number | 'full'
+
+/** Width and height of one window. */
+interface EdgeSize {
+  width: Dimension
+  height: Dimension
+}
 
 /** Default window size per edge: wide bands on top and bottom, tall columns at the sides. */
 const DEFAULT_SIZE: Readonly<Record<ShapeEdge, { width: number; height: number }>> = {
@@ -44,6 +76,7 @@ const EXIT_EASING = 'cubic-bezier(0.4, 0, 1, 1)'
 /** Window chrome; the strip outside it lets pointer events through. */
 const WINDOW: CSSProperties = {
   position: 'relative',
+  boxSizing: 'border-box',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
@@ -107,38 +140,179 @@ const FRAME: CSSProperties = {
   colorScheme: 'normal',
 }
 
+/** The invisible strip that owns one resize direction. */
+const RESIZE_STRIP: CSSProperties = {
+  position: 'absolute',
+  zIndex: 3,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  touchAction: 'none',
+}
+
+/** Faint grip that makes the resize strip discoverable. */
+const GRIP: CSSProperties = {
+  pointerEvents: 'none',
+  borderRadius: 2,
+  background: 'var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.18))',
+}
+
 /**
  * Position one popup on its edge, centered along it.
+ *
+ * A `full` axis makes the strip reach the opposite viewport edge, so the
+ * window's percentage size resolves against a definite box.
  * @param edge - edge the window belongs to.
- * @returns the fixed strip that centers the window without a transform.
+ * @param size - current window size.
+ * @returns the fixed strip that centers and sizes the window.
  */
-function stripStyle(edge: ShapeEdge): CSSProperties {
+function stripStyle(edge: ShapeEdge, size: EdgeSize): CSSProperties {
   const base: CSSProperties = {
     position: 'fixed',
     display: 'flex',
     zIndex: LAYER_Z,
     pointerEvents: 'none',
   }
-  if (edge === 'top') return { ...base, top: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' }
-  if (edge === 'bottom') return { ...base, bottom: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' }
-  if (edge === 'left') return { ...base, left: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' }
-  return { ...base, right: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' }
+  const fullWidth = size.width === 'full'
+  const fullHeight = size.height === 'full'
+  if (edge === 'top' || edge === 'bottom') {
+    return {
+      ...base,
+      left: 0,
+      right: 0,
+      justifyContent: 'center',
+      // A top window starts below the caption row; the caption never moves.
+      ...(edge === 'top'
+        ? { top: `calc(${FRAME_TOP} + ${String(EDGE_MARGIN)}px)` }
+        : { bottom: EDGE_MARGIN }),
+      ...(fullHeight ? (edge === 'top' ? { bottom: 0 } : { top: FRAME_TOP }) : {}),
+    }
+  }
+  return {
+    ...base,
+    top: FRAME_TOP,
+    bottom: 0,
+    alignItems: 'center',
+    ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: EDGE_MARGIN }),
+    ...(fullWidth ? (edge === 'left' ? { right: 0 } : { left: 0 }) : {}),
+  }
 }
 
 /**
- * Size one popup, keeping it inside the viewport.
- * @param popup - popup definition.
- * @returns width and height for the window.
+ * Size one window; `full` fills the strip, numbers stay inside the viewport.
+ * @param size - current window size.
+ * @returns the width, height, and maximums for the window.
  */
-function windowSize(popup: ShapeEdgePopup): CSSProperties {
-  const fallback = DEFAULT_SIZE[popup.edge]
-  const width = Math.max(160, popup.width ?? fallback.width)
-  const height = Math.max(120, popup.height ?? fallback.height)
+function sizeStyle(size: EdgeSize): CSSProperties {
   return {
-    width: `${String(width)}px`,
-    height: `${String(height)}px`,
-    maxWidth: 'calc(100vw - 24px)',
-    maxHeight: 'calc(100vh - 24px)',
+    width: size.width === 'full' ? '100%' : `${String(size.width)}px`,
+    height: size.height === 'full' ? '100%' : `${String(size.height)}px`,
+    maxWidth: size.width === 'full' ? '100vw' : 'calc(100vw - 24px)',
+    maxHeight: size.height === 'full' ? '100vh' : `calc(100vh - ${FRAME_TOP} - 24px)`,
+  }
+}
+
+/**
+ * Position the resize strip on the window's inner edge.
+ * @param edge - edge the window is anchored to.
+ * @returns the strip geometry and its resize cursor.
+ */
+function resizeStripStyle(edge: ShapeEdge): CSSProperties {
+  if (edge === 'top') return { ...RESIZE_STRIP, bottom: 0, left: 0, right: 0, height: RESIZE_EDGE, cursor: 'ns-resize' }
+  if (edge === 'bottom') return { ...RESIZE_STRIP, top: 0, left: 0, right: 0, height: RESIZE_EDGE, cursor: 'ns-resize' }
+  if (edge === 'left') return { ...RESIZE_STRIP, right: 0, top: 0, bottom: 0, width: RESIZE_EDGE, cursor: 'ew-resize' }
+  return { ...RESIZE_STRIP, left: 0, top: 0, bottom: 0, width: RESIZE_EDGE, cursor: 'ew-resize' }
+}
+
+/**
+ * Shape of the grip inside a resize strip.
+ * @param axis - dimension the strip resizes.
+ * @returns the grip style.
+ */
+function gripStyle(axis: 'width' | 'height'): CSSProperties {
+  return axis === 'width' ? { ...GRIP, width: 3, height: 32 } : { ...GRIP, width: 32, height: 3 }
+}
+
+/**
+ * Height of the DSH frame's reserved top strip (the Windows caption row).
+ * @returns the pixel inset, or 0 in a browser, on macOS, or while fullscreen.
+ */
+function frameTopInset(): number {
+  if (typeof document === 'undefined') return 0
+  const raw = getComputedStyle(document.documentElement).getPropertyValue('--dsh-frame-chrome-top')
+  const value = Number.parseFloat(raw)
+  return Number.isFinite(value) ? Math.max(0, value) : 0
+}
+
+/**
+ * Largest size one axis may take inside the usable viewport.
+ * @param axis - dimension to measure.
+ * @returns the pixel limit, never below the minimum.
+ */
+function viewportLimit(axis: 'width' | 'height'): number {
+  const total = axis === 'width' ? window.innerWidth : window.innerHeight
+  const inset = axis === 'height' ? EDGE_MARGIN * 2 + frameTopInset() : EDGE_MARGIN * 2
+  return Math.max(axis === 'width' ? MIN_WIDTH : MIN_HEIGHT, total - inset)
+}
+
+/**
+ * Clamp one dimension to the viewport and the minimum size.
+ * @param value - requested pixels.
+ * @param axis - dimension being clamped.
+ * @returns the rounded, clamped size.
+ */
+function clampSize(value: number, axis: 'width' | 'height'): number {
+  const min = axis === 'width' ? MIN_WIDTH : MIN_HEIGHT
+  return Math.round(Math.min(Math.max(value, min), viewportLimit(axis)))
+}
+
+/**
+ * Read a size the user dragged for one popup.
+ * @param id - namespaced popup id.
+ * @returns the stored size, or null when nothing valid is stored.
+ */
+function readStoredSize(id: string): { width: number; height: number } | null {
+  try {
+    const raw = localStorage.getItem(SIZE_STORAGE_PREFIX + id)
+    if (raw === null) return null
+    const parsed = JSON.parse(raw) as { width?: unknown; height?: unknown }
+    if (typeof parsed.width !== 'number' || typeof parsed.height !== 'number') return null
+    return { width: parsed.width, height: parsed.height }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Remember a size the user dragged.
+ * @param id - namespaced popup id.
+ * @param size - pixel size to store.
+ */
+function storeSize(id: string, size: { width: number; height: number }): void {
+  try {
+    localStorage.setItem(SIZE_STORAGE_PREFIX + id, JSON.stringify(size))
+  } catch {
+    // Private-mode storage can refuse writes; the window still works for this mount.
+  }
+}
+
+/**
+ * Resolve the size a popup opens with: its declared size, or the size the user
+ * last dragged for it.
+ * @param popup - popup definition.
+ * @returns declared or remembered size, clamped to the viewport.
+ */
+function initialSize(popup: ShapeEdgePopup): EdgeSize {
+  const fallback = DEFAULT_SIZE[popup.edge]
+  const declared: EdgeSize = {
+    width: popup.width === 'full' ? 'full' : clampSize(popup.width ?? fallback.width, 'width'),
+    height: popup.height === 'full' ? 'full' : clampSize(popup.height ?? fallback.height, 'height'),
+  }
+  const stored = readStoredSize(popup.id)
+  if (stored === null) return declared
+  return {
+    width: declared.width === 'full' ? 'full' : clampSize(stored.width, 'width'),
+    height: declared.height === 'full' ? 'full' : clampSize(stored.height, 'height'),
   }
 }
 
@@ -164,7 +338,7 @@ function viewUrl(popup: ShapeEdgePopup): string {
 }
 
 /**
- * One edge popup window: entry animation, focus ownership, and dismissal.
+ * One edge popup window: entry animation, resize, focus, and dismissal.
  * @param props.popup - registered popup.
  * @param props.closing - whether the registry asked it to close.
  * @returns the window.
@@ -173,6 +347,15 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
   const ref = useRef<HTMLDivElement>(null)
   /** Element focused before the popup opened; focus returns there on close. */
   const restore = useRef<HTMLElement | null>(null)
+  const [size, setSize] = useState<EdgeSize>(() => initialSize(popup))
+  /** Latest size, readable before React commits the state from a pointer move. */
+  const sizeRef = useRef<EdgeSize>(size)
+  /** Live drag: pointer origin and the size it started from. */
+  const drag = useRef<{ start: number; startSize: number } | null>(null)
+
+  const axis: 'width' | 'height' = popup.edge === 'left' || popup.edge === 'right' ? 'width' : 'height'
+  const direction = popup.edge === 'top' || popup.edge === 'left' ? 1 : -1
+  const resizable = popup.resizable && size[axis] !== 'full'
 
   useEffect(() => {
     const element = ref.current
@@ -220,17 +403,66 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
     }
   }, [closing, popup.edge, popup.id])
 
+  const onResizeStart = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (event.button !== 0 || !resizable) return
+    const element = ref.current
+    if (element === null) return
+    const rect = element.getBoundingClientRect()
+    drag.current = {
+      start: axis === 'width' ? event.clientX : event.clientY,
+      startSize: axis === 'width' ? rect.width : rect.height,
+    }
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // Synthetic pointer events have no capturable pointer; moves still arrive.
+    }
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
+  const onResizeMove = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    const current = drag.current
+    if (current === null) return
+    const delta = (axis === 'width' ? event.clientX : event.clientY) - current.start
+    const next = clampSize(current.startSize + direction * delta, axis)
+    // A pointerup can arrive before React commits the move, so keep the latest
+    // value in a ref for the handler that persists it.
+    const nextSize: EdgeSize = { ...sizeRef.current, [axis]: next }
+    sizeRef.current = nextSize
+    setSize(nextSize)
+    event.preventDefault()
+  }
+
+  const onResizeEnd = (event: ReactPointerEvent<HTMLDivElement>): void => {
+    if (drag.current === null) return
+    drag.current = null
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+    const element = ref.current
+    if (element !== null) {
+      const current = sizeRef.current
+      storeSize(popup.id, {
+        width: typeof current.width === 'number' ? current.width : element.offsetWidth,
+        height: typeof current.height === 'number' ? current.height : element.offsetHeight,
+      })
+    }
+  }
+
   return (
-    <div style={stripStyle(popup.edge)} data-shape-edge-strip={popup.id}>
+    <div style={stripStyle(popup.edge, size)} data-shape-edge-strip={popup.id}>
       <div
         ref={ref}
         tabIndex={-1}
         role="dialog"
         aria-label={popup.title}
-        style={{ ...WINDOW, ...windowSize(popup) }}
+        style={{ ...WINDOW, ...sizeStyle(size) }}
         data-testid="dsh-shape-edge"
         data-shape-edge={popup.id}
         data-edge={popup.edge}
+        data-width={size.width === 'full' ? 'full' : String(size.width)}
+        data-height={size.height === 'full' ? 'full' : String(size.height)}
       >
         <div style={BAR}>
           <span style={BAR_TITLE} title={popup.title}>{popup.title}</span>
@@ -252,6 +484,21 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
           referrerPolicy="no-referrer"
           sandbox="allow-scripts allow-forms allow-modals allow-popups"
         />
+        {resizable && (
+          <div
+            style={resizeStripStyle(popup.edge)}
+            role="separator"
+            aria-orientation={axis === 'width' ? 'vertical' : 'horizontal'}
+            aria-label="调整窗口大小"
+            data-testid="dsh-shape-edge-resize"
+            onPointerDown={onResizeStart}
+            onPointerMove={onResizeMove}
+            onPointerUp={onResizeEnd}
+            onPointerCancel={onResizeEnd}
+          >
+            <span style={gripStyle(axis)} aria-hidden="true" />
+          </div>
+        )}
       </div>
     </div>
   )

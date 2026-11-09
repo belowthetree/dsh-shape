@@ -15,10 +15,12 @@ export interface ShapeEdgePopup {
   readonly edge: ShapeEdge
   /** File below the shape's `views/` directory rendered in the window. */
   readonly view: string
-  /** Window width in pixels; the edge default when omitted. */
-  readonly width?: number
-  /** Window height in pixels; the edge default when omitted. */
-  readonly height?: number
+  /** Window width in pixels, or `full` to span the viewport width. */
+  readonly width?: number | 'full'
+  /** Window height in pixels, or `full` to span the viewport height. */
+  readonly height?: number | 'full'
+  /** Whether dragging the inner edge resizes the window; defaults to true. */
+  readonly resizable: boolean
   /** Whether Escape closes the window; defaults to true. */
   readonly esc: boolean
 }

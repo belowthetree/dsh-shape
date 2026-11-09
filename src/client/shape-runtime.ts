@@ -145,12 +145,14 @@ export interface ShapeEdgeOptions {
   edge?: ShapeEdge
   /** File below the shape's `views/` directory; defaults to `index.html`. */
   view?: string
-  /** Window width in pixels; the edge default when omitted. */
-  width?: number
-  /** Window height in pixels; the edge default when omitted. */
-  height?: number
+  /** Window width in pixels, or `full` to span the viewport width; the edge default when omitted. */
+  width?: number | 'full'
+  /** Window height in pixels, or `full` to span the viewport height; the edge default when omitted. */
+  height?: number | 'full'
   /** Combination(s) that toggle the popup, such as `Ctrl+Alt+E`. */
   keys?: string | readonly string[]
+  /** Whether dragging the window's inner edge resizes it; defaults to true. */
+  resizable?: boolean
   /** Whether Escape closes the popup; defaults to true. */
   esc?: boolean
 }
@@ -316,14 +318,15 @@ function assertShapeView(shape: ShapeInfo, view: string): void {
 
 /**
  * Validate one optional window dimension.
- * @param value - pixels declared by the shape.
+ * @param value - pixels declared by the shape, or `full`.
  * @param field - field name for the error message.
- * @returns the rounded size, or undefined when omitted.
+ * @returns the rounded size, `full`, or undefined when omitted.
  */
-function positivePixels(value: number | undefined, field: string): number | undefined {
+function normalizeDimension(value: number | 'full' | undefined, field: string): number | 'full' | undefined {
   if (value === undefined) return undefined
+  if (value === 'full') return 'full'
   if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels`)
+    throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels or "full"`)
   }
   return Math.round(value)
 }
@@ -485,8 +488,8 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
           }
           const view = normalizeView(options.view ?? 'index.html')
           assertShapeView(shape, view)
-          const width = positivePixels(options.width, 'width')
-          const height = positivePixels(options.height, 'height')
+          const width = normalizeDimension(options.width, 'width')
+          const height = normalizeDimension(options.height, 'height')
           const offShortcut = options.keys === undefined
             ? undefined
             : registerShortcuts(options.keys, () => { toggleShapeEdge(id) })
@@ -498,6 +501,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             view,
             ...(width === undefined ? {} : { width }),
             ...(height === undefined ? {} : { height }),
+            resizable: options.resizable !== false,
             esc: options.esc !== false,
           })
           let disposed = false

@@ -105,18 +105,19 @@ export function activate(api) {
 
 ## 边缘弹窗
 
-`api.edge()` 注册一个贴着屏幕边缘的窗口，`open()` 时从该边缘居中的位置滑入，内容是形态自己的视图页面，`Esc` 关闭。
+`api.edge()` 注册一个贴着屏幕边缘的窗口，`open()` 时从该边缘居中的位置滑入，内容是形态自己的视图页面，`Esc` 关闭，拖动内边可以调整大小。
 
 ```js
 export function activate(api) {
   const popup = api.edge({
     id: 'dock',
     title: '快捷面板',
-    edge: 'right',          // top | right | bottom | left，默认 right
+    edge: 'top',            // top | right | bottom | left，默认 right
     view: 'index.html',     // views/ 下的文件，默认 index.html
-    width: 380,             // 可选；left/right 默认 380×560，top/bottom 默认 640×420
-    height: 560,
+    width: 'full',          // 像素或 'full'；top/bottom 写 full 即左右占满
+    height: 300,            // 像素或 'full'；left/right 写 full 即上下占满
     keys: 'Ctrl+Alt+E',     // 可选；绑定一个切换窗口的页面级快捷键
+    resizable: true,        // 可选；默认 true，可拖内边调整大小
     esc: true,              // 可选；默认 true
   })
   popup.open()
@@ -128,7 +129,10 @@ export function activate(api) {
 - 窗口内容是 `/dsh-shape/view/<id>/<view>` 的 `iframe`，沙箱**不带 `allow-same-origin`**：视图拿不到宿主 DOM、cookie 或客户端 API，需要交互能力就把逻辑写在 `client/` 里。
 - `keys` 走页面级 `keydown`，不受 Web 组合键限制，也不会出现在设置里；要可重绑的命令，用 `dsh-shape#shortcuts` 注册并在 `run` 里调用 `popup.toggle()`。
 - `esc: false` 只关掉 `Esc`：标题栏的关闭按钮始终可用，鼠标点进视图内部后 `Esc` 也不会传到宿主（沙箱 iframe 是独立文档）。
-- 尺寸默认按边缘取，`width`/`height` 是像素；窗口不会超出视口。视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
+- `width`/`height` 默认按边缘取（left/right 380×560，top/bottom 640×420），可以是像素或 `'full'`；`'full'` 沿该轴占满视口（锚定边仍留 12px），例如 `edge: 'top'` + `width: 'full'` 就是一条左右占满的横条。
+- 窗口默认可调整大小：拖右侧窗口的左边、左侧窗口的右边、上方窗口的下边、下方窗口的上边，最小 240×160；尺寸存在 `localStorage` 里，下次打开沿用。`resizable: false` 关闭调整；某一轴是 `'full'` 时该轴不可调整。
+- 顶部区域会避开 DSH 的窗口顶栏：上方窗口从顶栏下方 12px 开始，左右窗口和上下占满的窗口也从顶栏下方开始，全屏时顶栏高度按 0 处理（`--dsh-frame-chrome-top`）。普通浏览器里没有这条顶栏，位置不受影响。
+- 视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
 
 ## 行为与测试（actions.js）
 

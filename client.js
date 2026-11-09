@@ -2017,13 +2017,14 @@ window.__ModuleLoader__.load({
 		}
 		/**
 		* Validate one optional window dimension.
-		* @param value - pixels declared by the shape.
+		* @param value - pixels declared by the shape, or `full`.
 		* @param field - field name for the error message.
-		* @returns the rounded size, or undefined when omitted.
+		* @returns the rounded size, `full`, or undefined when omitted.
 		*/
-		function positivePixels(value, field) {
+		function normalizeDimension(value, field) {
 			if (value === void 0) return void 0;
-			if (!Number.isFinite(value) || value <= 0) throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels`);
+			if (value === "full") return "full";
+			if (!Number.isFinite(value) || value <= 0) throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels or "full"`);
 			return Math.round(value);
 		}
 		/**
@@ -2180,8 +2181,8 @@ window.__ModuleLoader__.load({
 						    if (edge !== "top" && edge !== "right" && edge !== "bottom" && edge !== "left") throw new Error(`dsh-shape: edge must be top, right, bottom, or left: ${String(edge)}`);
 						    const view = normalizeView(options.view ?? "index.html");
 						    assertShapeView(shape, view);
-						    const width = positivePixels(options.width, "width");
-						    const height = positivePixels(options.height, "height");
+						    const width = normalizeDimension(options.width, "width");
+						    const height = normalizeDimension(options.height, "height");
 						    const offShortcut = options.keys === void 0 ? void 0 : registerShortcuts(options.keys, () => {
 						        toggleShapeEdge(id);
 						    });
@@ -2193,6 +2194,7 @@ window.__ModuleLoader__.load({
 						        view,
 						        ...(width === void 0 ? {} : { width }),
 						        ...(height === void 0 ? {} : { height }),
+						        resizable: options.resizable !== false,
 						        esc: options.esc !== false,
 						    });
 						    let disposed = false;
@@ -3344,6 +3346,19 @@ window.__ModuleLoader__.load({
 		const LAYER_Z = 1100;
 		/** Gap kept between a window and the viewport edge it sits on. */
 		const EDGE_MARGIN = 12;
+		/**
+		 * Top boundary published by the DSH frame: the Windows caption row, 0 while
+		 * fullscreen. The fallback keeps Web and macOS at the plain viewport edge, so
+		 * the same expression works in a browser and inside the desktop shell.
+		 */
+		const FRAME_TOP = 'var(--dsh-frame-chrome-top, 0px)';
+		/** Thickness of the invisible strip that resizes a window. */
+		const RESIZE_EDGE = 6;
+		/** Smallest size a user drag can produce. */
+		const MIN_WIDTH = 240;
+		const MIN_HEIGHT = 160;
+		/** Key prefix for a window size the user dragged. */
+		const SIZE_STORAGE_PREFIX = 'dsh-shape:edge-size:';
 		/** Default window size per edge: wide bands on top and bottom, tall columns at the sides. */
 		const DEFAULT_SIZE = {
 		    top: { width: 640, height: 420 },
@@ -3365,6 +3380,7 @@ window.__ModuleLoader__.load({
 		/** Window chrome; the strip outside it lets pointer events through. */
 		const WINDOW = {
 		    position: 'relative',
+		    boxSizing: 'border-box',
 		    display: 'flex',
 		    flexDirection: 'column',
 		    overflow: 'hidden',
@@ -3423,40 +3439,177 @@ window.__ModuleLoader__.load({
 		    background: 'var(--dsw-alias-bg-layer-1, #14161a)',
 		    colorScheme: 'normal',
 		};
+		/** The invisible strip that owns one resize direction. */
+		const RESIZE_STRIP = {
+		    position: 'absolute',
+		    zIndex: 3,
+		    display: 'flex',
+		    alignItems: 'center',
+		    justifyContent: 'center',
+		    touchAction: 'none',
+		};
+		/** Faint grip that makes the resize strip discoverable. */
+		const GRIP = {
+		    pointerEvents: 'none',
+		    borderRadius: 2,
+		    background: 'var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.18))',
+		};
 		/**
 		 * Position one popup on its edge, centered along it.
+		 *
+		 * A `full` axis makes the strip reach the opposite viewport edge, so the
+		 * window's percentage size resolves against a definite box.
 		 * @param edge - edge the window belongs to.
-		 * @returns the fixed strip that centers the window without a transform.
+		 * @param size - current window size.
+		 * @returns the fixed strip that centers and sizes the window.
 		 */
-		function stripStyle(edge) {
+		function stripStyle(edge, size) {
 		    const base = {
 		        position: 'fixed',
 		        display: 'flex',
 		        zIndex: LAYER_Z,
 		        pointerEvents: 'none',
 		    };
-		    if (edge === 'top')
-		        return { ...base, top: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' };
-		    if (edge === 'bottom')
-		        return { ...base, bottom: EDGE_MARGIN, left: 0, right: 0, justifyContent: 'center' };
-		    if (edge === 'left')
-		        return { ...base, left: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' };
-		    return { ...base, right: EDGE_MARGIN, top: 0, bottom: 0, alignItems: 'center' };
+		    const fullWidth = size.width === 'full';
+		    const fullHeight = size.height === 'full';
+		    if (edge === 'top' || edge === 'bottom') {
+		        return {
+		            ...base,
+		            left: 0,
+		            right: 0,
+		            justifyContent: 'center',
+		            // A top window starts below the caption row; the caption never moves.
+		            ...(edge === 'top'
+		                ? { top: `calc(${FRAME_TOP} + ${String(EDGE_MARGIN)}px)` }
+		                : { bottom: EDGE_MARGIN }),
+		            ...(fullHeight ? (edge === 'top' ? { bottom: 0 } : { top: FRAME_TOP }) : {}),
+		        };
+		    }
+		    return {
+		        ...base,
+		        top: FRAME_TOP,
+		        bottom: 0,
+		        alignItems: 'center',
+		        ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: EDGE_MARGIN }),
+		        ...(fullWidth ? (edge === 'left' ? { right: 0 } : { left: 0 }) : {}),
+		    };
 		}
 		/**
-		 * Size one popup, keeping it inside the viewport.
-		 * @param popup - popup definition.
-		 * @returns width and height for the window.
+		 * Size one window; `full` fills the strip, numbers stay inside the viewport.
+		 * @param size - current window size.
+		 * @returns the width, height, and maximums for the window.
 		 */
-		function windowSize(popup) {
-		    const fallback = DEFAULT_SIZE[popup.edge];
-		    const width = Math.max(160, popup.width ?? fallback.width);
-		    const height = Math.max(120, popup.height ?? fallback.height);
+		function sizeStyle(size) {
 		    return {
-		        width: `${String(width)}px`,
-		        height: `${String(height)}px`,
-		        maxWidth: 'calc(100vw - 24px)',
-		        maxHeight: 'calc(100vh - 24px)',
+		        width: size.width === 'full' ? '100%' : `${String(size.width)}px`,
+		        height: size.height === 'full' ? '100%' : `${String(size.height)}px`,
+		        maxWidth: size.width === 'full' ? '100vw' : 'calc(100vw - 24px)',
+		        maxHeight: size.height === 'full' ? '100vh' : `calc(100vh - ${FRAME_TOP} - 24px)`,
+		    };
+		}
+		/**
+		 * Position the resize strip on the window's inner edge.
+		 * @param edge - edge the window is anchored to.
+		 * @returns the strip geometry and its resize cursor.
+		 */
+		function resizeStripStyle(edge) {
+		    if (edge === 'top')
+		        return { ...RESIZE_STRIP, bottom: 0, left: 0, right: 0, height: RESIZE_EDGE, cursor: 'ns-resize' };
+		    if (edge === 'bottom')
+		        return { ...RESIZE_STRIP, top: 0, left: 0, right: 0, height: RESIZE_EDGE, cursor: 'ns-resize' };
+		    if (edge === 'left')
+		        return { ...RESIZE_STRIP, right: 0, top: 0, bottom: 0, width: RESIZE_EDGE, cursor: 'ew-resize' };
+		    return { ...RESIZE_STRIP, left: 0, top: 0, bottom: 0, width: RESIZE_EDGE, cursor: 'ew-resize' };
+		}
+		/**
+		 * Shape of the grip inside a resize strip.
+		 * @param axis - dimension the strip resizes.
+		 * @returns the grip style.
+		 */
+		function gripStyle(axis) {
+		    return axis === 'width' ? { ...GRIP, width: 3, height: 32 } : { ...GRIP, width: 32, height: 3 };
+		}
+		/**
+		 * Height of the DSH frame's reserved top strip (the Windows caption row).
+		 * @returns the pixel inset, or 0 in a browser, on macOS, or while fullscreen.
+		 */
+		function frameTopInset() {
+		    if (typeof document === 'undefined')
+		        return 0;
+		    const raw = getComputedStyle(document.documentElement).getPropertyValue('--dsh-frame-chrome-top');
+		    const value = Number.parseFloat(raw);
+		    return Number.isFinite(value) ? Math.max(0, value) : 0;
+		}
+		/**
+		 * Largest size one axis may take inside the usable viewport.
+		 * @param axis - dimension to measure.
+		 * @returns the pixel limit, never below the minimum.
+		 */
+		function viewportLimit(axis) {
+		    const total = axis === 'width' ? window.innerWidth : window.innerHeight;
+		    const inset = axis === 'height' ? EDGE_MARGIN * 2 + frameTopInset() : EDGE_MARGIN * 2;
+		    return Math.max(axis === 'width' ? MIN_WIDTH : MIN_HEIGHT, total - inset);
+		}
+		/**
+		 * Clamp one dimension to the viewport and the minimum size.
+		 * @param value - requested pixels.
+		 * @param axis - dimension being clamped.
+		 * @returns the rounded, clamped size.
+		 */
+		function clampSize(value, axis) {
+		    const min = axis === 'width' ? MIN_WIDTH : MIN_HEIGHT;
+		    return Math.round(Math.min(Math.max(value, min), viewportLimit(axis)));
+		}
+		/**
+		 * Read a size the user dragged for one popup.
+		 * @param id - namespaced popup id.
+		 * @returns the stored size, or null when nothing valid is stored.
+		 */
+		function readStoredSize(id) {
+		    try {
+		        const raw = localStorage.getItem(SIZE_STORAGE_PREFIX + id);
+		        if (raw === null)
+		            return null;
+		        const parsed = JSON.parse(raw);
+		        if (typeof parsed.width !== 'number' || typeof parsed.height !== 'number')
+		            return null;
+		        return { width: parsed.width, height: parsed.height };
+		    }
+		    catch {
+		        return null;
+		    }
+		}
+		/**
+		 * Remember a size the user dragged.
+		 * @param id - namespaced popup id.
+		 * @param size - pixel size to store.
+		 */
+		function storeSize(id, size) {
+		    try {
+		        localStorage.setItem(SIZE_STORAGE_PREFIX + id, JSON.stringify(size));
+		    }
+		    catch {
+		        // Private-mode storage can refuse writes; the window still works for this mount.
+		    }
+		}
+		/**
+		 * Resolve the size a popup opens with: its declared size, or the size the user
+		 * last dragged for it.
+		 * @param popup - popup definition.
+		 * @returns declared or remembered size, clamped to the viewport.
+		 */
+		function initialSize(popup) {
+		    const fallback = DEFAULT_SIZE[popup.edge];
+		    const declared = {
+		        width: popup.width === 'full' ? 'full' : clampSize(popup.width ?? fallback.width, 'width'),
+		        height: popup.height === 'full' ? 'full' : clampSize(popup.height ?? fallback.height, 'height'),
+		    };
+		    const stored = readStoredSize(popup.id);
+		    if (stored === null)
+		        return declared;
+		    return {
+		        width: declared.width === 'full' ? 'full' : clampSize(stored.width, 'width'),
+		        height: declared.height === 'full' ? 'full' : clampSize(stored.height, 'height'),
 		    };
 		}
 		/**
@@ -3479,7 +3632,7 @@ window.__ModuleLoader__.load({
 		    return `/dsh-shape/view/${shape}/${file}`;
 		}
 		/**
-		 * One edge popup window: entry animation, focus ownership, and dismissal.
+		 * One edge popup window: entry animation, resize, focus, and dismissal.
 		 * @param props.popup - registered popup.
 		 * @param props.closing - whether the registry asked it to close.
 		 * @returns the window.
@@ -3488,6 +3641,14 @@ window.__ModuleLoader__.load({
 		    const ref = react.useRef(null);
 		    /** Element focused before the popup opened; focus returns there on close. */
 		    const restore = react.useRef(null);
+		    const [size, setSize] = react.useState(() => initialSize(popup));
+		    /** Latest size, readable before React commits the state from a pointer move. */
+		    const sizeRef = react.useRef(size);
+		    /** Live drag: pointer origin and the size it started from. */
+		    const drag = react.useRef(null);
+		    const axis = popup.edge === 'left' || popup.edge === 'right' ? 'width' : 'height';
+		    const direction = popup.edge === 'top' || popup.edge === 'left' ? 1 : -1;
+		    const resizable = popup.resizable && size[axis] !== 'full';
 		    react.useEffect(() => {
 		        const element = ref.current;
 		        if (element === null)
@@ -3536,7 +3697,56 @@ window.__ModuleLoader__.load({
 		            animation.cancel();
 		        };
 		    }, [closing, popup.edge, popup.id]);
-		    return (react_jsx_runtime.jsx("div", { style: stripStyle(popup.edge), "data-shape-edge-strip": popup.id, children: react_jsx_runtime.jsxs("div", { ref: ref, tabIndex: -1, role: "dialog", "aria-label": popup.title, style: { ...WINDOW, ...windowSize(popup) }, "data-testid": "dsh-shape-edge", "data-shape-edge": popup.id, "data-edge": popup.edge, children: [react_jsx_runtime.jsxs("div", { style: BAR, children: [react_jsx_runtime.jsx("span", { style: BAR_TITLE, title: popup.title, children: popup.title }), react_jsx_runtime.jsx("button", { type: "button", style: BAR_CLOSE, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED (Esc)", "data-testid": "dsh-shape-edge-close", onClick: () => { closeShapeEdge(popup.id); }, children: "\u00D7" })] }), react_jsx_runtime.jsx("iframe", { style: FRAME, title: popup.title, src: viewUrl(popup), referrerPolicy: "no-referrer", sandbox: "allow-scripts allow-forms allow-modals allow-popups" })] }) }));
+		    const onResizeStart = (event) => {
+		        if (event.button !== 0 || !resizable)
+		            return;
+		        const element = ref.current;
+		        if (element === null)
+		            return;
+		        const rect = element.getBoundingClientRect();
+		        drag.current = {
+		            start: axis === 'width' ? event.clientX : event.clientY,
+		            startSize: axis === 'width' ? rect.width : rect.height,
+		        };
+		        try {
+		            event.currentTarget.setPointerCapture(event.pointerId);
+		        }
+		        catch {
+		            // Synthetic pointer events have no capturable pointer; moves still arrive.
+		        }
+		        event.preventDefault();
+		        event.stopPropagation();
+		    };
+		    const onResizeMove = (event) => {
+		        const current = drag.current;
+		        if (current === null)
+		            return;
+		        const delta = (axis === 'width' ? event.clientX : event.clientY) - current.start;
+		        const next = clampSize(current.startSize + direction * delta, axis);
+		        // A pointerup can arrive before React commits the move, so keep the latest
+		        // value in a ref for the handler that persists it.
+		        const nextSize = { ...sizeRef.current, [axis]: next };
+		        sizeRef.current = nextSize;
+		        setSize(nextSize);
+		        event.preventDefault();
+		    };
+		    const onResizeEnd = (event) => {
+		        if (drag.current === null)
+		            return;
+		        drag.current = null;
+		        if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+		            event.currentTarget.releasePointerCapture(event.pointerId);
+		        }
+		        const element = ref.current;
+		        if (element !== null) {
+		            const current = sizeRef.current;
+		            storeSize(popup.id, {
+		                width: typeof current.width === 'number' ? current.width : element.offsetWidth,
+		                height: typeof current.height === 'number' ? current.height : element.offsetHeight,
+		            });
+		        }
+		    };
+		    return (react_jsx_runtime.jsx("div", { style: stripStyle(popup.edge, size), "data-shape-edge-strip": popup.id, children: react_jsx_runtime.jsxs("div", { ref: ref, tabIndex: -1, role: "dialog", "aria-label": popup.title, style: { ...WINDOW, ...sizeStyle(size) }, "data-testid": "dsh-shape-edge", "data-shape-edge": popup.id, "data-edge": popup.edge, "data-width": size.width === 'full' ? 'full' : String(size.width), "data-height": size.height === 'full' ? 'full' : String(size.height), children: [react_jsx_runtime.jsxs("div", { style: BAR, children: [react_jsx_runtime.jsx("span", { style: BAR_TITLE, title: popup.title, children: popup.title }), react_jsx_runtime.jsx("button", { type: "button", style: BAR_CLOSE, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED (Esc)", "data-testid": "dsh-shape-edge-close", onClick: () => { closeShapeEdge(popup.id); }, children: "\u00D7" })] }), react_jsx_runtime.jsx("iframe", { style: FRAME, title: popup.title, src: viewUrl(popup), referrerPolicy: "no-referrer", sandbox: "allow-scripts allow-forms allow-modals allow-popups" }), resizable && (react_jsx_runtime.jsx("div", { style: resizeStripStyle(popup.edge), role: "separator", "aria-orientation": axis === 'width' ? 'vertical' : 'horizontal', "aria-label": "\u8C03\u6574\u7A97\u53E3\u5927\u5C0F", "data-testid": "dsh-shape-edge-resize", onPointerDown: onResizeStart, onPointerMove: onResizeMove, onPointerUp: onResizeEnd, onPointerCancel: onResizeEnd, children: react_jsx_runtime.jsx("span", { style: gripStyle(axis), "aria-hidden": "true" }) }))] }) }));
 		}
 		/**
 		 * Render every open edge popup into a fixed layer above the app.

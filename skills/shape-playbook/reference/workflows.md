@@ -70,22 +70,24 @@ Verified: a preference surviving a full page reload while other shapes kept thei
      const popup = api.edge({
        id: 'dock',
        title: '快捷面板',
-       edge: 'right',
+       edge: 'top',
        view: 'index.html',
-       width: 360,
-       height: 520,
+       width: 'full',        // 左右占满；像素也可以
+       height: 300,          // 像素或 'full'（上下占满）
        keys: 'Ctrl+Alt+E',
+       resizable: true,
      })
      popup.open()
      return () => popup.dispose()
    }
    ```
-3. `edge` is `top` / `right` / `bottom` / `left`; sides default to 380×560 and top/bottom to 640×420, and the window never leaves the viewport.
+3. `edge` is `top` / `right` / `bottom` / `left`; sides default to 380×560 and top/bottom to 640×420, and the window never leaves the viewport. `width`/`height` accept pixels or `'full'`: a full axis spans the viewport (the anchored edge keeps its 12px gap), so `edge: 'top'` + `width: 'full'` is a full-width bar.
 4. `keys` binds a private page-level shortcut that toggles the window (any combination, invisible in Settings). For a rebindable command, register it through `dsh-shape#shortcuts` and call `popup.toggle()`.
 5. `Esc` closes the topmost popup; `esc: false` opts out, and `finishShapeEdgeClose` drops the window after its exit animation. The title bar's close button works even when focus is inside the sandboxed view.
-6. A shape may open several popups at once; the one opened last is on top, and `open()` raises an already-open window.
+6. The inner edge is a resize strip (right window → left edge, top window → bottom edge, …). Dragging it updates the perpendicular dimension, clamped to the viewport with a 240×160 minimum; the size is stored per popup in `localStorage` and restored on the next open. `resizable: false` removes the strip, and a `'full'` axis is not resizable.
+7. A shape may open several popups at once; the one opened last is on top, and `open()` raises an already-open window.
 
-Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. This has not yet been run inside the full DSH GUI.
+Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. Dragging the right window's inner edge 120px grew it from 360 to exactly 480 and the size survived a page reload; `edge: 'top'` + `width: 'full'` measured 1280×260 at the top edge and `edge: 'left'` + `height: 'full'` measured 320×900, both with their remaining axis still resizable; `resizable: false` exposed no strip. With `--dsh-frame-chrome-top: 40px` (the Windows caption) the top window moved to y=52, the full-height left window to y=40/h=860, the centered right window to y=210, and a dragged top window clamped at 836px (900−40−24), so no edge window crosses the caption. This has not yet been run inside the full DSH GUI.
 
 ## 7. Regression pass before handing a shape over
 
