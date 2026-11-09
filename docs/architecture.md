@@ -9,7 +9,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 ├── package.json      清单：exports、files、dsh.bundle 与 dsh.client
 ├── cordis.patch.yml  包补丁：插入插件行与 preset-shape 预设行
 ├── index.js          入口：八行 re-export，指向 src/host/plugin.js
-├── client.js         浏览器 bundle：槽位桥接、形态客户端加载、9 个能力
+├── client.js         浏览器 bundle：槽位桥接、形态客户端加载、10 个能力
 ├── tools.js          Shape Studio 预设的工具集（11 个工具）
 ├── skill.js          Shape Studio 预设的两份 skill
 ├── src/
@@ -62,7 +62,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 
 1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`。
 2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。
-3. **能力实现**：实现 9 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
+3. **能力实现**：实现 10 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
 4. **能力目录同步**：把当前能力清单 `POST` 回宿主的 `/api/capabilities`，落盘为 `$DSH_HOME/dsh-shape/capabilities.json`，供 `shape_capabilities` 工具读取。
 
 形态 ABI 是 `apiVersion: 1`；声明了不兼容的 `apiVersion` 或缺少必需能力时，形态不启动，槽位里也不会出现它的条目。

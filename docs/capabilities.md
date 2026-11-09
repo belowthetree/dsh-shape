@@ -1,6 +1,6 @@
 # 能力参考
 
-9 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
+10 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
 
 ```json
 { "plugin": "dsh-shape", "capability": "conversation", "version": "^1.0.0" }
@@ -99,3 +99,62 @@
 | `subscribe(listener)` | 会话内容变化时回调，返回退订函数 |
 
 只能读到**已渲染**的轮次；更早的历史要等对话自己加载出来。底层读的是 DOM 上的 `[data-chat-anchor-key]`，所以它反映的是屏幕上的内容，而不是完整会话记录。
+
+## mcp
+
+读写 DSH 的 MCP 服务器配置：服务器行、工作区作用域、工作区 `.dsh/mcp.json` 的信任，以及单个会话实际能看到的服务器。数据由 `dsh-mcp-setting` 插件管理，本能力通过它的 `/dsh-mcp-setting/api` 接口读写 `cordis.patch.yml` 与工作区规则文件。
+
+| 方法 | 返回 | 说明 |
+| --- | --- | --- |
+| `available()` | `boolean` | 接口是否可达；没装 `dsh-mcp-setting` 时为 `false` |
+| `list()` | `McpServer[]` | 所有服务器行，按补丁文件顺序，主配置在前 |
+| `projects()` | `{ projectsEnabled, projects }` | 已发现的工作区配置，含信任状态与声明摘要 |
+| `get(id)` | `McpServer \| null` | 按 loader 行 id 取一条 |
+| `add({ id, ...draft })` | `McpState` | 追加到主配置文件 |
+| `update(id, draft)` | `McpState` | 就地改写该行所在文件里的 config |
+| `remove(id)` | `McpState` | 删除该行与它的工作区规则；`insert` 变空时整条补丁一起删 |
+| `setMode(id, mode, patterns?)` | `McpState` | `global` 全局加载、`workspace` 按路径挂载、`disabled` 关闭 |
+| `setProjectTrusted(dir, trusted)` | `McpState` | 信任或撤销某工作区的 `.dsh/mcp.json` |
+| `session(sessionId)` | `McpSession` | 该会话能看到的服务器（全局 → 工作区 → 工作区文件） |
+
+`McpServer` 形如：
+
+```js
+{
+  id: 'mcp-fs',                  // loader 行 id
+  serverName: 'fs',              // 工具命名空间前缀 mcp__<serverName>__
+  transport: 'stdio',            // 或 'streamable-http'，读不出时为 null
+  endpoint: 'npx -y pkg',        // stdio 是命令行，http 是 URL
+  disabled: false,
+  mode: 'global',                // global | workspace | disabled
+  workspacePatterns: [],         // workspace 模式下的路径模式
+  workspaceSessions: 0,          // 当前按规则挂载了它的会话数
+  status: { state: 'connected', toolCount: 12 },
+  scope: 'home',                 // 'home' 或 'profile:web'
+  file: 'C:/Users/…/cordis.patch.yml',
+  config: { /* 原始 config，含设置页不展示的 reconnect 等字段 */ },
+}
+```
+
+`McpState` 是所有写操作回执的公共形状：`{ homeFile, workspaceFile, projectsEnabled, projects, servers }`。面板可以只凭一次写回执整页重绘。
+
+`projects()` 的每一项是 `{ dir, file, trusted, entries, error, lastSeen }`；`entries` 里是 `{ serverName, transport, summary, cwd }`。工作区配置默认不挂载，`trusted` 为 `true` 之后其声明才会在匹配的会话里生效——`setProjectTrusted(dir, true)` 就是这个开关。
+
+`session(sessionId)` 返回 `{ sessionId, cwd, projectsEnabled, servers }`，其中 `servers` 是 `{ serverName, source, transport, summary, toolCount, mounted }`，`source` 为 `global`、`workspace` 或 `project`。会话 id 可以用 `dsh-shape#composer` 的 `sessionId()` 取。
+
+`draft` 用结构化字段，而不是设置页那套表单字符串：
+
+```js
+{
+  serverName: 'github',
+  transport: 'streamable-http',        // 或 'stdio'
+  url: 'https://mcp.example.com/mcp',
+  headers: { Authorization: 'Bearer …' },
+}
+```
+
+stdio 用 `command`、`args`（数组）、`cwd`、`env`；streamable-http 用 `url`、`headers`。`update()` 传的是完整草稿：省略的字段会被清空，切换传输方式时另一侧的字段一并移除，但草稿之外的高级字段（`reconnect`、`toolCallTimeoutMs` 等）保留。
+
+`setMode(id, 'workspace', patterns)` 的 `patterns` 是工作区路径模式：`*` 匹配一段、`**` 跨段、`?` 匹配一个字符，目录模式覆盖其下所有路径，Windows 上不区分大小写；`workspace` 模式至少需要一条。
+
+所有方法都是异步的，失败时抛 `dsh-shape#mcp: …`。**没装 `dsh-mcp-setting` 时能力仍然注册**：`available()` 返回 `false`，其余方法抛错并点名该插件。字段校验在插件侧完成（id 与 serverName 唯一、stdio 必须有 command、workspace 至少一条路径等），错误信息原样带回。写入由 DSH 的配置热加载即时生效，不需要重启。

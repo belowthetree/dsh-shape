@@ -125,6 +125,26 @@
         "subscribe"
       ],
       "fields": []
+    },
+    {
+      "plugin": "dsh-shape",
+      "capability": "mcp",
+      "version": "1.0.0",
+      "description": "Read and edit the MCP servers configured for this harness through the dsh-mcp-setting admin API, including workspace scoping and workspace configuration trust.",
+      "usage": "list() returns server rows; projects() returns discovered workspace configs; get(id) returns one row or null; add({ id, ...draft }) appends a row to the home patch file; update(id, draft) rewrites one row; remove(id) deletes it; setMode(id, mode, patterns) makes a row global, workspace-scoped, or disabled; setProjectTrusted(dir, trusted) trusts or revokes a workspace .dsh/mcp.json; session(sessionId) lists the servers one Session sees; available() reports whether the admin API answers. Writes go through /dsh-mcp-setting/api, so dsh-mcp-setting must be installed — every call throws a message naming it otherwise. Mutations return { homeFile, workspaceFile, projectsEnabled, projects, servers }. transport is \"stdio\" (command, args, cwd, env) or \"streamable-http\" (url, headers); fields the draft omits are cleared on update.",
+      "methods": [
+        "add",
+        "available",
+        "get",
+        "list",
+        "projects",
+        "remove",
+        "session",
+        "setMode",
+        "setProjectTrusted",
+        "update"
+      ],
+      "fields": []
     }
   ]
 }

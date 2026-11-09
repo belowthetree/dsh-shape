@@ -57,6 +57,7 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 - `dsh-shape#storage` version `1.0.0`; methods `get`, `set`, `remove`, `keys`; JSON files under the shape's own `data/` directory.
 - `dsh-shape#composer` version `1.0.0`; methods `getText`, `setText`, `insert`, `submit`, `sessionId`; the draft of the composer currently mounted in the conversation.
 - `dsh-shape#conversation` version `1.0.0`; methods `messages`, `find`, `reveal`, `subscribe`; the rendered transcript, for search and jump-to-message.
+- `dsh-shape#mcp` version `1.0.0`; methods `available`, `list`, `projects`, `get`, `add`, `update`, `remove`, `setMode`, `setProjectTrusted`, `session`; the MCP servers configured for this harness, their workspace scoping and workspace-config trust, and the servers one Session sees, through the `dsh-mcp-setting` admin API.
 
 ### `dsh-shape#conversation`
 
@@ -176,3 +177,27 @@ ui.openShapeBrowser()            // raise the shape browser
 `shape_capabilities` lists providers with qualified id, contract version, self-description, usage guidance, method names, and non-function field types. It is a discovery catalog, not a signature or validation contract; inspect provider source or use `cordis` for exact service behavior.
 
 `description` and `usage` are optional, non-empty strings when provided. Missing metadata does not block registration or resolution. The catalog is mirrored from the Client registry to the Host. External providers appear after registration.
+
+### `dsh-shape#mcp`
+
+```js
+const mcp = api.require('dsh-shape', 'mcp')
+if (await mcp.available()) {
+  const servers = await mcp.list()
+  await mcp.setMode(servers[0].id, 'workspace', ['E:/work/**'])
+  const { projects, projectsEnabled } = await mcp.projects()
+  if (projectsEnabled && projects[0]) await mcp.setProjectTrusted(projects[0].dir, true)
+}
+```
+
+`list()` returns `{ id, serverName, transport, endpoint, disabled, mode, workspacePatterns, workspaceSessions, status, scope, file, config }` rows in patch-file order, home layer first. `id` is the loader row id; `serverName` is the tool namespace (`mcp__<serverName>__*`); `transport` is `stdio`, `streamable-http`, or null when unreadable; `endpoint` is the command line for stdio rows and the URL for HTTP rows; `mode` is `global`, `workspace`, or `disabled`; `status` is `{ state, toolCount }` inferred from the loader fiber and the tool registry (`connected`, `disconnected`, `failed`, `loading`, `workspace`, `disabled`, `unloaded`); `config` is the stored config, including advanced fields the settings page does not render.
+
+`projects()` returns `{ projectsEnabled, projects }`, where each project is `{ dir, file, trusted, entries, error, lastSeen }` and each entry is `{ serverName, transport, summary, cwd }`. A workspace's `.dsh/mcp.json` never mounts until it is trusted; `setProjectTrusted(dir, true)` is that switch.
+
+`session(sessionId)` returns `{ sessionId, cwd, projectsEnabled, servers }` with `{ serverName, source, transport, summary, toolCount, mounted }` rows, `source` being `global`, `workspace`, or `project`. Use `composer.sessionId()` for the id when the shape runs inside a conversation.
+
+Every mutation (`add`, `update`, `remove`, `setMode`, `setProjectTrusted`) returns the full snapshot `{ homeFile, workspaceFile, projectsEnabled, projects, servers }`, so a panel can re-render from the receipt. `add()` appends to the home patch file, `update()` and `remove()` act on the file that holds the row, `remove()` also drops the row's workspace rule and the enclosing patch entry when its `insert` list becomes empty, and `setMode()` writes the loader flag and the workspace rule in an order that never leaves an enabled row beside a rule. Writes take effect through the harness config hot reload.
+
+A draft is structured, not the settings form's string fields: `serverName` plus `transport`, then `command` / `args` (array) / `cwd` / `env` for stdio or `url` / `headers` for streamable-http. `update()` takes the complete draft — omitted fields are cleared, the other transport's fields are dropped, and advanced stored fields (`reconnect`, `toolCallTimeoutMs`, …) survive. Workspace patterns use `*` for one path segment, `**` across segments, `?` for one character, and a directory pattern also covers everything below it; Windows matching is case-insensitive.
+
+The capability is registered even when the backend is absent: `available()` returns false and every other method throws `dsh-shape#mcp: …`, naming `dsh-mcp-setting`. Field validation (unique `id` and `serverName`, a `command` for stdio, a `url` for streamable-http, at least one workspace pattern) happens in that plugin, and its message is passed through unchanged. Shapes that only enhance a host should check `available()` and degrade instead of blocking startup.

@@ -24,6 +24,7 @@ import { createShapeStorage } from './shape-storage.ts'
 import { ShapeComposerBridge } from './ShapeComposerBridge.tsx'
 import { createComposer } from './shape-composer.ts'
 import { createConversation } from './shape-conversation.ts'
+import { createMcp } from './mcp.ts'
 import { ShapeOverlay } from './ShapeOverlay.tsx'
 import { ShapeEdgeLayer } from './ShapeEdgeLayer.tsx'
 import { createTabComponent, createTabTitleComponent } from './ShapeTabHost.tsx'
@@ -193,6 +194,15 @@ export function apply(ctx: Context): void {
     usage: 'messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.',
     api: createConversation(),
   }), 'dsh-shape: conversation capability')
+
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'mcp',
+    version: '1.0.0',
+    description: 'Read and edit the MCP servers configured for this harness through the dsh-mcp-setting admin API, including workspace scoping and workspace configuration trust.',
+    usage: 'list() returns server rows; projects() returns discovered workspace configs; get(id) returns one row or null; add({ id, ...draft }) appends a row to the home patch file; update(id, draft) rewrites one row; remove(id) deletes it; setMode(id, mode, patterns) makes a row global, workspace-scoped, or disabled; setProjectTrusted(dir, trusted) trusts or revokes a workspace .dsh/mcp.json; session(sessionId) lists the servers one Session sees; available() reports whether the admin API answers. Writes go through /dsh-mcp-setting/api, so dsh-mcp-setting must be installed — every call throws a message naming it otherwise. Mutations return { homeFile, workspaceFile, projectsEnabled, projects, servers }. transport is "stdio" (command, args, cwd, env) or "streamable-http" (url, headers); fields the draft omits are cleared on update.',
+    api: createMcp(),
+  }), 'dsh-shape: mcp capability')
 
   capabilities.subscribe(() => {
     window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'))

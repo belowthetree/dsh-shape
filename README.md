@@ -19,7 +19,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 - **删除形态**：卡片右上角的删除按钮，确认后把该形态目录从磁盘移除
 - **能力依赖**：形态声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
 - **能力目录**：可以查看当前有哪些形态可用能力、版本、用途、用法和 API 方法名
-- **内置能力**：9 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件、存储、输入框与对话读取，见下文[内置能力](#内置能力)
+- **内置能力**：10 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件、存储、输入框、对话读取与 MCP 服务器管理，见下文[内置能力](#内置能力)
 - **内置形态**：随包提供 `chat-search`（对话内搜索，Ctrl+F）和 `workspace-tab-switch`（工作区切换器，Ctrl+Tab），可在形态面板里启停或删除；用户目录下同 id 的形态会覆盖它们
 - **即时生效**：修改形态目录里已有文件后刷新页面即可；新增或删除文件需先在形态面板点刷新（或 `POST /dsh-shape/api/refresh`），面板会自动重载页面
 
@@ -49,6 +49,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | JSON 数据存到形态目录的 `data/` 下 |
 | `dsh-shape#composer` | 1.0.0 | `getText` `setText` `insert` `submit` `sessionId` | 读写当前输入框草稿，可插入或直接发送 |
 | `dsh-shape#conversation` | 1.0.0 | `messages` `find` `reveal` `subscribe` | 读取已渲染的对话、搜索并跳转到某条消息 |
+| `dsh-shape#mcp` | 1.0.0 | `available` `list` `projects` `get` `add` `update` `remove` `setMode` `setProjectTrusted` `session` | 读取与修改 MCP 服务器：状态、工作区作用域、工作区配置信任、单会话清单（数据来自 `dsh-mcp-setting`） |
 
 ```js
 const ui = api.require('dsh-shape', 'ui')
@@ -66,7 +67,7 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 - [文档索引](docs/README.md)
 - [架构](docs/architecture.md)：宿主插件、客户端 bundle、形态加载与能力系统
 - [形态目录](docs/shapes.md)：清单字段、视图、槽位条目、客户端模块
-- [能力参考](docs/capabilities.md)：9 个能力的方法、返回值与失败行为
+- [能力参考](docs/capabilities.md)：10 个能力的方法、返回值与失败行为
 - [开发与发布](docs/development.md)：本地联调、发布前检查、client.js 拼接注意事项
 - [已知问题](docs/known-issues.md)：当前不可用的 API 与踩过的坑
 

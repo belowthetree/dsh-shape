@@ -176,6 +176,12 @@ The shape panel's refresh button reads that receipt and reloads the page itself 
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
 
+### Checking `client.js` without a shell
+
+When the terminal is unavailable but a browser is, a `file://` page beside the bundle reproduces both client gates: define `window.__ModuleLoader__` before a `<script src="client.js">`, then call `loaded.factory(stubs)` and `apply(ctx)` with the same stub context `check-client-bundle.mjs` uses, and print the capability catalog into the page. Classic scripts load from `file://`; `fetch` does not, so stub `window.fetch` for whichever capability you are exercising.
+
+Verified while adding `dsh-shape#mcp`: the page reported the shape-capability registry with all 10 providers and 27/27 contract checks — URL, method, request body, response normalization, and error passthrough against a stubbed `dsh-mcp-setting` 0.2.0 payload. Delete the harness page afterwards; `node scripts/check-client-bundle.mjs` and `gen-capability-fallback.mjs --check` remain the gates of record.
+
 ### Checking the host without a running DSH
 
 `index.js` boots standalone against a stub context, which is the fastest way to prove a host change and to drive its routes:

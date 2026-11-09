@@ -4175,6 +4175,277 @@ window.__ModuleLoader__.load({
 		    };
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/mcp.ts
+		/**
+		 * Built-in MCP capability: read and edit the MCP servers configured for this
+		 * harness. The rows themselves are owned by the `dsh-mcp-setting` plugin, which
+		 * mounts the admin API edited here; this module only speaks that HTTP contract.
+		 *
+		 * Module-level identifiers carry the `mcp` prefix because this file is spliced
+		 * into `client.js`, where every region shares one factory scope.
+		 */
+		/** Admin API prefix dsh-mcp-setting mounts. */
+		const MCP_API = '/dsh-mcp-setting/api';
+		/**
+		 * Build the MCP capability.
+		 * @returns the API shapes receive.
+		 */
+		function createMcp() {
+		    return {
+		        async available() {
+		            try {
+		                await mcpRead('/servers');
+		                return true;
+		            }
+		            catch {
+		                return false;
+		            }
+		        },
+		        async list() {
+		            return mcpStateOf(await mcpRead('/servers')).servers;
+		        },
+		        async projects() {
+		            const state = mcpStateOf(await mcpRead('/servers'));
+		            return { projectsEnabled: state.projectsEnabled, projects: state.projects };
+		        },
+		        async get(id) {
+		            mcpRequireId(id, 'server');
+		            const state = mcpStateOf(await mcpRead('/servers'));
+		            return state.servers.find(server => server.id === id) ?? null;
+		        },
+		        async add(draft) {
+		            const id = mcpRequireId(draft?.id, 'server');
+		            const body = { id, ...mcpBodyOf(draft) };
+		            return mcpStateOf(await mcpRead('/servers', { method: 'POST', body: JSON.stringify(body) }));
+		        },
+		        async update(id, draft) {
+		            const target = mcpRequireId(id, 'server');
+		            const body = mcpBodyOf(draft);
+		            return mcpStateOf(await mcpRead(`/servers/${encodeURIComponent(target)}`, {
+		                method: 'PUT',
+		                body: JSON.stringify(body),
+		            }));
+		        },
+		        async remove(id) {
+		            const target = mcpRequireId(id, 'server');
+		            return mcpStateOf(await mcpRead(`/servers/${encodeURIComponent(target)}`, { method: 'DELETE' }));
+		        },
+		        async setMode(id, mode, patterns) {
+		            const target = mcpRequireId(id, 'server');
+		            const list = Array.isArray(patterns) ? patterns.filter(entry => typeof entry === 'string') : [];
+		            const body = mode === 'workspace' ? { mode, patterns: list } : { mode };
+		            return mcpStateOf(await mcpRead(`/servers/${encodeURIComponent(target)}/scope`, {
+		                method: 'PUT',
+		                body: JSON.stringify(body),
+		            }));
+		        },
+		        async setProjectTrusted(dir, trusted) {
+		            if (typeof dir !== 'string' || dir.trim() === '') {
+		                throw new Error('dsh-shape#mcp: a project directory is required');
+		            }
+		            const body = { dir, trusted: trusted === true };
+		            return mcpStateOf(await mcpRead('/projects', { method: 'PUT', body: JSON.stringify(body) }));
+		        },
+		        async session(sessionId) {
+		            const target = mcpRequireId(sessionId, 'session');
+		            return mcpSessionOf(await mcpRead(`/sessions/${encodeURIComponent(target)}/mcp`));
+		        },
+		    };
+		}
+		/**
+		 * Serialize one draft into the admin API's form field names.
+		 * @param draft - the shape-facing draft.
+		 * @returns the JSON body the route expects.
+		 */
+		function mcpBodyOf(draft) {
+		    const text = (value) => typeof value === 'string' ? value : '';
+		    const args = draft?.args;
+		    const list = Array.isArray(args) ? args.filter(entry => typeof entry === 'string') : [];
+		    return {
+		        serverName: text(draft?.serverName),
+		        transport: draft?.transport,
+		        command: text(draft?.command),
+		        args: list.join('\n'),
+		        cwd: text(draft?.cwd),
+		        envJson: JSON.stringify(mcpIsRecord(draft?.env) ? draft.env : {}),
+		        url: text(draft?.url),
+		        headersJson: JSON.stringify(mcpIsRecord(draft?.headers) ? draft.headers : {}),
+		    };
+		}
+		/**
+		 * Reject a missing identity before it reaches the route.
+		 * @param value - candidate row or session id.
+		 * @param label - what the id names, for the error text.
+		 * @returns the same id when usable.
+		 */
+		function mcpRequireId(value, label) {
+		    if (typeof value !== 'string' || value.trim() === '') {
+		        throw new Error(`dsh-shape#mcp: a ${label} id is required`);
+		    }
+		    return value;
+		}
+		/**
+		 * Whether a value is a plain object.
+		 * @param value - candidate value.
+		 * @returns true for non-array objects.
+		 */
+		function mcpIsRecord(value) {
+		    return typeof value === 'object' && value !== null && !Array.isArray(value);
+		}
+		/**
+		 * Read one string field with a fallback.
+		 * @param value - raw field.
+		 * @param fallback - value used when the field is not a string.
+		 * @returns the string field.
+		 */
+		function mcpText(value, fallback = '') {
+		    return typeof value === 'string' ? value : fallback;
+		}
+		/**
+		 * Read one string array field, dropping other entries.
+		 * @param value - raw field.
+		 * @returns the string entries.
+		 */
+		function mcpStrings(value) {
+		    return Array.isArray(value) ? value.filter(entry => typeof entry === 'string') : [];
+		}
+		/**
+		 * Read one wire row into the shape-facing shape.
+		 * @param value - one `servers` entry from the admin API.
+		 * @returns the normalized row.
+		 */
+		function mcpNormalizeServer(value) {
+		    const row = mcpIsRecord(value) ? value : {};
+		    const config = mcpIsRecord(row.config) ? row.config : {};
+		    const status = mcpIsRecord(row.status) ? row.status : {};
+		    const transport = typeof config.transport === 'string' ? config.transport : null;
+		    const mode = row.mode === 'global' || row.mode === 'workspace' || row.mode === 'disabled'
+		        ? row.mode
+		        : row.disabled === true ? 'disabled' : 'global';
+		    return {
+		        id: mcpText(row.id),
+		        serverName: mcpText(config.serverName, mcpText(row.id)),
+		        transport,
+		        endpoint: mcpEndpointOf(transport, config),
+		        disabled: row.disabled === true,
+		        mode,
+		        workspacePatterns: mcpStrings(row.workspacePatterns),
+		        workspaceSessions: typeof row.workspaceSessions === 'number' ? row.workspaceSessions : 0,
+		        status: {
+		            state: mcpText(status.state, 'unknown'),
+		            toolCount: typeof status.toolCount === 'number' ? status.toolCount : 0,
+		        },
+		        scope: mcpText(row.scope),
+		        file: mcpText(row.file),
+		        config: { ...config },
+		    };
+		}
+		/**
+		 * Summarize how a shape reaches one server.
+		 * @param transport - stored transport kind.
+		 * @param config - stored config.
+		 * @returns the URL for HTTP rows, the command line for stdio rows.
+		 */
+		function mcpEndpointOf(transport, config) {
+		    if (transport === 'streamable-http')
+		        return mcpText(config.url);
+		    const args = mcpStrings(config.args);
+		    return [mcpText(config.command), ...args].filter(part => part.length > 0).join(' ');
+		}
+		/**
+		 * Read one wire project view.
+		 * @param value - one `projects` entry from the admin API.
+		 * @returns the normalized project.
+		 */
+		function mcpNormalizeProject(value) {
+		    const row = mcpIsRecord(value) ? value : {};
+		    const entries = Array.isArray(row.entries) ? row.entries.filter(mcpIsRecord).map((entry) => {
+		        return {
+		            serverName: mcpText(entry.serverName),
+		            transport: mcpText(entry.transport),
+		            summary: mcpText(entry.summary),
+		            cwd: typeof entry.cwd === 'string' ? entry.cwd : null,
+		        };
+		    }) : [];
+		    return {
+		        dir: mcpText(row.dir),
+		        file: mcpText(row.file),
+		        trusted: row.trusted === true,
+		        entries,
+		        error: typeof row.error === 'string' ? row.error : null,
+		        lastSeen: typeof row.lastSeen === 'number' ? row.lastSeen : null,
+		    };
+		}
+		/**
+		 * Read one `/servers` receipt into the shape-facing snapshot.
+		 * @param body - the validated response body.
+		 * @returns the snapshot.
+		 */
+		function mcpStateOf(body) {
+		    return {
+		        homeFile: mcpText(body.homeFile),
+		        workspaceFile: mcpText(body.workspaceFile),
+		        projectsEnabled: body.projectsEnabled === true,
+		        projects: Array.isArray(body.projects) ? body.projects.map(mcpNormalizeProject) : [],
+		        servers: Array.isArray(body.servers) ? body.servers.map(mcpNormalizeServer) : [],
+		    };
+		}
+		/**
+		 * Read one `/sessions/:id/mcp` receipt.
+		 * @param body - the validated response body.
+		 * @returns the Session inventory.
+		 */
+		function mcpSessionOf(body) {
+		    const servers = Array.isArray(body.servers) ? body.servers.filter(mcpIsRecord).map((row) => {
+		        const source = row.source === 'global' || row.source === 'workspace' || row.source === 'project'
+		            ? row.source
+		            : 'global';
+		        return {
+		            serverName: mcpText(row.serverName),
+		            source,
+		            transport: typeof row.transport === 'string' ? row.transport : null,
+		            summary: mcpText(row.summary),
+		            toolCount: typeof row.toolCount === 'number' ? row.toolCount : 0,
+		            mounted: row.mounted === true,
+		        };
+		    }) : [];
+		    return {
+		        sessionId: mcpText(body.sessionId),
+		        cwd: typeof body.cwd === 'string' ? body.cwd : null,
+		        projectsEnabled: body.projectsEnabled === true,
+		        servers,
+		    };
+		}
+		/**
+		 * Call the admin API and validate the envelope.
+		 * @param path - path below the API prefix.
+		 * @param init - optional method and body.
+		 * @returns the validated response body.
+		 */
+		async function mcpRead(path, init) {
+		    const url = `${MCP_API}${path}`;
+		    let response;
+		    try {
+		        response = await fetch(url, {
+		            credentials: 'same-origin',
+		            ...init,
+		            headers: { 'content-type': 'application/json' },
+		        });
+		    }
+		    catch {
+		        throw new Error(`dsh-shape#mcp: cannot reach ${MCP_API}; is dsh-mcp-setting installed?`);
+		    }
+		    const body = await response.json().catch(() => null);
+		    if (body === null) {
+		        throw new Error(`dsh-shape#mcp: ${url} answered ${String(response.status)} without JSON; is dsh-mcp-setting installed?`);
+		    }
+		    if (body.ok !== true) {
+		        const message = mcpText(body.message, `request failed (${String(response.status)})`);
+		        throw new Error(`dsh-shape#mcp: ${message}`);
+		    }
+		    return body;
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/index.ts
 		/**
 		 * dsh-shape Client half: shape browser, composer cards, and the capability
@@ -4326,6 +4597,14 @@ window.__ModuleLoader__.load({
 		        usage: 'messages() lists the rendered rows with { id, turn, text }; find(text, { caseSensitive, limit }) returns { messageId, index, preview } matches; reveal(messageId) scrolls that row into view; subscribe(listener) reports transcript changes. Only loaded turns are readable — older history appears after the conversation loads it.',
 		        api: createConversation(),
 		    }), 'dsh-shape: conversation capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'mcp',
+		        version: '1.0.0',
+		        description: 'Read and edit the MCP servers configured for this harness through the dsh-mcp-setting admin API, including workspace scoping and workspace configuration trust.',
+		        usage: 'list() returns server rows; projects() returns discovered workspace configs; get(id) returns one row or null; add({ id, ...draft }) appends a row to the home patch file; update(id, draft) rewrites one row; remove(id) deletes it; setMode(id, mode, patterns) makes a row global, workspace-scoped, or disabled; setProjectTrusted(dir, trusted) trusts or revokes a workspace .dsh/mcp.json; session(sessionId) lists the servers one Session sees; available() reports whether the admin API answers. Writes go through /dsh-mcp-setting/api, so dsh-mcp-setting must be installed — every call throws a message naming it otherwise. Mutations return { homeFile, workspaceFile, projectsEnabled, projects, servers }. transport is "stdio" (command, args, cwd, env) or "streamable-http" (url, headers); fields the draft omits are cleared on update.',
+		        api: createMcp(),
+		    }), 'dsh-shape: mcp capability');
 		    capabilities.subscribe(() => {
 		        window.dispatchEvent(new CustomEvent('dsh-shape:capabilities'));
 		        void syncCapabilities(capabilities);

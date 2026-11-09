@@ -19,7 +19,7 @@ dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extensio
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their slot entries
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
-- **Built-in capabilities**: nine capabilities cover workspace switching, surface control, shortcuts, slots, events, storage, the composer, and the conversation; see [Built-in capabilities](#built-in-capabilities) below
+- **Built-in capabilities**: ten capabilities cover workspace switching, surface control, shortcuts, slots, events, storage, the composer, the conversation, and MCP server management; see [Built-in capabilities](#built-in-capabilities) below
 - **Bundled shapes**: `chat-search` (find in the conversation, Ctrl+F) and `workspace-tab-switch` (workspace switcher, Ctrl+Tab) ship with the package; enable, disable, or delete them from the shapes panel, and a user shape with the same id overrides either one
 - **Instant updates**: editing an existing file in a shape folder only needs a page reload; adding or deleting files needs a refresh from the shapes panel (or `POST /dsh-shape/api/refresh`), which reloads the page for you
 
@@ -49,6 +49,7 @@ A shape declares what it needs in `shape.requires` and reads it with `api.requir
 | `dsh-shape#storage` | 1.0.0 | `get` `set` `remove` `keys` | Persist JSON under the shape's `data/` directory |
 | `dsh-shape#composer` | 1.0.0 | `getText` `setText` `insert` `submit` `sessionId` | Read and rewrite the active composer draft |
 | `dsh-shape#conversation` | 1.0.0 | `messages` `find` `reveal` `subscribe` | Read the rendered transcript, search it, jump to a message |
+| `dsh-shape#mcp` | 1.0.0 | `available` `list` `projects` `get` `add` `update` `remove` `setMode` `setProjectTrusted` `session` | Read and edit MCP servers: status, workspace scoping, workspace-config trust, and the servers one Session sees (rows owned by `dsh-mcp-setting`) |
 
 ```js
 const ui = api.require('dsh-shape', 'ui')

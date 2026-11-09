@@ -26,7 +26,7 @@ dsh web --no-open --port 0
 
 ```sh
 curl http://127.0.0.1:<port>/dsh-shape/api/health
-# {"ok":true,"count":6,"capabilities":9,"roots":{...}}
+# {"ok":true,"count":6,"capabilities":10,"roots":{...}}
 ```
 
 `ok` 为真但 `count` 或 `capabilities` 为 0，说明形态目录没扫到或客户端还没同步能力。
