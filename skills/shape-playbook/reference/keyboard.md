@@ -105,3 +105,32 @@ A colon id (`shape:config-workbench:toggle`) fails the pattern, the IPC call rej
 Fix: dotted segments, each starting with a letter — `shape.config-workbench.toggle`. Since 0.4.38 `dsh-shape` builds `shape.<shapeId>.<id>` and normalizes both segments (invalid characters become `-`, a leading non-letter gets an `s` prefix), because a shape author cannot be expected to keep the DSH id grammar.
 
 Verified: `pattern.test('shape:config-workbench:toggle') === false` and `pattern.test('shape.config-workbench.toggle') === true` against the shipped pattern; after the change `check-client-bundle.mjs` (41 registrations), `gen-capability-fallback.mjs --check` (9 capabilities), and `check-tool-schemas.mjs` (11 tools) all pass.
+
+## A mounted dialog turns Ctrl+, and Ctrl+/ into no-ops
+
+Symptom: on the desktop, Ctrl+, stops opening Settings and Ctrl+/ stops opening the shortcut reference, while Ctrl+N and the sidebar gear still work. Settings opens fine from the gear, Settings → Shortcuts still lists both commands as bound, and reloading the window changes nothing.
+
+What the host actually does: the shortcut adapters take the modal owner from the document, not from a registry:
+
+```js
+// packages/client/ui-primitives/src/useModalLayer.ts
+export const modalSelector = '[role="dialog"][aria-modal="true"], [role="menu"]'
+// packages/client/shortcuts/src/client/native.ts
+const top = [...window.document.querySelectorAll(modalSelector)].at(-1)
+const context = { target, region, modal: top?.dataset.shortcutModal ?? (top === undefined ? null : 'other') }
+```
+
+`settings.open` resolves `{ status: 'blocked' }` whenever `modal` is neither `null` nor `settings`; `shortcuts.open` accepts only `null`, `settings`, `shortcuts`. Visibility plays no part in the query, and on Windows/macOS desktop `dispatch` skips its own modal gate, so each command's own `resolve` is the only decider. One element that stays mounted while hidden therefore disables both commands for the whole session — and only those: commands without a `modals` scope keep working, which is why this reads as "the settings shortcut broke".
+
+Found in: the bundled `workspace-tab-switch` shape appended its `wts-root` panel to `document.body` once at activation and set `role="dialog"` + `aria-modal="true"` on it permanently. Idle it is only CSS-hidden (`data-phase="idle"`), which the selector cannot see.
+
+Fix: own the role with the visible phase — add both attributes when the panel opens and remove them when it closes. `display:none`, `visibility:hidden`, or `aria-hidden="true"` are not enough; remove the attributes.
+
+Verified — on the failing desktop window, with Ctrl+, and Ctrl+/ dead and Ctrl+N working:
+
+```js
+JSON.stringify([...document.querySelectorAll('[role="dialog"][aria-modal="true"],[role="menu"]')].map(e => [e.tagName, e.getAttribute('role'), e.dataset.shortcutModal ?? '-', (e.className || '').toString().slice(0, 60)]))
+```
+
+returned `[["DIV","dialog","-","wts-root"]]`: one element, no `data-shortcut-modal`, the shape's class. The gear still opened Settings, so the panel and the command catalog were intact — only the gesture was blocked. After the fix the same query returns `[]` at idle and Ctrl+, opens Settings again.
+

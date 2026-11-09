@@ -144,6 +144,26 @@ export function activate(api) {
 
 `render` receives the slot's own container and re-runs after the slot remounts; the returned cleanup runs before the container is dropped, and the runtime disposes every mount when the shape is disabled or reloaded.
 
+## 对话框与 DSH 的模态状态
+
+形态自己往宿主文档里挂 DOM 时，`role="dialog"` + `aria-modal="true"`（或 `role="menu"`）不只是无障碍标注。DSH 的快捷键适配器取文档里最后一个匹配 `[role="dialog"][aria-modal="true"], [role="menu"]` 的元素当模态所有者（`ui-primitives` 的 `modalSelector`），把它的 `data-shortcut-modal`（没有就是 `'other'`）交给命令的 `resolve`；`settings.open`（Ctrl+,）和 `shortcuts.open`（Ctrl+/）只接受 `null`、`settings`、`shortcuts`，其余一律 blocked。
+
+所以只有面板真正显示时才挂这两个属性，常驻的隐藏节点必须在闲置时移除：
+
+```js
+const setOpen = (open) => {
+  if (open) {
+    root.setAttribute('role', 'dialog')
+    root.setAttribute('aria-modal', 'true')
+  } else {
+    root.removeAttribute('role')
+    root.removeAttribute('aria-modal')
+  }
+}
+```
+
+`display:none` / `visibility:hidden` 不够——选择器只看属性。一个常驻的模态角色会让整个窗口的 Ctrl+, 和 Ctrl+/ 失效，同时 Ctrl+N 这类不受模态限制的命令照常工作，看起来就像"设置快捷键坏了"。
+
 ## Shortcuts
 
 `binding` has:

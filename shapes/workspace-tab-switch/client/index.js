@@ -488,9 +488,7 @@ export function activate(api) {
   const root = el('div', 'wts-root')
   root.setAttribute('data-phase', 'idle')
   root.setAttribute('data-theme', 'dark')
-  root.setAttribute('role', 'dialog')
-  root.setAttribute('aria-modal', 'true')
-  root.setAttribute('aria-label', '切换工作区')
+  root.setAttribute('aria-hidden', 'true')
   root.setAttribute('data-testid', 'workspace-tab-switch')
 
   const scrim = el('div', 'wts-scrim')
@@ -657,6 +655,20 @@ export function activate(api) {
     phase = next
     root.setAttribute('data-phase', next)
     root.setAttribute('aria-hidden', next === 'open' || next === 'toast' ? 'false' : 'true')
+    // The panel stays in the document for the whole session so its transitions can
+    // run, but it is only a dialog while it is showing. DSH reads the last
+    // `[role="dialog"][aria-modal="true"]` element as the shortcut adapter's modal
+    // owner (`modalSelector` in ui-primitives); a permanently mounted one makes every
+    // modal-scoped command — Ctrl+, opens Settings, Ctrl+/ the shortcut reference —
+    // resolve as blocked for the rest of the session.
+    if (next === 'open') {
+      root.setAttribute('role', 'dialog')
+      root.setAttribute('aria-modal', 'true')
+    } else {
+      root.removeAttribute('role')
+      root.removeAttribute('aria-modal')
+      root.removeAttribute('aria-label')
+    }
   }
 
   const showToast = (text, tone = 'ok') => {
