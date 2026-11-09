@@ -2829,6 +2829,18 @@ window.__ModuleLoader__.load({
 		    return [...seen];
 		}
 		/**
+		 * One dotted segment DSH admits after the first: a letter, then letters, digits, or hyphens.
+		 * A shape authors its own id and command ids, and the Desktop rejects the whole command
+		 * catalog over one inadmissible id, so invalid characters become hyphens and a leading
+		 * non-letter is prefixed with `s` instead of failing the shared catalog.
+		 * @param value - shape or local command id.
+		 * @returns the segment to place after a dot.
+		 */
+		function idSegment(value) {
+		    const cleaned = value.replace(/[^a-zA-Z0-9-]/gu, '-');
+		    return /^[a-zA-Z]/u.test(cleaned) ? cleaned : `s${cleaned}`;
+		}
+		/**
 		 * Build the shortcut capability provider.
 		 * @param ctx - Client context with the shortcuts service.
 		 * @returns the provider the runtime scopes per shape.
@@ -2836,7 +2848,7 @@ window.__ModuleLoader__.load({
 		function createShapeShortcuts(ctx) {
 		    return {
 		        forShape(shapeId) {
-		            const prefix = `shape:${shapeId}:`;
+		            const prefix = `shape.${idSegment(shapeId)}.`;
 		            const service = () => {
 		                const shortcuts = ctx.get('shortcuts');
 		                if (shortcuts === undefined) {
@@ -2850,7 +2862,7 @@ window.__ModuleLoader__.load({
 		                        throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`);
 		                    }
 		                    const definition = (defaults) => ({
-		                        id: `${prefix}${command.id}`,
+		                        id: `${prefix}${idSegment(command.id)}`,
 		                        label: () => command.label,
 		                        aliases: command.aliases ?? [],
 		                        defaults,
@@ -4271,7 +4283,7 @@ window.__ModuleLoader__.load({
 		        capability: 'shortcuts',
 		        version: '1.0.0',
 		        description: 'Register DSH keyboard commands that users can rebind, so shape actions appear in the shortcut settings and reference.',
-		        usage: 'register({ id, label, aliases, keys, run }) registers one command as shape:<shapeId>:<id>; keys is a combination such as "Ctrl+Alt+M" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape\'s catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.',
+		        usage: 'register({ id, label, aliases, keys, run }) registers one command as shape.<shapeId>.<id>; keys is a combination such as "Ctrl+Alt+M" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape\'s catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.',
 		        api: createShapeShortcuts(ctx),
 		    }), 'dsh-shape: shortcuts capability');
 		    ctx.effect(() => capabilities.provide({

@@ -66,7 +66,7 @@ const NAMED_CODES: Readonly<Record<string, string>> = {
 
 /** One command a shape contributes. */
 export interface ShapeShortcutCommand {
-  /** Local id; the runtime registers it as `shape:<shapeId>:<id>`. */
+  /** Local id; the runtime registers it as `shape.<shapeId>.<id>`. */
   id: string
   /** Human label shown in the shortcut settings and reference. */
   label: string
@@ -141,6 +141,19 @@ export interface ShapeShortcutProvider {
 }
 
 /**
+ * One dotted segment DSH admits after the first: a letter, then letters, digits, or hyphens.
+ * A shape authors its own id and command ids, and the Desktop rejects the whole command
+ * catalog over one inadmissible id, so invalid characters become hyphens and a leading
+ * non-letter is prefixed with `s` instead of failing the shared catalog.
+ * @param value - shape or local command id.
+ * @returns the segment to place after a dot.
+ */
+function idSegment(value: string): string {
+  const cleaned = value.replace(/[^a-zA-Z0-9-]/gu, '-')
+  return /^[a-zA-Z]/u.test(cleaned) ? cleaned : `s${cleaned}`
+}
+
+/**
  * Build the shortcut capability provider.
  * @param ctx - Client context with the shortcuts service.
  * @returns the provider the runtime scopes per shape.
@@ -148,7 +161,7 @@ export interface ShapeShortcutProvider {
 export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
   return {
     forShape(shapeId) {
-      const prefix = `shape:${shapeId}:`
+      const prefix = `shape.${idSegment(shapeId)}.`
       const service = () => {
         const shortcuts = ctx.get('shortcuts')
         if (shortcuts === undefined) {
@@ -162,7 +175,7 @@ export function createShapeShortcuts(ctx: Context): ShapeShortcutProvider {
             throw new Error(`shape shortcut id must be lowercase letters, digits, and hyphens: ${command.id}`)
           }
           const definition = (defaults: Partial<Record<ShortcutProfile, ShortcutBinding>>) => ({
-            id: `${prefix}${command.id}` as ShortcutCommandId,
+            id: `${prefix}${idSegment(command.id)}` as ShortcutCommandId,
             label: () => command.label,
             aliases: command.aliases ?? [],
             defaults,

@@ -41,7 +41,7 @@
 
 | 方法 | 说明 |
 | --- | --- |
-| `register({ id, label, aliases?, keys?, regions?, modals?, run })` | 注册一个 `shape:<shapeId>:<id>` 命令，返回注销函数 |
+| `register({ id, label, aliases?, keys?, regions?, modals?, run })` | 注册一个 `shape.<shapeId>.<id>` 命令，返回注销函数 |
 | `list()` | 本形态的命令目录（含按键、是否改过、冲突、问题） |
 
 - `keys` 形如 `Ctrl+Alt+M`，省略则命令存在但默认不绑定；

@@ -137,7 +137,7 @@ const off = shortcuts.register({
 })
 ```
 
-The command id becomes `shape:<shapeId>:<id>`. `keys` accepts `Ctrl`, `Alt`, `Shift`, `Meta`, and `Mod` (Meta on macOS, Control elsewhere) plus one letter, digit, `F1`–`F24`, or named key (`Esc`, `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, arrows, `/`, `,`, `.`, `;`, `'`, `[`, `]`, `\`, `` ` ``, `-`, `=`). Omit `keys` to register an unbound command. Commands run only outside editable regions; registration throws on duplicate ids and overlapping defaults.
+The command id becomes `shape.<shapeId>.<id>`. `keys` accepts `Ctrl`, `Alt`, `Shift`, `Meta`, and `Mod` (Meta on macOS, Control elsewhere) plus one letter, digit, `F1`–`F24`, or named key (`Esc`, `Enter`, `Space`, `Tab`, `Backspace`, `Delete`, arrows, `/`, `,`, `.`, `;`, `'`, `[`, `]`, `\`, `` ` ``, `-`, `=`). Omit `keys` to register an unbound command. Commands run only outside editable regions; registration throws on duplicate ids and overlapping defaults.
 
 `regions` widens that: pass `['page', 'editable']` so the command also fires while the composer has focus, or `['page', 'editable', 'terminal']` for a global command. `modals` lists the modal ids the command fires inside. Both default to the page-only, no-modal behaviour.
 

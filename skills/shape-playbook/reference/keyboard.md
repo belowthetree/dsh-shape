@@ -11,7 +11,7 @@
 Everything else fails, and the failure is not silent per-combination — it rejects the whole registration:
 
 ```
-Unsupported Web shortcut: shape:<shapeId>:<id>
+Unsupported Web shortcut: shape.<shapeId>.<id>
 ```
 
 Consequences:
@@ -65,7 +65,7 @@ const match = keys.has(bindingKey({ code: input.code, modifiers }))
 if (!priority && (main || !match)) return   // not forwarded at all
 ```
 
-That index is built from the catalog the renderer pushes over IPC, and the payload is validated as a whole — one overlapping default between *any* two commands, on *any* profile, rejects the entire catalog and leaves the index stale. A command a shape registers after startup then never becomes reachable, while the renderer's own catalog still reports it as bound.
+That index is built from the catalog the renderer pushes over IPC, and the payload is validated as a whole — one invalid command id, or one overlapping default between *any* two commands on *any* profile, rejects the entire catalog and leaves the index stale. A command a shape registers after startup then never becomes reachable, while the renderer's own catalog still reports it as bound.
 
 Diagnose it by proving whether the key reached the page at all: a capture listener records `event.defaultPrevented`. `false` means the shell never claimed the combination, so the command did not run; `true` means it ran and something else is broken.
 
@@ -87,3 +87,21 @@ if (window.location.protocol === 'dsh-app:') document.addEventListener('keydown'
 The guard makes the pair exclusive: when the shell claims the key it calls `preventDefault` before the renderer sees it, so the listener cannot also fire. Gate the listener on the desktop origin, or a Web host that also owns the combination will run two actions per press.
 
 Verified by: a shape whose `Ctrl+Alt+T` command showed as bound but never ran on Windows desktop, with `key-seen` recorded and `defaultPrevented: false`; the bubble listener made the same press open the window while the command stayed registered for rebinding.
+
+## A colon command id rejects the whole catalog
+
+Symptom: Settings → Shortcuts shows the read-failure banner naming `userData/keybindings.json`, editing is disabled, and the shape command still lists its default keys.
+
+What the host actually does: the desktop validates every id in the catalog it receives over IPC, before it reads any file:
+
+```js
+// packages/client/shortcuts/src/configuration.ts
+const commandPattern = /^[a-z][a-zA-Z0-9-]*(?:\.[a-zA-Z][a-zA-Z0-9-]*)+$/u
+if (!commandPattern.test(entry.id)) throw new Error('Invalid shortcut definition')
+```
+
+A colon id (`shape:config-workbench:toggle`) fails the pattern, the IPC call rejects, and the renderer marks the preference document unreadable — so the toast blames the file and its permissions while that file is not even involved.
+
+Fix: dotted segments, each starting with a letter — `shape.config-workbench.toggle`. Since 0.4.38 `dsh-shape` builds `shape.<shapeId>.<id>` and normalizes both segments (invalid characters become `-`, a leading non-letter gets an `s` prefix), because a shape author cannot be expected to keep the DSH id grammar.
+
+Verified: `pattern.test('shape:config-workbench:toggle') === false` and `pattern.test('shape.config-workbench.toggle') === true` against the shipped pattern; after the change `check-client-bundle.mjs` (41 registrations), `gen-capability-fallback.mjs --check` (9 capabilities), and `check-tool-schemas.mjs` (11 tools) all pass.

@@ -145,7 +145,7 @@ export function apply(ctx: Context): void {
     capability: 'shortcuts',
     version: '1.0.0',
     description: 'Register DSH keyboard commands that users can rebind, so shape actions appear in the shortcut settings and reference.',
-    usage: 'register({ id, label, aliases, keys, run }) registers one command as shape:<shapeId>:<id>; keys is a combination such as "Ctrl+Alt+M" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape\'s catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.',
+    usage: 'register({ id, label, aliases, keys, run }) registers one command as shape.<shapeId>.<id>; keys is a combination such as "Ctrl+Alt+M" (Ctrl/Alt/Shift/Meta/Mod plus a letter, digit, F-key, or named key), and omitting it leaves the command unbound. list() returns this shape\'s catalog rows with keys, modified, conflicts, and issue. Registration throws on duplicate ids and overlapping defaults.',
     api: createShapeShortcuts(ctx),
   }), 'dsh-shape: shortcuts capability')
 
