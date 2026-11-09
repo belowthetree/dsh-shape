@@ -78,30 +78,37 @@ async function readSlotData(dir, files) {
   }
   return descriptors
 }
+/** Kinds a shape may declare; `shape` is the default surface contributor. */
+const SHAPE_KINDS = ['shape', 'workbench']
+
 /**
  * Parse a shape's optional `shape` manifest object.
  * @param manifest - raw package manifest.
- * @returns validated ABI and requirements, or a configuration error.
+ * @returns validated ABI, kind, and requirements, or a configuration error.
  */
 function readShapeConfig(manifest) {
   if (manifest.shape === undefined)
-    return { apiVersion: 1, requirements: [] }
+    return { apiVersion: 1, kind: 'shape', requirements: [] }
   if (typeof manifest.shape !== 'object' || manifest.shape === null || Array.isArray(manifest.shape)) {
-    return { apiVersion: 1, requirements: [], error: 'shape must be an object' }
+    return { apiVersion: 1, kind: 'shape', requirements: [], error: 'shape must be an object' }
   }
   const config = manifest.shape
   const apiVersion = config.apiVersion ?? 1
   if (typeof apiVersion !== 'number' || !Number.isInteger(apiVersion) || apiVersion < 1) {
-    return { apiVersion: 1, requirements: [], error: 'shape.apiVersion must be a positive integer' }
+    return { apiVersion: 1, kind: 'shape', requirements: [], error: 'shape.apiVersion must be a positive integer' }
+  }
+  const kind = config.kind ?? 'shape'
+  if (typeof kind !== 'string' || !SHAPE_KINDS.includes(kind)) {
+    return { apiVersion, kind: 'shape', requirements: [], error: 'shape.kind must be "shape" or "workbench"' }
   }
   const rawRequires = config.requires ?? []
   if (!Array.isArray(rawRequires)) {
-    return { apiVersion, requirements: [], error: 'shape.requires must be an array' }
+    return { apiVersion, kind, requirements: [], error: 'shape.requires must be an array' }
   }
   const requirements = []
   for (const entry of rawRequires) {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      return { apiVersion, requirements: [], error: 'each shape requirement must be an object' }
+      return { apiVersion, kind, requirements: [], error: 'each shape requirement must be an object' }
     }
     const record = entry
     const plugin = record.plugin
@@ -112,7 +119,7 @@ function readShapeConfig(manifest) {
       || typeof capability !== 'string' || capability.trim().length === 0
       || typeof version !== 'string' || version.trim().length === 0
       || (optional !== undefined && typeof optional !== 'boolean')) {
-      return { apiVersion, requirements: [], error: 'requirement needs plugin, capability, version, and optional boolean' }
+      return { apiVersion, kind, requirements: [], error: 'requirement needs plugin, capability, version, and optional boolean' }
     }
     requirements.push({
       plugin: plugin.trim(),
@@ -121,7 +128,7 @@ function readShapeConfig(manifest) {
       ...(optional === true ? { optional: true } : {}),
     })
   }
-  return { apiVersion, requirements }
+  return { apiVersion, kind, requirements }
 }
 /**
  * Read one shape folder.
@@ -159,6 +166,7 @@ async function readShape(dir, origin) {
     origin,
     dir,
     shapeApiVersion: shapeConfig.apiVersion,
+    kind: shapeConfig.kind,
     requirements: shapeConfig.requirements,
     views: await listFiles(path.join(dir, 'views')),
     clientFiles,

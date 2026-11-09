@@ -22,6 +22,7 @@ interface ShapeInfo {
   description: string
   version: string
   origin: 'bundled' | 'user'
+  kind?: string
   dir: string
   views: string[]
   slots: string[]
@@ -471,6 +472,7 @@ export function ShapeDialog({
                         <span className={css.badge}>{String(shape.views.length)} views</span>
                         <span className={css.badge}>{String(shape.slots.length)} slots</span>
                         <span className={css.badge}>{String(shape.tools.length)} tools</span>
+                        {shape.kind === 'workbench' && <span className={css.badge}>工作台</span>}
                         <span className={css.badge}>{shape.output}</span>
                       </div>
                     </button>

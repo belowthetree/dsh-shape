@@ -226,7 +226,7 @@ async function inspectShape(dir, origin) {
   const id = path.basename(dir)
   const manifest = await readManifest(dir)
   if (typeof manifest === 'string') {
-    return { id, origin, valid: false, errors: [manifest], warnings: [], views: [], slots: [], tools: [] }
+    return { id, origin, kind: 'shape', valid: false, errors: [manifest], warnings: [], views: [], slots: [], tools: [] }
   }
   const files = await readdir(dir, { withFileTypes: true }).catch(() => [])
   const subdirs = new Set(files.filter(entry => entry.isDirectory()).map(entry => entry.name))
@@ -235,6 +235,7 @@ async function inspectShape(dir, origin) {
   const tools = await listFiles(path.join(dir, 'tools'))
   const client = await listFiles(path.join(dir, 'client'))
   const shape = manifest.shape
+  const kind = typeof shape?.kind === 'string' ? shape.kind : 'shape'
   const errors = []
   const warnings = []
   if (manifest.name !== id) errors.push(`package name should be "${id}"`)
@@ -247,6 +248,12 @@ async function inspectShape(dir, origin) {
     errors.push('shape must be an object')
   } else {
     if (shape.apiVersion !== 1) errors.push('shape.apiVersion must be 1')
+    if (shape.kind !== undefined && shape.kind !== 'shape' && shape.kind !== 'workbench') {
+      errors.push('shape.kind must be "shape" or "workbench"')
+    }
+    if (kind === 'workbench' && client.length === 0) {
+      warnings.push('workbench shape has no client/index.js, so it contributes no workbench surface')
+    }
     if (shape.requires !== undefined && !Array.isArray(shape.requires)) errors.push('shape.requires must be an array')
     for (const requirement of shape.requires ?? []) {
       if (typeof requirement?.plugin !== 'string' || requirement.plugin === '') errors.push('requirement plugin is required')
@@ -261,6 +268,7 @@ async function inspectShape(dir, origin) {
   return {
     id,
     origin,
+    kind,
     valid: errors.length === 0,
     errors,
     warnings,
@@ -364,6 +372,7 @@ async function inspectShapeInterface(id, roots) {
     manifest,
     interface: {
       apiVersion: typeof manifest.shape?.apiVersion === 'number' ? manifest.shape.apiVersion : 0,
+      kind: metadata.kind ?? 'shape',
       requirements: metadata.requirements ?? [],
       views: metadata.views ?? [],
       slots,
@@ -476,6 +485,10 @@ function describeCatalog(catalog) {
  */
 async function scaffold(args, root) {
   if (!SHAPE_ID.test(args.id)) throw new Error('shape id must be lowercase letters, digits, and hyphens')
+  if (args.kind !== undefined && args.kind !== 'shape' && args.kind !== 'workbench') {
+    throw new Error('kind must be "shape" or "workbench"')
+  }
+  const kind = args.kind === 'workbench' ? 'workbench' : 'shape'
   const dir = path.join(root, args.id)
   try {
     await stat(dir)
@@ -494,6 +507,7 @@ async function scaffold(args, root) {
     output: 'text',
     shape: {
       apiVersion: 1,
+      ...(kind === 'workbench' ? { kind } : {}),
       requires: [{ plugin: 'dsh-shape', capability: 'core', version: '^1.0.0' }],
     },
   }
@@ -512,9 +526,22 @@ async function scaffold(args, root) {
     button: '开始',
     greeting: args.title,
   }, null, 2)}\n`)
-  if (args.withClient === true) {
+  if (args.withClient === true || kind === 'workbench') {
     await mkdir(path.join(dir, 'client'), { recursive: true })
-    await writeFile(path.join(dir, 'client', 'index.js'), `export function activate(api) {
+    await writeFile(path.join(dir, 'client', 'index.js'), kind === 'workbench'
+      ? `/** Workbench surface; the host shows it in the shape 工作台 window. */
+export function activate(api) {
+  const workbench = api.workbench({
+    id: 'main',
+    title: ${JSON.stringify(args.title)},
+    render: (container) => {
+      container.textContent = ${JSON.stringify(args.title)}
+    },
+  })
+  return () => workbench.dispose()
+}
+`
+      : `export function activate(api) {
   console.info('shape activated:', api.shape.id)
 }
 `)
@@ -668,7 +695,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_list',
-    description: 'List user and bundled dsh-shape shapes with their origin, capability requirements, and file inventory.',
+    description: 'List user and bundled dsh-shape shapes with their kind, origin, capability requirements, and file inventory.',
     parameters: { type: 'object', additionalProperties: false, properties: {} },
     output: {
       schema: {
@@ -683,10 +710,11 @@ export function apply(ctx, config) {
             items: {
               type: 'object',
               additionalProperties: false,
-              required: ['id', 'origin', 'valid', 'errors', 'warnings', 'views', 'slots', 'tools'],
+              required: ['id', 'origin', 'kind', 'valid', 'errors', 'warnings', 'views', 'slots', 'tools'],
               properties: {
                 id: { type: 'string' },
                 origin: { type: 'string', enum: ['user', 'bundled'] },
+                kind: { type: 'string', enum: ['shape', 'workbench'] },
                 title: { type: 'string' },
                 version: { type: 'string' },
                 valid: { type: 'boolean' },
@@ -706,7 +734,7 @@ export function apply(ctx, config) {
         type: 'text',
         text: value.shapes.length === 0
           ? `No shapes in ${value.root} or ${value.bundledRoot}.`
-          : `${value.shapes.length} shape(s):\n${value.shapes.map(shape => `- ${shape.id} [${shape.origin}]${shape.valid ? '' : ' (invalid)'}${shape.clientEntry ? ' client' : ''}${shape.errors.length ? `: ${shape.errors.join('; ')}` : ''}`).join('\n')}`,
+          : `${value.shapes.length} shape(s):\n${value.shapes.map(shape => `- ${shape.id} [${shape.origin}]${shape.kind === 'workbench' ? ' [workbench]' : ''}${shape.valid ? '' : ' (invalid)'}${shape.clientEntry ? ' client' : ''}${shape.errors.length ? `: ${shape.errors.join('; ')}` : ''}`).join('\n')}`,
       }],
     },
     async execute() {
@@ -855,9 +883,10 @@ export function apply(ctx, config) {
           interface: {
             type: 'object',
             additionalProperties: false,
-            required: ['apiVersion', 'requirements', 'views', 'slots', 'tools'],
+            required: ['apiVersion', 'kind', 'requirements', 'views', 'slots', 'tools'],
             properties: {
               apiVersion: { type: 'integer' },
+              kind: { type: 'string', enum: ['shape', 'workbench'] },
               requirements: { type: 'array', items: { type: 'object', additionalProperties: true } },
               views: { type: 'array', items: { type: 'string' } },
               slots: { type: 'array', items: { type: 'object', additionalProperties: true } },
@@ -910,6 +939,7 @@ export function apply(ctx, config) {
         id: { type: 'string', description: 'Kebab-case shape id; becomes the folder and package name.' },
         title: { type: 'string', description: 'Display title.' },
         description: { type: 'string', description: 'Short user-facing description.' },
+        kind: { type: 'string', enum: ['shape', 'workbench'], description: 'Shape kind; workbench creates the manifest kind and a client entry that calls api.workbench.' },
         withClient: { type: 'boolean', description: 'Also create client/index.js for activation logic.' },
         withActions: { type: 'boolean', description: 'Also create actions.js with a DOM-free action and one test for shape_test.' },
       },
@@ -1134,7 +1164,7 @@ export function apply(ctx, config) {
 
   ctx.effect(() => ctx.tools.register({
     name: 'shape_validate',
-    description: 'Validate a shape manifest, capability requirements, and required views/slots directories.',
+    description: 'Validate a shape manifest, its kind, capability requirements, and required views/slots directories.',
     parameters: {
       type: 'object',
       additionalProperties: false,
@@ -1216,3 +1246,4 @@ export function apply(ctx, config) {
     },
   }), 'dsh-shape: shape_test tool')
 }
+

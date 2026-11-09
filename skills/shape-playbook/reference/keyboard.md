@@ -134,3 +134,13 @@ JSON.stringify([...document.querySelectorAll('[role="dialog"][aria-modal="true"]
 
 returned `[["DIV","dialog","-","wts-root"]]`: one element, no `data-shortcut-modal`, the shape's class. The gear still opened Settings, so the panel and the command catalog were intact — only the gesture was blocked. After the fix the same query returns `[]` at idle and Ctrl+, opens Settings again.
 
+## Host windows: mount the modal instead of hiding it
+
+`Shell.overlay` hosts three independent layers in this package: shape mounts, edge popups, and the workbench window. The workbench keeps the role tied to the mount rather than to a CSS phase: `ShapeWorkbenchLayer` returns `null` while closed, so the `[role="dialog"][aria-modal="true"]` node does not exist at idle and Ctrl+,/Ctrl+/ keep working. Opening renders the portal with the role; closing unmounts it. Its `Esc` handler is a `document` **capture** listener that calls `stopPropagation()`, so the shape browser underneath cannot also consume the same press.
+
+The open/close shortcut (`Ctrl+Alt+W`) and the browser shortcut (`Ctrl+.`) are plain page-level `keydown` listeners, not `dsh-shape#shortcuts` commands. That is deliberate: `web:linux` rejects multi-modifier defaults other than `Ctrl+/`, `Ctrl+Shift+,`, `Ctrl+Shift+.`, so registering `Ctrl+Alt+W` would leave it unbound on Web. The listener checks exact modifiers and both `event.code === 'KeyW'` and `event.key`, so a layout that reports a different `key` still toggles.
+
+While the workbench is open it also owns `Ctrl+Alt+ArrowLeft/Right` for switching between registered **workbenches**, and those already belong to the bundled `workspace-tab-switch` shape (a `document` capture listener). The workbench listener therefore sits on **window capture** and calls `stopImmediatePropagation()`: window capture runs before the shape's document listener, so the event never reaches it and only the workbench switches. `preventDefault` plus `stopImmediatePropagation` also keep DSH's own handling from firing. The same pattern is the one to copy for any host window that must override a shape shortcut while it is open.
+
+Verified in the bundle test (jsdom, real React 18): while the window was closed, opening required exactly Ctrl+Alt+W; Ctrl+W and Ctrl+Shift+Alt+W did nothing; Escape closed the window opened by the header button; the window unmounted completely instead of staying hidden. A workbench-tab test also confirmed Ctrl+Alt+ArrowRight/Left selected the next/previous workbench while a stand-in `document` capture listener never fired, that the selection survived close/reopen, and that the shortcut went dead after close.
+

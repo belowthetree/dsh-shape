@@ -10,7 +10,7 @@ The Shape Studio preset cannot read this package, so each document is also a `sh
 
 | Document | `shape_spec` topic | Read it when |
 | --- | --- | --- |
-| [workflows.md](reference/workflows.md) | `playbook-workflows` | You are starting a shape from scratch, or building one of the known kinds (find bar, switcher, card, panel, stored state) |
+| [workflows.md](reference/workflows.md) | `playbook-workflows` | You are starting a shape from scratch, or building one of the known kinds (find bar, switcher, card, panel, stored state, workbench) |
 | [rendering.md](reference/rendering.md) | `playbook-rendering` | UI never appears, disappears on a session switch, or nothing from the shape works at all |
 | [keyboard.md](reference/keyboard.md) | `playbook-keyboard` | You need `Ctrl+F`, `F3`, `Esc`, `Ctrl+Tab`, or any single-modifier combination |
 | [transcript.md](reference/transcript.md) | `playbook-transcript` | You search, expand, scroll to, or highlight conversation content |

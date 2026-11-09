@@ -89,7 +89,46 @@ Verified: a preference surviving a full page reload while other shapes kept thei
 
 Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. Dragging the right window's inner edge 120px grew it from 360 to exactly 480 and the size survived a page reload; `edge: 'top'` + `width: 'full'` measured 1280×260 at the top edge and `edge: 'left'` + `height: 'full'` measured 320×900, both with their remaining axis still resizable; `resizable: false` exposed no strip. With `--dsh-frame-chrome-top: 40px` (the Windows caption) the top window moved to y=52, the full-height left window to y=40/h=860, the centered right window to y=210, and a dragged top window clamped at 836px (900−40−24), so no edge window crosses the caption. This has not yet been run inside the full DSH GUI.
 
-## 7. Regression pass before handing a shape over
+## 7. A workbench shape
+
+1. The manifest must declare the kind; without it `api.workbench` throws:
+   ```json
+   "shape": { "apiVersion": 1, "kind": "workbench", "requires": [] }
+   ```
+2. Register the surface from `client/index.js`; the render callback owns its container and returns a cleanup:
+   ```js
+   export function activate(api) {
+     const workbench = api.workbench({
+       id: 'main',
+       title: '任务工作台',
+       render: (container) => {
+         const board = document.createElement('div')
+         board.textContent = '工作台内容'
+         container.append(board)
+         return () => board.remove()
+       },
+     })
+     return () => workbench.dispose()
+   }
+   ```
+3. `shape_validate({ id })` — a workbench with no `client/index.js` is valid but warns, because it can never contribute a surface. `shape_scaffold({ id, ..., kind: 'workbench' })` generates the manifest kind and the client stub in one step.
+4. Open the window with the header's **shape 工作台** action or `Ctrl+Alt+W`; close it with `Esc`, a press on the blank area around the window, or `Ctrl+Alt+W` again. There is deliberately no close button.
+5. While it is open, the bottom strip lists every registered workbench; the dot under each name is hollow when inactive and filled white for the active one. `Ctrl+Alt+ArrowLeft` / `Ctrl+Alt+ArrowRight` cycle through the workbenches (window capture plus `stopImmediatePropagation`, so the bundled `workspace-tab-switch` shape's `document` capture listener does not also switch), and the selection is remembered across close/reopen.
+6. The layer renders into `document.body` and unmounts while closed, so it only owns the DSH modal role while it is open (see [keyboard.md](keyboard.md)). There is no title bar: the surface fills the window.
+
+Verified on 0.5.4 (sources, bundle, and the desktop boot path), except for one on-screen confirmation noted at the end:
+
+- Host scan: a stub-context boot calling `GET /dsh-shape/api/shapes` returned `kind: "workbench"` for a shape declaring it, while `kind: "panel"` came back `valid: false` with `shape.kind must be "shape" or "workbench"` (7 checks, `node .tmp-host-smoke.mjs`, script deleted afterwards).
+- Client bundle: loaded the shipped `client.js` in jsdom with real React 18 (`E:/Project/deepseek-harness/node_modules/.pnpm/react@18.3.1`) and `apply(ctx)`, then rendered the single `conversation.header.leading` registration (which renders both header actions) and the `shell.overlay` layer. A custom Node loader resolved `/dsh-shape/client/<id>/index.js` to a fake workbench module, so the real runtime activated it. 15 checks passed: header shows **shape 工作台** beside **Shapes**; `Ctrl+Alt+W` toggles the window; `Ctrl+W` and `Ctrl+Shift+Alt+W` do not; `Esc` and a backdrop press close it; the runtime surface renders (`runtime-surface`); a plain-kind shape calling `api.workbench` threw the expected error; the window has no close button.
+- Layer in isolation (same bundle regions, jsdom): empty state names `kind` and lists installed workbench shapes with their state, 80% inline sizing, two-workbench switcher, previous surface cleanup on switch, and cleanup on close all passed (16 checks).
+- Tools: `shape_scaffold({ kind: 'workbench' })` wrote the manifest kind and a client that calls `api.workbench`; `shape_validate`, `shape_list`, and `shape_inspect` reported the kind; an unknown kind failed validation (11 checks).
+- Workbench tabs: rendered the shipped layer in jsdom with three registered workbenches. All three got a tab, the first was active by default, the active dot was filled (`background: var(--dsw-alias-label-primary, #fff)`) and inactive dots hollow; `Ctrl+Alt+ArrowRight`/`ArrowLeft` selected the next/previous workbench and the surface text changed, wrapping at both ends; clicking a tab selected it; a `document` capture listener (standing in for the bundled switcher shape) was **not** called because the workbench listener used window capture plus `stopImmediatePropagation`; the selection survived close/reopen; removing every workbench returned the empty state and removed the tabs (15 checks).
+- Visual harness: a temporary `file://` page in Chromium rendered the same two bundle regions with React 18 UMD and a 1280×900 viewport. The window measured 1024×720 (80% on both axes); there is no title bar, the shape's own surface starts at the top edge, three workbench tabs sit above the footer with hollow/filled dots, and there is no scrollbar (the empty state uses `box-sizing: border-box` so its padding cannot overflow the body). The empty state showed the creation hint with each code snippet kept on one line, plus the installed-shape list with its states.
+- Desktop boot: the first build registered the workbench button as a second `conversation.header.leading` entry and the desktop app could not start (`web boot: 1 entry did not activate`, then `desktop welcome: Web authentication failed`). After merging both actions into the `ShapeButton` registration (see [rendering.md](rendering.md)), the same profile booted and the host at the app's URL reported `10` capabilities and `kind: "shape"` for every installed shape.
+
+Pending: a manual `Ctrl+Alt+W` / **shape 工作台** click in the running desktop app. With no `kind: "workbench"` shape installed, the expected result is the empty state explaining how to add one.
+
+## 8. Regression pass before handing a shape over
 
 1. `shape_validate` and `shape_test` clean.
 2. Reload the page; the entry point exists and the primary action works.

@@ -1691,6 +1691,10 @@ window.__ModuleLoader__.load({
 																	className: shape_dialog_module_css_default.badge,
 																	children: [String(shape.tools.length), " tools"]
 																}),
+																shape.kind === "workbench" && /* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
+																	className: shape_dialog_module_css_default.badge,
+																	children: "工作台"
+																}),
 																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 																	className: shape_dialog_module_css_default.badge,
 																	children: shape.output
@@ -1863,11 +1867,11 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeButton.tsx
-		/** Top-bar action that opens the registered-shape browser. */
+		/** Top-bar actions: the shape browser and the shape workbench. */
 		/**
-		* Render the header action and own the dialog's open state.
+		* Render the header actions and own the browser dialog's open state.
 		* @param props.resolveShape - capability resolver injected by the Client entry.
-		* @returns the button plus its dialog.
+		* @returns both header buttons plus the browser dialog.
 		*/
 		function ShapeButton({ resolveShape }) {
 			const [open, setOpen] = (0, react.useState)(false);
@@ -1898,13 +1902,37 @@ window.__ModuleLoader__.load({
 					setOpen(true);
 				},
 				children: "Shapes"
-			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ShapeDialog, {
+			}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ShapeWorkbenchButton, {}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(ShapeDialog, {
 				open,
 				onClose: () => {
 					setOpen(false);
 				},
 				resolveShape
 			})] });
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeWorkbenchButton.tsx
+		/** Top-bar action that raises the shape workbench window. */
+		/**
+		 * Render the header action; the window itself lives in its own overlay layer.
+		 * @returns the button.
+		 */
+		function ShapeWorkbenchButton() {
+		  return /* @__PURE__ */ react_jsx_runtime.jsx(
+		    _deepseek_ai_dsh_client_ui_primitives.Button,
+		    {
+		      "data-testid": "dsh-shape-workbench-open",
+		      size: "sm",
+		      variant: "ghost",
+		      title: "shape 工作台 (Ctrl+Alt+W)",
+		      "aria-haspopup": "dialog",
+		      "aria-keyshortcuts": "Control+Alt+W",
+		      onClick: () => {
+		        openShapeWorkbench();
+		      },
+		      children: "shape 工作台"
+		    }
+		  );
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-runtime.ts
@@ -2222,7 +2250,26 @@ window.__ModuleLoader__.load({
 						        dispose,
 						    };
 						},
-						shortcuts: { register(binding) {
+						workbench(options) {
+					    if (shape.kind !== "workbench") throw new Error(`dsh-shape: api.workbench needs shape.kind = "workbench"; ${shape.id} declares "${shape.kind ?? "shape"}"`);
+					    const id = `shape:${shape.id}:${options.id}`;
+					    const off = registerShapeWorkbench({
+					        shapeId: shape.id,
+					        id,
+					        title: options.title,
+					        order: options.order ?? 100,
+					        render: options.render,
+					    });
+					    state.mounts.push(off);
+					    return {
+					        id,
+					        open() {
+					            openShapeWorkbench(id);
+					        },
+					        dispose: off,
+					    };
+					},
+					shortcuts: { register(binding) {
 							return registerShortcuts(binding.keys, binding.run);
 						} }
 					};
@@ -2250,6 +2297,7 @@ window.__ModuleLoader__.load({
 								disposeShapePanels(shape.id);
 								disposeShapeTabs(shape.id);
 								disposeShapeEdges(shape.id);
+								disposeShapeWorkbenches(shape.id);
 							}
 						});
 					} catch (cause) {
@@ -2260,6 +2308,7 @@ window.__ModuleLoader__.load({
 						disposeShapePanels(shape.id);
 						disposeShapeTabs(shape.id);
 						disposeShapeEdges(shape.id);
+						disposeShapeWorkbenches(shape.id);
 						state.cleanup?.();
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
@@ -2677,6 +2726,139 @@ window.__ModuleLoader__.load({
 		function subscribeShapeBrowser(listener) {
 			browserListeners.add(listener);
 			return () => { browserListeners.delete(listener); };
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shape-workbench.ts
+		/**
+		 * Shape workbenches: a host-owned window that shows the surface of a shape
+		 * whose manifest declares `shape.kind: "workbench"`.
+		 */
+		/** One workbench a shape contributes to the Workbench window. */
+		const workbenches = /* @__PURE__ */ new Map();
+		const workbenchListeners = /* @__PURE__ */ new Set();
+		const windowListeners = /* @__PURE__ */ new Set();
+		let workbenchOpen = false;
+		let requestedId = null;
+		/**
+		 * Notify every observer of the registered workbenches.
+		 */
+		function notifyWorkbenches() {
+		  for (const listener of workbenchListeners) listener();
+		}
+		/**
+		 * Notify every observer of the window state.
+		 */
+		function notifyWindow() {
+		  for (const listener of windowListeners) listener();
+		}
+		/**
+		 * Register one workbench.
+		 * @param workbench - workbench definition.
+		 * @returns an idempotent disposer.
+		 */
+		function registerShapeWorkbench(workbench) {
+		  workbenches.set(workbench.id, workbench);
+		  notifyWorkbenches();
+		  let disposed = false;
+		  return () => {
+		    if (disposed) return;
+		    disposed = true;
+		    if (workbenches.get(workbench.id) === workbench) {
+		      workbenches.delete(workbench.id);
+		      notifyWorkbenches();
+		    }
+		  };
+		}
+		/**
+		 * Read every registered workbench.
+		 * @returns workbenches sorted by their declared order.
+		 */
+		function shapeWorkbenches() {
+		  return [...workbenches.values()].sort((left, right) => left.order - right.order);
+		}
+		/**
+		 * Observe workbench registration changes.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeWorkbenches(listener) {
+		  workbenchListeners.add(listener);
+		  return () => {
+		    workbenchListeners.delete(listener);
+		  };
+		}
+		/**
+		 * Remove every workbench one shape owns.
+		 * @param shapeId - owning shape.
+		 */
+		function disposeShapeWorkbenches(shapeId) {
+		  let changed = false;
+		  for (const [id, workbench] of workbenches) {
+		    if (workbench.shapeId !== shapeId) continue;
+		    workbenches.delete(id);
+		    changed = true;
+		  }
+		  if (changed) notifyWorkbenches();
+		}
+		/**
+		 * Whether the workbench window is showing.
+		 * @returns the open state.
+		 */
+		function isShapeWorkbenchOpen() {
+		  return workbenchOpen;
+		}
+		/**
+		 * Workbench the last open request selected.
+		 * @returns the namespaced workbench id, or null when nothing was requested.
+		 */
+		function shapeWorkbenchRequestedId() {
+		  return requestedId;
+		}
+		/**
+		 * Select one workbench without touching the window state.
+		 * @param id - namespaced workbench id.
+		 */
+		function selectShapeWorkbench(id) {
+		  if (requestedId === id) return;
+		  requestedId = id;
+		  notifyWindow();
+		}
+		/**
+		 * Show the workbench window, optionally selecting one workbench.
+		 * @param id - namespaced workbench id; omit to keep the current selection.
+		 */
+		function openShapeWorkbench(id) {
+		  const changed = id !== void 0 && id !== requestedId;
+		  if (id !== void 0) requestedId = id;
+		  if (workbenchOpen && !changed) return;
+		  workbenchOpen = true;
+		  notifyWindow();
+		}
+		/**
+		 * Hide the workbench window.
+		 */
+		function closeShapeWorkbench() {
+		  if (!workbenchOpen) return;
+		  workbenchOpen = false;
+		  notifyWindow();
+		}
+		/**
+		 * Open a closed workbench window or close an open one.
+		 */
+		function toggleShapeWorkbench() {
+		  if (workbenchOpen) closeShapeWorkbench();
+		  else openShapeWorkbench();
+		}
+		/**
+		 * Observe window open/close and selection changes.
+		 * @param listener - change callback.
+		 * @returns an unsubscribe function.
+		 */
+		function subscribeShapeWorkbenchWindow(listener) {
+		  windowListeners.add(listener);
+		  return () => {
+		    windowListeners.delete(listener);
+		  };
 		}
 		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/ui-control.ts
@@ -3798,6 +3980,383 @@ window.__ModuleLoader__.load({
 		    return react_dom.createPortal(react_jsx_runtime.jsx(react_jsx_runtime.Fragment, { children: windows }), document.body);
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/ShapeWorkbenchLayer.tsx
+		/** Workbench window: a large modal that hosts surfaces contributed by workbench shapes. */
+		/** One installed shape whose manifest declares `kind: "workbench"`. */
+		/** Dimmed area around the window; a press here closes it. */
+		const WORKBENCH_BACKDROP = {
+		  position: "fixed",
+		  inset: 0,
+		  zIndex: 1300,
+		  display: "flex",
+		  alignItems: "center",
+		  justifyContent: "center",
+		  padding: 24,
+		  background: "var(--dsw-alias-bg-mask-1, rgba(0, 0, 0, 0.5))",
+		  backdropFilter: "var(--dsw-mask-blur, blur(12px))"
+		};
+		/** The window itself: roughly 80% of the viewport on both axes. */
+		const WORKBENCH_WINDOW = {
+		  position: "relative",
+		  display: "flex",
+		  flexDirection: "column",
+		  width: "min(80vw, calc(100vw - 48px))",
+		  height: "min(80vh, calc(100dvh - 48px))",
+		  minWidth: 320,
+		  minHeight: 240,
+		  overflow: "hidden",
+		  outline: "none",
+		  color: "var(--dsw-alias-label-primary, #e6edf3)",
+		  background: "var(--dsw-alias-bg-layer-2, #1b1d22)",
+		  border: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))",
+		  borderRadius: "var(--dsw-radius-panel, 18px)",
+		  boxShadow: "var(--dsw-elevation-prominent, 0 24px 80px rgba(0, 0, 0, 0.36))"
+		};
+		/** Workbench tabs above the footer: a label column and selection dot each. */
+		const WORKBENCH_TABS = {
+		  display: "flex",
+		  flex: "none",
+		  alignItems: "flex-start",
+		  justifyContent: "center",
+		  gap: 18,
+		  padding: "7px 20px 6px",
+		  overflowX: "auto",
+		  borderTop: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))"
+		};
+		/** One workbench tab: its title above the selection dot. */
+		const WORKBENCH_TAB = {
+		  display: "flex",
+		  flex: "none",
+		  flexDirection: "column",
+		  alignItems: "center",
+		  gap: 5,
+		  maxWidth: 180,
+		  minWidth: 0,
+		  padding: 0,
+		  font: "inherit",
+		  background: "transparent",
+		  border: 0,
+		  cursor: "pointer"
+		};
+		const WORKBENCH_TAB_LABEL = {
+		  overflow: "hidden",
+		  color: "var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6))",
+		  fontSize: 11,
+		  lineHeight: "15px",
+		  textOverflow: "ellipsis",
+		  whiteSpace: "nowrap"
+		};
+		const WORKBENCH_TAB_LABEL_ACTIVE = {
+		  color: "var(--dsw-alias-label-primary, #e6edf3)"
+		};
+		const WORKBENCH_BODY = {
+		  position: "relative",
+		  flex: 1,
+		  minHeight: 0,
+		  overflow: "auto"
+		};
+		const WORKBENCH_FRAME_BODY = {
+		  width: "100%",
+		  height: "100%"
+		};
+		const WORKBENCH_FOOTER = {
+		  display: "flex",
+		  flex: "none",
+		  alignItems: "center",
+		  justifyContent: "space-between",
+		  gap: 12,
+		  padding: "8px 20px",
+		  color: "var(--dsw-alias-label-tertiary, rgba(255, 255, 255, 0.42))",
+		  fontSize: 11,
+		  lineHeight: "16px",
+		  borderTop: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))"
+		};
+		/** Selection dot under a workbench tab: hollow when inactive, filled when active. */
+		const WORKBENCH_DOT = {
+		  boxSizing: "border-box",
+		  width: 7,
+		  height: 7,
+		  background: "transparent",
+		  borderWidth: 1,
+		  borderStyle: "solid",
+		  borderColor: "var(--dsw-alias-label-tertiary, rgba(255, 255, 255, 0.45))",
+		  borderRadius: "50%"
+		};
+		const WORKBENCH_DOT_ACTIVE = {
+		  background: "var(--dsw-alias-label-primary, #fff)",
+		  borderColor: "var(--dsw-alias-label-primary, #fff)"
+		};
+		const WORKBENCH_EMPTY = {
+		  boxSizing: "border-box",
+		  display: "flex",
+		  flexDirection: "column",
+		  alignItems: "center",
+		  justifyContent: "center",
+		  gap: 10,
+		  width: "100%",
+		  height: "100%",
+		  padding: 32,
+		  textAlign: "center"
+		};
+		const WORKBENCH_EMPTY_MARK = {
+		  display: "grid",
+		  placeItems: "center",
+		  width: 52,
+		  height: 52,
+		  color: "var(--dsw-alias-label-tertiary, rgba(255, 255, 255, 0.42))",
+		  font: "300 26px/1 var(--ds-font-family, system-ui)",
+		  border: "1px dashed var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.18))",
+		  borderRadius: 14
+		};
+		const WORKBENCH_EMPTY_TITLE = {
+		  margin: 0,
+		  fontSize: 16,
+		  fontWeight: 500
+		};
+		const WORKBENCH_EMPTY_TEXT = {
+		  maxWidth: 560,
+		  margin: 0,
+		  color: "var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6))",
+		  fontSize: 13,
+		  lineHeight: "21px"
+		};
+		const WORKBENCH_EMPTY_NOTE = {
+		  maxWidth: 560,
+		  margin: 0,
+		  color: "var(--dsw-alias-label-tertiary, rgba(255, 255, 255, 0.42))",
+		  fontSize: 12,
+		  lineHeight: "18px"
+		};
+		const WORKBENCH_CODE = {
+		  padding: "1px 5px",
+		  fontFamily: "var(--ds-font-family-mono, ui-monospace, SFMono-Regular, Menlo, monospace)",
+		  fontSize: "0.92em",
+		  whiteSpace: "nowrap",
+		  background: "var(--dsw-alias-bg-layer-3, rgba(255, 255, 255, 0.06))",
+		  borderRadius: 4
+		};
+		/**
+		 * Read the installed shapes whose manifest declares the workbench kind.
+		 * @returns workbench shapes known to the Host, or an empty list.
+		 */
+		async function readWorkbenchShapes() {
+		  try {
+		    const response = await fetch("/dsh-shape/api/shapes", {
+		      credentials: "same-origin",
+		      cache: "no-store",
+		      headers: { accept: "application/json" }
+		    });
+		    if (!response.ok) return [];
+		    const payload = await response.json();
+		    if (payload.ok !== true || !Array.isArray(payload.shapes)) return [];
+		    return payload.shapes.filter((shape) => shape.kind === "workbench");
+		  } catch {
+		    return [];
+		  }
+		}
+		/**
+		 * Explain why an installed workbench shape contributed no surface.
+		 * @param shape - installed shape entry.
+		 * @returns a short reason.
+		 */
+		function describeWorkbenchState(shape) {
+		  if (shape.enabled === false) return "已停用";
+		  if (!shape.valid) return `清单无效${shape.error === void 0 ? "" : `：${shape.error}`}`;
+		  if (shape.clientEntry === void 0) return "没有 client/index.js";
+		  return "尚未激活";
+		}
+		/**
+		 * Mount one workbench's render callback into a container the window owns.
+		 * @param props.workbench - workbench to render.
+		 * @returns the container element.
+		 */
+		function WorkbenchSurface({ workbench }) {
+		  const ref = react.useRef(null);
+		  react.useEffect(() => {
+		    const container = ref.current;
+		    if (container === null) return;
+		    let cleanup;
+		    try {
+		      const result = workbench.render(container);
+		      if (typeof result === "function") cleanup = result;
+		    } catch (cause) {
+		      console.warn("dsh-shape: workbench render failed", cause);
+		      container.textContent = "工作台渲染失败，详见控制台。";
+		    }
+		    return () => {
+		      cleanup?.();
+		      container.replaceChildren();
+		    };
+		  }, [workbench]);
+		  return /* @__PURE__ */ react_jsx_runtime.jsx(
+		    "div",
+		    {
+		      ref,
+		      style: WORKBENCH_FRAME_BODY,
+		      "data-testid": "dsh-shape-workbench-body",
+		      "data-shape-workbench": workbench.id
+		    }
+		  );
+		}
+		/**
+		 * Explain how a workbench shape is added when none is mounted.
+		 * @param props.installed - installed shapes the Host reported as workbench-kind.
+		 * @returns the empty state.
+		 */
+		function WorkbenchEmptyState({ installed }) {
+		  return /* @__PURE__ */ react_jsx_runtime.jsxs("div", { style: WORKBENCH_EMPTY, "data-testid": "dsh-shape-workbench-empty", children: [
+		    /* @__PURE__ */ react_jsx_runtime.jsx("span", { style: WORKBENCH_EMPTY_MARK, "aria-hidden": "true", children: "＋" }),
+		    /* @__PURE__ */ react_jsx_runtime.jsx("strong", { style: WORKBENCH_EMPTY_TITLE, children: "还没有工作台类型的 shape" }),
+		    /* @__PURE__ */ react_jsx_runtime.jsxs("p", { style: WORKBENCH_EMPTY_TEXT, children: [
+		      "用 Shape Studio 预设新建一个工作台：在 package.json 的 shape 块里写",
+		      " ",
+		      /* @__PURE__ */ react_jsx_runtime.jsx("code", { style: WORKBENCH_CODE, children: '"kind": "workbench"' }),
+		      "，再在 client/index.js 里调用",
+		      " ",
+		      /* @__PURE__ */ react_jsx_runtime.jsxs("code", { style: WORKBENCH_CODE, children: [
+		        "api.workbench(",
+		        "{ id, title, render }",
+		        ")"
+		      ] }),
+		      "。"
+		    ] }),
+		    installed.length > 0 && /* @__PURE__ */ react_jsx_runtime.jsxs("p", { style: WORKBENCH_EMPTY_NOTE, children: [
+		      "已安装但未挂载：",
+		      installed.map((shape) => `${shape.id}（${describeWorkbenchState(shape)}）`).join("、")
+		    ] })
+		  ] });
+		}
+		/**
+		 * Render the workbench window while it is open.
+		 * @returns the portal, or null while closed.
+		 */
+		function ShapeWorkbenchLayer() {
+		  const [open, setOpen] = react.useState(isShapeWorkbenchOpen);
+		  const [workbenches, setWorkbenches] = react.useState(shapeWorkbenches);
+		  const [requested, setRequested] = react.useState(shapeWorkbenchRequestedId);
+		  const [installed, setInstalled] = react.useState([]);
+		  const windowRef = react.useRef(null);
+		  react.useEffect(() => subscribeShapeWorkbenchWindow(() => {
+		    setOpen(isShapeWorkbenchOpen());
+		    setRequested(shapeWorkbenchRequestedId());
+		  }), []);
+		  react.useEffect(() => subscribeShapeWorkbenches(() => {
+		    setWorkbenches(shapeWorkbenches());
+		  }), []);
+		  react.useEffect(() => {
+		    if (!open) return;
+		    let cancelled = false;
+		    void readWorkbenchShapes().then((shapes) => {
+		      if (!cancelled) setInstalled(shapes);
+		    });
+		    return () => {
+		      cancelled = true;
+		    };
+		  }, [open]);
+		  react.useEffect(() => {
+		    if (!open) return;
+		    const onKeyDown = (event) => {
+		      if (event.defaultPrevented || event.repeat || event.isComposing) return;
+		      if (!event.ctrlKey || !event.altKey || event.metaKey || event.shiftKey) return;
+		      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+		      const list = shapeWorkbenches();
+		      if (list.length === 0) return;
+		      event.preventDefault();
+		      event.stopImmediatePropagation();
+		      const current = shapeWorkbenchRequestedId() ?? list[0]?.id;
+		      const index = list.findIndex((workbench) => workbench.id === current);
+		      const delta = event.key === "ArrowLeft" ? -1 : 1;
+		      const nextIndex = index === -1 ? delta === 1 ? 0 : list.length - 1 : (index + delta + list.length) % list.length;
+		      const next = list[nextIndex];
+		      if (next !== void 0) selectShapeWorkbench(next.id);
+		    };
+		    window.addEventListener("keydown", onKeyDown, true);
+		    return () => {
+		      window.removeEventListener("keydown", onKeyDown, true);
+		    };
+		  }, [open]);
+		  react.useEffect(() => {
+		    if (!open) return;
+		    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		    const previousOverflow = document.body.style.overflow;
+		    document.body.style.overflow = "hidden";
+		    const onKeyDown = (event) => {
+		      if (event.key !== "Escape" || event.defaultPrevented) return;
+		      event.preventDefault();
+		      event.stopPropagation();
+		      closeShapeWorkbench();
+		    };
+		    document.addEventListener("keydown", onKeyDown, true);
+		    windowRef.current?.focus();
+		    return () => {
+		      document.removeEventListener("keydown", onKeyDown, true);
+		      document.body.style.overflow = previousOverflow;
+		      previous?.focus();
+		    };
+		  }, [open]);
+		  if (!open) return null;
+		  const active = workbenches.find((workbench) => workbench.id === requested) ?? workbenches[0] ?? null;
+		  return react_dom.createPortal(/* @__PURE__ */ react_jsx_runtime.jsx(
+		    "div",
+		    {
+		      style: WORKBENCH_BACKDROP,
+		      role: "presentation",
+		      "data-testid": "dsh-shape-workbench-backdrop",
+		      onMouseDown: (event) => {
+		        if (event.target === event.currentTarget) closeShapeWorkbench();
+		      },
+		      children: /* @__PURE__ */ react_jsx_runtime.jsxs(
+		        "section",
+		        {
+		          ref: windowRef,
+		          tabIndex: -1,
+		          style: WORKBENCH_WINDOW,
+		          role: "dialog",
+		          "aria-modal": "true",
+		          "aria-label": "shape 工作台",
+		          "data-testid": "dsh-shape-workbench",
+		          children: [
+		            /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_BODY, children: active === null ? /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchEmptyState, { installed }) : /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchSurface, { workbench: active }, active.id) }),
+		            workbenches.length > 0 && /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_TABS, role: "tablist", "aria-label": "切换 shape 工作台", children: workbenches.map((workbench) => {
+		              const selected = workbench.id === active?.id;
+		              return /* @__PURE__ */ react_jsx_runtime.jsxs(
+		                "button",
+		                {
+		                  type: "button",
+		                  role: "tab",
+		                  "aria-selected": selected,
+		                  "data-testid": "dsh-shape-workbench-tab",
+		                  "data-shape-workbench-id": workbench.id,
+		                  "data-active": selected ? "true" : "false",
+		                  style: WORKBENCH_TAB,
+		                  onClick: () => {
+		                    selectShapeWorkbench(workbench.id);
+		                  },
+		                  children: [
+		                    /* @__PURE__ */ react_jsx_runtime.jsx("span", { style: selected ? { ...WORKBENCH_TAB_LABEL, ...WORKBENCH_TAB_LABEL_ACTIVE } : WORKBENCH_TAB_LABEL, children: workbench.title }),
+		                    /* @__PURE__ */ react_jsx_runtime.jsx(
+		                      "span",
+		                      {
+		                        style: selected ? { ...WORKBENCH_DOT, ...WORKBENCH_DOT_ACTIVE } : WORKBENCH_DOT,
+		                        "aria-hidden": "true"
+		                      }
+		                    )
+		                  ]
+		                },
+		                workbench.id
+		              );
+		            }) }),
+		            /* @__PURE__ */ react_jsx_runtime.jsxs("footer", { style: WORKBENCH_FOOTER, children: [
+		              /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Esc、点击空白处或 Ctrl+Alt+W 关闭" }),
+		              /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Ctrl+Alt+←/→ 切换工作台" })
+		            ] })
+		          ]
+		        }
+		      )
+		    }
+		  ), document.body);
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/shape-surfaces.ts
 		/** Shape-owned surfaces that are not conversation slots: left sidebar panels. */
 		const panels = new Map();
@@ -4617,6 +5176,8 @@ window.__ModuleLoader__.load({
 		        name: 'conversation.header.leading',
 		        inject: () => ({ resolveShape }),
 		    }, ShapeButton));
+		    // The workbench action is rendered by ShapeButton: `conversation.header.leading`
+		    // is a single slot, so both actions share one registration.
 		    // One bridge per conversation slot a shape descriptor or mount may target:
 		    // the composer dock, its statistics row and floating anchor, the compact
 		    // tool rows, the Session header, and the New Session options.
@@ -4647,6 +5208,24 @@ window.__ModuleLoader__.load({
 		        id: 'dsh-shape-edge-layer',
 		        order: 19,
 		    }, ShapeEdgeLayer));
+		    // The Workbench window is host UI, not a shape mount: one overlay seat owns
+		    // the modal and the shared open state.
+		    ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+		        name: 'shell.overlay',
+		        id: 'dsh-shape-workbench-layer',
+		        order: 18,
+		    }, ShapeWorkbenchLayer));
+		    ctx.effect(() => {
+		        const onKeyDown = (event) => {
+		            if (event.defaultPrevented || event.repeat || event.isComposing) return;
+		            if (!event.ctrlKey || !event.altKey || event.metaKey || event.shiftKey) return;
+		            if (event.code !== 'KeyW' && event.key.toLowerCase() !== 'w') return;
+		            event.preventDefault();
+		            toggleShapeWorkbench();
+		        };
+		        window.addEventListener('keydown', onKeyDown);
+		        return () => { window.removeEventListener('keydown', onKeyDown); };
+		    }, 'dsh-shape: workbench shortcut');
 		    ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({
 		        name: 'conversation.input.dock',
 		        id: 'dsh-shape-composer-bridge',
@@ -4762,3 +5341,4 @@ window.__ModuleLoader__.load({
 		return module.exports;
 	}
 });
+

@@ -34,6 +34,7 @@ export function activate(api) {
 | `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Floating window over the conversation input; `open()` shows it. |
 | `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
 | `api.edge({ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views. |
+| `api.workbench({ id, title, order?, render })` | `{ id, open, dispose }` | Workbench surface in the shape 工作台 window; only for `shape.kind: "workbench"`. |
 | `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
 
 Capabilities are read with `api.require`, never off `api.capabilities` directly, so a missing declaration fails at the call site:
@@ -60,6 +61,7 @@ Details:
 - `api.panel(options)`: registers a panel and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the panel as a floating window over the conversation input.
 - `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
 - `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? }`; the window shows `views/<view>` in a sandboxed iframe. `width`/`height` accept pixels or `'full'` to span the viewport axis.
+- `api.workbench(options)`: registers a workbench surface and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the shape 工作台 window with this workbench selected.
 
 ## Panels
 
@@ -128,6 +130,34 @@ export function activate(api) {
 - `keys` is a private page-level shortcut (not rebindable, invisible in Settings, any combination). For a rebindable command, register with `dsh-shape#shortcuts` and call `popup.toggle()` from `run`.
 - `Esc` is handled on the host page. Focus is inside the sandboxed iframe after the user clicks the view, so keystrokes there never reach the host — the title bar's close button always works.
 - A missing view file throws with the list of available views when the host reports them.
+
+## Workbenches
+
+A workbench is a large window (~80% of the viewport) that the host owns. Open it from the header's **shape 工作台** action or `Ctrl+Alt+W`; close it with `Esc`, a press on the blank area around the window, or the same shortcut again. There is no close button.
+
+Only a shape whose manifest declares `"shape": { "kind": "workbench" }` may call `api.workbench`; any other shape gets a thrown error, so the kind is not just a label.
+
+```js
+export function activate(api) {
+  const workbench = api.workbench({
+    id: 'main',
+    title: '任务工作台',
+    render: (container) => {
+      const board = document.createElement('div')
+      board.textContent = '工作台内容'
+      container.append(board)
+      return () => board.remove()
+    },
+  })
+  return () => workbench.dispose()
+}
+```
+
+- `render(container)` receives a host-owned container and re-runs if the window remounts; the returned cleanup runs when the window drops the surface or switches to another workbench.
+- The surface renders in the host document, not in an iframe, so host shortcuts, `Esc`, and every capability API work as usual.
+- The id becomes `shape:<shapeId>:<id>`; `order` (default `100`) sorts the workbench tabs. Every registered workbench gets a tab above the footer — its title with a dot below, hollow when inactive and filled white for the active one. `Ctrl+Alt+ArrowLeft` / `Ctrl+Alt+ArrowRight` cycle through them (window capture, so the bundled Ctrl+Tab switcher does not also fire), clicking a tab selects it, and the selection is remembered across close/reopen. The window has no title bar: the surface fills it.
+- If no workbench is registered, the window shows how to add one — the Shape Studio preset can scaffold a workbench shape (`shape_scaffold` with `kind: "workbench"`).
+- Disabling or reloading a shape removes its workbench with the rest of its registrations.
 
 ## Mounts
 

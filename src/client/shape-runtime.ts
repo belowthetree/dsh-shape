@@ -21,6 +21,11 @@ import {
   registerShapePanel,
   registerShapeTab,
 } from './shape-surfaces.ts'
+import {
+  disposeShapeWorkbenches,
+  openShapeWorkbench,
+  registerShapeWorkbench,
+} from './shape-workbench.ts'
 
 interface ShapeInfo {
   id: string
@@ -29,6 +34,8 @@ interface ShapeInfo {
   valid: boolean
   enabled?: boolean
   shapeApiVersion?: number
+  /** Declared kind; only `workbench` may register a workbench surface. */
+  kind?: string
   requirements?: ShapeRequirement[]
   clientEntry?: string
   /** Files below `views/`, relative to that directory. */
@@ -80,6 +87,13 @@ export interface ShapeClientApi {
    * @returns a handle that opens, closes, and releases the popup.
    */
   edge: (options: ShapeEdgeOptions) => ShapeEdgeHandle
+  /**
+   * Contribute a workbench surface to the Workbench window. Only shapes whose
+   * manifest declares `shape.kind: "workbench"` may call it.
+   * @param options - workbench id, title, order, and render callback.
+   * @returns a handle that shows the workbench and releases it.
+   */
+  workbench: (options: ShapeWorkbenchOptions) => ShapeWorkbenchHandle
   shortcuts: {
     register: (binding: ShapeShortcutBinding) => () => void
   }
@@ -170,6 +184,32 @@ export interface ShapeEdgeHandle {
   /** Whether the window is currently shown. */
   isOpen: () => boolean
   /** Remove the popup and release its shortcut. */
+  dispose: () => void
+}
+
+/** Options accepted by `api.workbench()`. */
+export interface ShapeWorkbenchOptions {
+  /** Workbench id, namespaced per shape by the runtime. */
+  id: string
+  /** Label shown in the window header and its switcher. */
+  title: string
+  /** Switcher order; lower sorts first. */
+  order?: number
+  /**
+   * Render the workbench body.
+   * @param container - element owned by the workbench window.
+   * @returns an optional cleanup run before the window drops the body.
+   */
+  render: (container: HTMLElement) => (() => void) | void
+}
+
+/** Handle returned by `api.workbench()`. */
+export interface ShapeWorkbenchHandle {
+  /** Namespaced workbench id. */
+  readonly id: string
+  /** Show the workbench window with this workbench selected. */
+  open: () => void
+  /** Unregister the workbench surface. */
   dispose: () => void
 }
 
@@ -529,6 +569,29 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             dispose,
           }
         },
+        workbench(options) {
+          if (shape.kind !== 'workbench') {
+            throw new Error(
+              `dsh-shape: api.workbench needs shape.kind = "workbench"; ${shape.id} declares "${shape.kind ?? 'shape'}"`,
+            )
+          }
+          const id = `shape:${shape.id}:${options.id}`
+          const off = registerShapeWorkbench({
+            shapeId: shape.id,
+            id,
+            title: options.title,
+            order: options.order ?? 100,
+            render: options.render,
+          })
+          state.mounts.push(off)
+          return {
+            id,
+            open() {
+              openShapeWorkbench(id)
+            },
+            dispose: off,
+          }
+        },
         shortcuts: {
           register(binding) {
             return registerShortcuts(binding.keys, binding.run)
@@ -557,6 +620,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             disposeShapePanels(shape.id)
             disposeShapeTabs(shape.id)
             disposeShapeEdges(shape.id)
+            disposeShapeWorkbenches(shape.id)
           },
         })
       } catch (cause) {
@@ -567,6 +631,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         disposeShapePanels(shape.id)
         disposeShapeTabs(shape.id)
         disposeShapeEdges(shape.id)
+        disposeShapeWorkbenches(shape.id)
         state.cleanup?.()
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)
       }

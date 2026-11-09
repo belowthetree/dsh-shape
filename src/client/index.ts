@@ -27,6 +27,8 @@ import { createConversation } from './shape-conversation.ts'
 import { createMcp } from './mcp.ts'
 import { ShapeOverlay } from './ShapeOverlay.tsx'
 import { ShapeEdgeLayer } from './ShapeEdgeLayer.tsx'
+import { ShapeWorkbenchLayer } from './ShapeWorkbenchLayer.tsx'
+import { toggleShapeWorkbench } from './shape-workbench.ts'
 import { createTabComponent, createTabTitleComponent } from './ShapeTabHost.tsx'
 import {
   setShapePanelOpener,
@@ -220,6 +222,8 @@ export function apply(ctx: Context): void {
     name: 'conversation.header.leading',
     inject: () => ({ resolveShape }),
   }, ShapeButton))
+  // The workbench action is rendered by ShapeButton: `conversation.header.leading`
+  // is a single slot, so both actions share one registration.
   // One bridge per conversation slot a shape descriptor or mount may target:
   // the composer dock, its statistics row and floating anchor, the compact
   // tool rows, the Session header, and the New Session options.
@@ -257,6 +261,26 @@ export function apply(ctx: Context): void {
     id: 'dsh-shape-edge-layer',
     order: 19,
   }, ShapeEdgeLayer))
+
+  // The Workbench window is host UI, not a shape mount: one overlay seat owns
+  // the modal and the shared open state.
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({
+    name: 'shell.overlay',
+    id: 'dsh-shape-workbench-layer',
+    order: 18,
+  }, ShapeWorkbenchLayer))
+
+  ctx.effect(() => {
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.defaultPrevented || event.repeat || event.isComposing) return
+      if (!event.ctrlKey || !event.altKey || event.metaKey || event.shiftKey) return
+      if (event.code !== 'KeyW' && event.key.toLowerCase() !== 'w') return
+      event.preventDefault()
+      toggleShapeWorkbench()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => { window.removeEventListener('keydown', onKeyDown) }
+  }, 'dsh-shape: workbench shortcut')
 
   // A panel is a floating window in the conversation input overlay: the `main`
   // slot does not commit a shape entry's subtree, so panels render through the

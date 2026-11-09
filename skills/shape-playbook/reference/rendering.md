@@ -63,6 +63,36 @@ const timer = setTimeout(() => {
 
 Verified by: a host that rendered the session header late left the trigger absent until the watchdog parked it.
 
+## A single slot accepts one registration per priority
+
+Symptom: the whole Web client fails to boot. The boot page says `Failed to load plugins` with `web boot: 1 entry did not activate` and `<plugin>: failed`; the desktop shell then reports `desktop welcome: Web authentication failed`, because the welcome page never becomes usable. The plugin itself looks innocent: its client bundle loads, `node --check` passes, and the host starts.
+
+Cause: `conversation.header.leading` is a **single** slot. Registering it a second time at the same priority throws inside the plugin's `apply`:
+
+```
+Error: single slot "conversation.header.leading" already has a registration at priority 0 (registered by ...) — register at a different priority to shadow it (lowest renders)
+```
+
+The throw happens during activation, so the entry ends up `failed`. The boot audit (dsh 0.2.2-rc.1) rejects **any** inactive client entry, not just the seven fatal ones, so one collision takes down the entire page — and the desktop shows it as an authentication failure, which sends the investigation in the wrong direction.
+
+Fix: put every action for a single slot into **one** registration. Keep the extra action as a child component:
+
+```tsx
+return (
+  <>
+    <Button data-testid="dsh-shape-open" ...>Shapes</Button>
+    <ShapeWorkbenchButton />
+    <ShapeDialog ... />
+  </>
+)
+```
+
+A different priority only **shadows** the lower registration (lowest renders); it does not render both.
+
+Verified: the dsh-shape 0.5.0 build registered `ShapeButton` and `ShapeWorkbenchButton` separately and the desktop app could not start (reproduced in a temp profile: `web boot: 1 entry did not activate @belowthetree/dsh-shape: failed`). After merging them into the single `ShapeButton` registration, the same profile booted and the header showed both actions.
+
+Diagnostic that cut this open: wrap `exports.apply` in the shipped `client.js` with a try/catch that appends `error.stack` to `document.body`, restart the host so the bundle revision changes, and reload — the boot page then prints the real exception instead of `<id>: failed`. Remove the wrapper afterwards.
+
 ## Cards come from descriptors, not from code
 
 `slots/*.json` produces a card in the input dock. If the user asked for a find bar and a card appeared instead, the card is the descriptor, not the client module. Deleting the file removes the card; the client keeps working.

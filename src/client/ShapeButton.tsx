@@ -1,15 +1,16 @@
-/** Top-bar action that opens the registered-shape browser. */
+/** Top-bar actions: the shape browser and the shape workbench. */
 
 import { useEffect, useState } from 'react'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ShapeResolverInjected } from '../shared/capabilities.ts'
 import { ShapeDialog } from './ShapeDialog.tsx'
+import { ShapeWorkbenchButton } from './ShapeWorkbenchButton.tsx'
 import { subscribeShapeBrowser } from './shape-browser.ts'
 
 /**
- * Render the header action and own the dialog's open state.
+ * Render the header actions and own the browser dialog's open state.
  * @param props.resolveShape - capability resolver injected by the Client entry.
- * @returns the button plus its dialog.
+ * @returns both header buttons plus the browser dialog.
  */
 export function ShapeButton({ resolveShape }: ShapeResolverInjected) {
   const [open, setOpen] = useState(false)
@@ -41,6 +42,9 @@ export function ShapeButton({ resolveShape }: ShapeResolverInjected) {
       >
         Shapes
       </Button>
+      {/* `conversation.header.leading` is a single slot: both actions must
+          share one registration. */}
+      <ShapeWorkbenchButton />
       <ShapeDialog open={open} onClose={() => { setOpen(false) }} resolveShape={resolveShape} />
     </>
   )

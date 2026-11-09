@@ -12,11 +12,12 @@
 | `version` | no | Display/package version; defaults to `0.0.0`. Not the capability contract version. |
 | `input` | no | Passed through for future execution. |
 | `output` | no | Display metadata; defaults to `text`. |
-| `shape` | no | ABI and dependency block. |
+| `shape` | no | ABI, kind, and dependency block. |
 
 ## `shape` block
 
 - `apiVersion`: positive integer; default `1`. The current runtime supports only `1`. Other values are discovered but the shape is blocked and cannot start.
+- `kind`: `shape` (default) or `workbench`. A `workbench` shape may register a surface with `api.workbench({ render })`, which the host shows in the shape 工作台 window; any other value makes the manifest invalid.
 - `requires`: array of capability requirements.
 - Each requirement: non-empty `plugin`, non-empty `capability`, non-empty semver `version` range, optional boolean `optional`.
 - Missing required capability, invalid range, or version mismatch blocks the shape card, its chat cards, and its client module.

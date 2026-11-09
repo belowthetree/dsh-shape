@@ -60,7 +60,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 
 浏览器 bundle 通过模块加载器注册，`apply(ctx)` 里做四件事：
 
-1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`。
+1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`；另一个 `shell.overlay` 座位是工作台窗口（`ShapeWorkbenchLayer`），内容来自 `shape.kind: "workbench"` 的形态通过 `api.workbench()` 注册的 `render`，窗口本身没有关闭按钮，由 `Esc`、空白处点击和 `Ctrl + Alt + W` 关闭。
 2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。
 3. **能力实现**：实现 10 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
 4. **能力目录同步**：把当前能力清单 `POST` 回宿主的 `/api/capabilities`，落盘为 `$DSH_HOME/dsh-shape/capabilities.json`，供 `shape_capabilities` 工具读取。

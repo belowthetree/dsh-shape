@@ -41,6 +41,7 @@
 | `description` | 否 | 卡片上的说明 |
 | `output` | 否 | `text`（默认） |
 | `shape.apiVersion` | 否 | 默认 1；ABI 版本 |
+| `shape.kind` | 否 | `shape`（默认）或 `workbench`；`workbench` 才能在[工作台](#工作台)里渲染 |
 | `shape.requires` | 否 | 能力依赖列表 |
 
 `shape.requires` 的每一项是 `{ plugin, capability, version, optional? }`：`plugin` 目前固定 `dsh-shape`，`capability` 取[能力参考](capabilities.md)里的名字，`version` 是 semver 范围。缺能力或版本不匹配时形态不启动，槽位条目也不会显示。
@@ -101,7 +102,8 @@ export function activate(api) {
 - `api.require(plugin, capability)` 返回能力对象，未声明或版本不符时抛错；
 - `api.mount(slot, render, options?)` 往槽位挂 DOM，`render(container)` 返回清理函数；
 - `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）；
-- `api.edge(...)` 注册一个边缘弹窗，从屏幕边缘滑入并显示 `views/` 里的页面（见下）。
+- `api.edge(...)` 注册一个边缘弹窗，从屏幕边缘滑入并显示 `views/` 里的页面（见下）；
+- `api.workbench(...)` 注册一个工作台界面，`open()` 后显示在约占 80% 视口的「shape 工作台」窗口里（见[工作台](#工作台)）。
 
 ## 边缘弹窗
 
@@ -133,6 +135,35 @@ export function activate(api) {
 - 窗口默认可调整大小：拖右侧窗口的左边、左侧窗口的右边、上方窗口的下边、下方窗口的上边，最小 240×160；尺寸存在 `localStorage` 里，下次打开沿用。`resizable: false` 关闭调整；某一轴是 `'full'` 时该轴不可调整。
 - 顶部区域会避开 DSH 的窗口顶栏：上方窗口从顶栏下方 12px 开始，左右窗口和上下占满的窗口也从顶栏下方开始，全屏时顶栏高度按 0 处理（`--dsh-frame-chrome-top`）。普通浏览器里没有这条顶栏，位置不受影响。
 - 视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
+
+## 工作台
+
+工作台是顶栏左侧 **shape 工作台** 按钮（或 `Ctrl + Alt + W`）打开的独立窗口，约占视口 80%。窗口没有标题栏，形态内容直接铺满整个窗口。窗口没有关闭按钮：按 `Esc`、点窗口外的空白处、或再按一次 `Ctrl + Alt + W` 关闭。
+
+窗口打开时，底部的**工作台**条列出所有已注册的工作台：名称下方的圆点表示当前选中情况，空心圆是未选中，白色实心圆是当前工作台。按 `Ctrl + Alt + ←/→`（环形）切换，点击名称也可以切换；选择会被记住，下次打开仍停在上一项。窗口打开期间这个组合键只作用于工作台，不会触发布内的 `workspace-tab-switch`。
+
+只有 `package.json` 里声明 `"shape": { "kind": "workbench" }` 的形态才能注册工作台内容。在 `client/index.js` 里：
+
+```js
+export function activate(api) {
+  const workbench = api.workbench({
+    id: 'main',
+    title: '任务工作台',
+    order: 100,
+    render: (container) => {
+      container.textContent = '这里由形态自己渲染'
+      return () => { /* 可选清理 */ }
+    },
+  })
+  return () => workbench.dispose()
+}
+```
+
+- `render(container)` 拿到的是工作台窗口自己的容器，直接写 DOM；返回值在窗口关闭或切到别的工作台时执行。
+- 工作台内容在宿主文档里渲染，不是沙箱 iframe，因此 `Esc`、`Ctrl + Alt + W` 和 `dsh-shape#shortcuts` 注册的快捷键都照常可用，也能直接使用 `api.require()` 拿到的能力。
+- 每个工作台在底部标签条里占一项，`order`（默认 `100`）决定顺序；`id` 会命名空间化为 `shape:<形态 id>:<id>`，不同形态可以重名。
+- 没有工作台形态时，窗口显示引导：用 Shape Studio 预设新建形态（`shape_scaffold` 传 `kind: 'workbench'` 可直接生成），或在 `shape` 块里写 `"kind": "workbench"` 并调用 `api.workbench()`。
+- 形态被停用或加载失败时，它注册的工作台一起移除；窗口会在下一次打开时更新。
 
 ## 行为与测试（actions.js）
 
