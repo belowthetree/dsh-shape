@@ -149,6 +149,10 @@ export async function apply(ctx, config = {}) {
         return
       }
       shapes = shapes.map(candidate => candidate.id === id ? { ...candidate, enabled } : candidate)
+      // The page re-imported every shape in place from the snapshot above, so this
+      // flag is already live: leaving `revision` behind made the next refresh report
+      // `changed: true` and reload the whole Harness for a state it already had.
+      revision = clientRevision()
       json(res, 200, snapshot())
       return
     }
