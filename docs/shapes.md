@@ -105,6 +105,7 @@ export function activate(api) {
 - `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）；
 - `api.edge(...)` 注册一个边缘弹窗，从屏幕边缘滑入并显示 `views/` 里的页面（见下）；
 - `api.workbench(...)` 注册一个工作台界面，`open()` 后显示在约占 80% 视口的「shape 工作台」窗口里（见[工作台](#工作台)）。
+- 客户端模块用**相对路径**互相 import（`import './view.js'`）。宿主把内容签名放进 URL 路径段（`/client/<id>/@<hash>/index.js`），相对 import 会跟着解析到同一段，所以改文件后在面板点刷新就能生效；写成绝对路径（`/dsh-shape/client/<id>/x.js`）的文件不会被版本化，改了要重新加载页面。
 
 ## 边缘弹窗
 

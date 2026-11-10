@@ -69,6 +69,9 @@ jobs:
         if: steps.decide.outputs.state == 'new'
         run: node scripts/check-tool-schemas.mjs
 
+      - name: Verify the runtime restarts only the shapes that changed
+        run: node scripts/check-runtime-refresh.mjs
+
       - name: Publish to npm
         if: steps.decide.outputs.state == 'new'
         env:

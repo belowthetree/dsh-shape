@@ -20,7 +20,7 @@ dsh web --no-open --port 0
 | --- | --- |
 | `client.js` | 重新加载页面 |
 | `index.js` / `tools.js` / `cordis.patch.yml` | 重启 `dsh web` |
-| 形态目录（`~/.dsh/dsh-shape/shapes/…`） | 刷新页面即可，或 `POST /dsh-shape/api/refresh` |
+| 形态目录（`~/.dsh/dsh-shape/shapes/…`） | 在形态面板点刷新（或 `POST /dsh-shape/api/refresh`）；只有变了的形态在页内重启，页面不重载 |
 
 确认宿主插件真的起来了：
 

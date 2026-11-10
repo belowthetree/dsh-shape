@@ -42,14 +42,14 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 | `GET /dsh-shape/api/health` | `{ ok, count, capabilities, roots }`，用来确认插件真的起来了 |
 | `GET /dsh-shape/api/shapes` | 全部形态的描述（origin、version、valid、views、slots、tools、clientEntry） |
 | `GET /dsh-shape/api/capabilities` | 客户端写入磁盘的能力镜像 |
-| `POST /dsh-shape/api/refresh` | 重新扫描两个形态根；回执带 `revision` 与 `changed`，客户端据此决定是否重载页面 |
+| `POST /dsh-shape/api/refresh` | 重新扫描两个形态根；回执带 `revision` 与 `changed`（仅信息性：客户端不再据此重载页面，改为按 `clientHash` 增量重启） |
 | `POST /dsh-shape/api/toggle` | `{ id, enabled }` 启停一个形态 |
 | `POST /dsh-shape/api/delete` | 删除用户形态目录 |
 | `GET/POST /dsh-shape/api/data` | 读写形态 `data/` 下的 JSON |
 | `GET/POST /dsh-shape/api/files` | 在给定工作区根内读、写、列文件（`dsh-shape#files` 能力使用；读/列走 GET，写操作走 POST；1 MB 读写上限） |
 | `POST /dsh-shape/api/shell` | 在给定工作区根内执行一条命令行（`dsh-shape#shell` 能力使用；经宿主 `shell` 服务与沙箱策略执行，回传退出码、输出与沙箱摘要；超时与输出上限由宿主夹取） |
 | `GET /dsh-shape/view/<id>/…` | 形态视图静态文件 |
-| `GET /dsh-shape/client/<id>/…` | 形态客户端模块 |
+| `GET /dsh-shape/client/<id>/…` | 形态客户端模块；也接受 `/client/<id>/@<clientHash>/…`，版本段只用于让浏览器拿到新的模块 URL |
 
 形态根有两个，用户形态覆盖同 id 的内置形态：
 
@@ -63,7 +63,9 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 浏览器 bundle 通过模块加载器注册，`apply(ctx)` 里做四件事：
 
 1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`；另一个 `shell.overlay` 座位是工作台窗口（`ShapeWorkbenchLayer`），内容来自 `shape.kind: "workbench"` 的形态通过 `api.workbench()` 注册的 `render`，窗口本身没有关闭按钮，由 `Esc`、空白处点击和 `Ctrl + Alt + W` 关闭。
-2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。
+2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/@<clientHash>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。`clientHash` 是宿主对 `client/` 文件夹算的内容签名（文件名 + 大小 + mtime），放进路径段而不是 query，是因为入口里的相对 import 会按入口 URL 解析——路径段一变，整张模块图都换成新地址，所以增删文件、改依赖内容都不需要重载页面。刷新时只重启签名变了的形态，旧的模块实例留在内存里。
+
+   宿主没有返回 `clientHash` 时（旧版本宿主）退回 `?v=<version>-<时间戳>`，每次刷新都重新导入。
 3. **能力实现**：实现 12 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
 4. **能力目录同步**：把当前能力清单 `POST` 回宿主的 `/api/capabilities`，落盘为 `$DSH_HOME/dsh-shape/capabilities.json`，供 `shape_capabilities` 工具读取。
 

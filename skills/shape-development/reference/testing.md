@@ -10,12 +10,13 @@
 
 ## Package checks
 
-The package itself runs three gates before a publish; run them locally after changing `client.js` or `tools.js`:
+The package itself runs four gates before a publish; run them locally after changing `client.js` or `tools.js`:
 
 ```sh
 node scripts/check-client-bundle.mjs              # loads client.js through the module loader and calls apply()
 node scripts/gen-capability-fallback.mjs --check  # the bundled capability list matches the client
 node scripts/check-tool-schemas.mjs               # every tool schema stays inside DSH's supported subset
+node scripts/check-runtime-refresh.mjs            # refresh re-imports only changed shapes; restart re-imports one
 ```
 
 A tool schema outside that subset does not fail loudly at runtime: the row mounting the tool becomes unusable and the whole preset disappears from the picker. `type` must be one string — `type: ['string', 'null']` is rejected.

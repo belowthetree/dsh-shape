@@ -162,9 +162,15 @@ export async function serveClient(url, res, shapes) {
     json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown shape' } })
     return
   }
-  let requested
+  let requested = rest.slice(separator + 1)
+  // A versioned module URL carries `@<signature>/` after the shape id. The segment
+  // only exists to give the browser a new module URL, so it is dropped before the
+  // file is resolved; URLs without it keep working.
+  const versioned = /^@[A-Za-z0-9._-]{1,64}\//u.exec(requested)
+  if (versioned !== null)
+    requested = requested.slice(versioned[0].length)
   try {
-    requested = decodeURIComponent(rest.slice(separator + 1))
+    requested = decodeURIComponent(requested)
   }
   catch {
     json(res, 404, { ok: false, error: { code: 'not-found', message: 'unknown client module' } })

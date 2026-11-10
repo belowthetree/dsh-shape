@@ -38,6 +38,8 @@ interface ShapeInfo {
   kind?: string
   requirements?: ShapeRequirement[]
   clientEntry?: string
+  /** Content signature of the shape's `client/` folder, used to version module URLs. */
+  clientHash?: string
   /** Files below `views/`, relative to that directory. */
   views?: string[]
 }
@@ -252,6 +254,8 @@ interface RegisteredShortcut extends ParsedShortcut {
 
 interface ActiveShape {
   id: string
+  /** `clientHash` the running module graph was imported from. */
+  hash: string
   dispose: () => void
 }
 
@@ -379,6 +383,8 @@ function normalizeDimension(value: number | 'full' | undefined, field: string): 
 export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { start: () => () => void } {
   const shortcuts = new Map<string, RegisteredShortcut>()
   const active: ActiveShape[] = []
+  /** Restart counters, so restarting one shape gives it a fresh module URL. */
+  const restarts = new Map<string, number>()
   let generation = 0
   let started = false
 
@@ -403,9 +409,48 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
     }
   }
 
-  const refresh = async (): Promise<void> => {
+  /**
+   * Address one shape's client entry.
+   *
+   * `?v=` only versions the entry itself: its static imports keep their own URLs and
+   * the browser never re-evaluates them. A `@<hash>` path segment does reach them,
+   * because relative specifiers resolve against the importing module's URL, so the
+   * whole graph gets a fresh address and no page reload is needed.
+   * @param shape - shape about to be imported.
+   * @returns the import specifier.
+   */
+  const moduleUrl = (shape: ShapeInfo): string => {
+    const entry = shape.clientEntry ?? ''
+    const base = `/dsh-shape/client/${encodeURIComponent(shape.id)}/`
+    if (shape.clientHash === undefined || shape.clientHash === '')
+      return `${base}${entry}?v=${encodeURIComponent(shape.version)}-${String(Date.now())}`
+    const restart = restarts.get(shape.id) ?? 0
+    return `${base}@${shape.clientHash}${restart === 0 ? '' : `.${String(restart)}`}/${entry}`
+  }
+
+  /** Dispose one active shape, leaving the rest of the runtime untouched. */
+  const stopShape = (id: string): void => {
+    const at = active.findIndex(candidate => candidate.id === id)
+    if (at === -1) return
+    const [stopped] = active.splice(at, 1)
+    stopped?.dispose()
+  }
+
+  /**
+   * Whether a running shape already matches the Host's current module graph.
+   * @param shape - shape reported by the Host.
+   * @returns true when it can keep running as is.
+   */
+  const upToDate = (shape: ShapeInfo): boolean => {
+    const running = active.find(candidate => candidate.id === shape.id)
+    if (running === undefined) return false
+    // A Host that does not report `clientHash` cannot be diffed, so every refresh re-imports.
+    if (shape.clientHash === undefined || running.hash === '') return false
+    return running.hash === shape.clientHash
+  }
+
+  const refresh = async (options: { force?: boolean } = {}): Promise<void> => {
     const current = ++generation
-    stopAll()
     let shapes: ShapeInfo[]
     try {
       const response = await fetch('/dsh-shape/api/shapes', { credentials: 'same-origin', cache: 'no-store' })
@@ -416,10 +461,25 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
     } catch {
       return
     }
+    if (current !== generation) return
+
+    if (options.force === true) {
+      stopAll()
+    } else {
+      // Restart only the shapes whose module graph changed; the rest keep running.
+      for (const running of [...active]) {
+        const next = shapes.find(candidate => candidate.id === running.id)
+        if (next === undefined || next.enabled === false || !next.valid
+          || next.clientEntry === undefined || !upToDate(next)) {
+          stopShape(running.id)
+        }
+      }
+    }
 
     for (const shape of shapes) {
       if (current !== generation) return
       if (shape.enabled === false || !shape.valid || shape.clientEntry === undefined) continue
+      if (active.some(candidate => candidate.id === shape.id)) continue
       if (!supportsShapeApiVersion(shape.shapeApiVersion)) continue
       const resolution = capabilities.resolve(shape.requirements ?? [])
       if (!resolution.ok) continue
@@ -599,8 +659,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         },
       }
 
-      let url = `/dsh-shape/client/${encodeURIComponent(shape.id)}/${shape.clientEntry}`
-      url += `?v=${encodeURIComponent(shape.version)}-${String(Date.now())}`
+      const url = moduleUrl(shape)
       try {
         const module = await import(/* @vite-ignore */ url) as ShapeModule
         if (current !== generation) return
@@ -610,6 +669,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         else if (result !== undefined && typeof result.dispose === 'function') state.cleanup = result.dispose
         active.push({
           id: shape.id,
+          hash: shape.clientHash ?? '',
           dispose: () => {
             state.cleanup?.()
             module.deactivate?.()
@@ -638,13 +698,33 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
     }
   }
 
+  /**
+   * Restart one shape in place: bump its module URL and re-import just that shape.
+   * @param id - shape to restart.
+   */
+  const restartShape = async (id: string): Promise<void> => {
+    restarts.set(id, (restarts.get(id) ?? 0) + 1)
+    stopShape(id)
+    await refresh()
+  }
+
   const start = (): (() => void) => {
     if (started) throw new Error('shape runtime already started')
     started = true
     window.addEventListener('keydown', onKeyDown)
+    // Content or file-set changes only need the affected shapes re-imported; a
+    // capability catalog change can alter what every shape is allowed to do, so
+    // that one rebuilds everything.
     const reload = (): void => { void refresh() }
+    const rebuild = (): void => { void refresh({ force: true }) }
+    const onRestart = (event: Event): void => {
+      const detail = (event as CustomEvent<{ id?: unknown }>).detail
+      const id = detail?.id
+      if (typeof id === 'string' && id !== '') void restartShape(id)
+    }
     window.addEventListener('dsh-shape:refresh', reload)
-    window.addEventListener('dsh-shape:capabilities', reload)
+    window.addEventListener('dsh-shape:capabilities', rebuild)
+    window.addEventListener('dsh-shape:restart', onRestart)
     void refresh()
     return () => {
       started = false
@@ -652,7 +732,8 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
       stopAll()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('dsh-shape:refresh', reload)
-      window.removeEventListener('dsh-shape:capabilities', reload)
+      window.removeEventListener('dsh-shape:capabilities', rebuild)
+      window.removeEventListener('dsh-shape:restart', onRestart)
     }
   }
 

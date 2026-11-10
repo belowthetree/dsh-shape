@@ -35,7 +35,7 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `cordis.patch.yml` | Bundle patch: inserts the plugin row and the `preset-shape` row |
 | `shapes/` | Bundled example shapes (user shapes override them by id) |
 | `docs/` | Reference docs (Chinese), not published to npm |
-| `scripts/` | The three gates plus `publish-decision.mjs`, used by CI; not published |
+| `scripts/` | The gates plus `publish-decision.mjs`, used by CI; not published |
 | `skills/` | Agent skills: `shape-development` (contract), `shape-playbook` (verified workflows and traps) |
 
 Only `client.js` is a build artifact — JSX and CSS modules force a build. The host, `tools.js`, and `skill.js` are hand-written ESM: edit `src/host/*.js` and you are done. The host used to exist twice (`src/host/index.ts` plus a committed `index.js`), and `/api/data` reached only the artifact; there is one copy now, and `index.js` no longer carries logic.
@@ -49,20 +49,21 @@ Only `client.js` is a build artifact — JSX and CSS modules force a build. The 
 | --- | --- | --- |
 | `client.js` | Reload the page; run `node scripts/check-client-bundle.mjs` | — (served per page load) |
 | `index.js`, `src/host/`, `tools.js`, `skill.js`, `cordis.patch.yml` | Restart the host (`dsh web`, or the desktop app); check `/dsh-shape/api/health` | `apply(ctx)` ran once at boot: tools, skills, and preset rows are registered then, and the renderer cannot re-run it |
-| An existing file inside a shape | Reload the page | — (client modules and views are read from disk per request) |
-| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh`, **then** reload the page (the panel's refresh does both) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load, and a failed client import is cached for the page's lifetime |
+| An existing file inside a shape | Reload the page, or press the card's restart button, or the panel's refresh | Client modules are read from disk per request; views per iframe load |
+| A **new or deleted** file, shape, or enabled flag | `POST /dsh-shape/api/refresh` (the panel's refresh does it) | The shape list and each shape's `clientFiles` come from an in-memory scan done at load |
 
-The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`.
+The last two rows are the usual surprise: editing a shape's `index.js` shows up after F5, but adding `client/actions.js` next to it does not, and neither does a new skill in `skills/`. Since `client.js` addresses modules by their `clientHash` (see below), the panel's refresh now restarts only the shapes whose files changed and never reloads the page.
 
-## The three gates
+## The gates
 
 ```sh
 node scripts/check-client-bundle.mjs              # loads client.js through the module loader and calls apply(ctx)
 node scripts/gen-capability-fallback.mjs --check  # bundled capability list matches the client
 node scripts/check-tool-schemas.mjs               # every tool schema is inside DSH's subset
+node scripts/check-runtime-refresh.mjs            # refresh re-imports only changed shapes; restart re-imports one
 ```
 
-They run in CI before publish. Run all three before committing anything that touches `client.js` or `tools.js`.
+They run in CI. Run all four before committing anything that touches `client.js`, `tools.js`, or the runtime's module loading.
 
 ## Splicing `client.js`
 
@@ -165,17 +166,11 @@ curl http://127.0.0.1:<port>/dsh-shape/api/health
 curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # after adding or deleting shape files
 ```
 
-Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 — and its importer then fails to load, which looks exactly like "the shape stopped working and refreshing did not help". Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
+Rescanning is not optional when a shape gains a file. The client route only serves names from the scan done at load, so a freshly added `client/<name>.js` answers 404 until `POST /api/refresh`. Verified both ways: new file before `POST /api/refresh` → 404, immediately after → 200.
 
-**Order matters, and the shape panel now handles it.** A shape's client modules are imported once per page load, and the cache-busting query the loader appends (`?v=<version>-<time>`) applies to the entry URL only — its static imports keep a stable URL, so a failed import stays failed for the life of the page.
+**Module refresh, since `0.8.0`.** The host scans a `clientHash` per shape (file names + size + mtime) and the client imports `/dsh-shape/client/<id>/@<clientHash>/<entry>`. The segment is in the *path* on purpose: relative imports resolve against the entry URL, so a changed file set gives the whole graph new addresses and no page reload is needed. `serveClient` accepts both forms; the token is decorative and never validated, so an in-flight page keeps working across a rescan.
 
-`POST /api/refresh` reports a `revision` signature plus `changed`:
-
-```sh
-curl -X POST http://127.0.0.1:<port>/dsh-shape/api/refresh   # {"changed": true, ...}
-```
-
-The shape panel's refresh button reads that receipt and reloads the page itself when `changed` is `true`; when only file contents changed it just refreshes the list. If you drive the API yourself, do the same: rescan, then reload when `changed`. A page reloaded before the rescan must be reloaded **again** after it — restarting the Host works only because it does both at once.
+The runtime diffs on every refresh and restarts only shapes whose `clientHash` changed (`dsh-shape:refresh`); `dsh-shape:capabilities` forces a full rebuild, `dsh-shape:restart` (dispatched by the card's restart button, detail `{ id }`) restarts one shape with an extra counter suffix. `revision`/`changed` in the refresh receipt are informational now — nothing reloads the page on them.
 
 On Windows `link:` may fail with `EPERM`; copying the package contents into the profile's `node_modules/@belowthetree/dsh-shape/` works.
 

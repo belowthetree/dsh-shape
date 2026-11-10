@@ -1250,7 +1250,6 @@ window.__ModuleLoader__.load({
 		* @returns the snapshot.
 		*/
 		async function readShapes(refresh) {
-			let changed = false;
 			if (refresh) {
 				const rescan = await fetch("/dsh-shape/api/refresh", {
 					method: "POST",
@@ -1258,8 +1257,6 @@ window.__ModuleLoader__.load({
 					headers: { accept: "application/json" }
 				});
 				if (!rescan.ok) throw new Error(`refresh failed (${String(rescan.status)})`);
-				const receipt = await rescan.json().catch(() => null);
-				changed = receipt?.changed === true;
 			}
 			const response = await fetch("/dsh-shape/api/shapes", {
 				credentials: "same-origin",
@@ -1269,13 +1266,8 @@ window.__ModuleLoader__.load({
 			if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
 			const payload = await response.json();
 			if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error("invalid shape response");
-			// A shape's client modules are imported once per page load and a module URL
-			// that answered 404 keeps failing, so a changed module set needs a reload;
-			// no in-page call can recover it.
-			if (changed) {
-				window.location.reload();
-				return { shapes: [], roots: {} };
-			}
+			// The runtime addresses each shape's modules by their `clientHash`, so a
+			// changed file set gets fresh URLs and the page keeps running.
 			return {
 				shapes: payload.shapes,
 				...payload.roots === void 0 ? {} : { roots: payload.roots }
@@ -1375,6 +1367,9 @@ window.__ModuleLoader__.load({
 				} finally {
 					setBusyId("");
 				}
+			}, []);
+			const restartShape = (0, react.useCallback)((shape) => {
+				window.dispatchEvent(new CustomEvent("dsh-shape:restart", { detail: { id: shape.id } }));
 			}, []);
 			const deleteShape = (0, react.useCallback)(async (shape) => {
 				setBusyId(shape.id);
@@ -1670,6 +1665,7 @@ window.__ModuleLoader__.load({
 														}),
 														/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 															className: shape_dialog_module_css_default.cardFooter,
+															style: { paddingRight: 66 },
 															children: [
 																/* @__PURE__ */ (0, react_jsx_runtime.jsx)("span", {
 																	className: shape_dialog_module_css_default.origin,
@@ -1717,6 +1713,25 @@ window.__ModuleLoader__.load({
 													onClick: () => {
 														toggleShape(shape);
 													}
+												}),
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
+													type: "button",
+													className: shape_dialog_module_css_default.iconButton,
+													style: {
+														position: "absolute",
+														right: 42,
+														bottom: 9,
+														zIndex: 2
+													},
+													"aria-label": `重启 ${shape.title}`,
+													title: `重启 ${shape.title}（只重载这个 shape，不刷新页面）`,
+													"data-testid": "dsh-shape-restart",
+													"data-restart-shape-id": shape.id,
+													disabled: busyId === shape.id || !enabled,
+													onClick: () => {
+														restartShape(shape);
+													},
+													children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconRefreshOutlineRegular, {})
 												}),
 												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("button", {
 													type: "button",
@@ -2063,6 +2078,7 @@ window.__ModuleLoader__.load({
 		function createShapeRuntime(capabilities) {
 			const shortcuts = /* @__PURE__ */ new Map();
 			const active = [];
+			const restarts = /* @__PURE__ */ new Map();
 			let generation = 0;
 			let started = false;
 			const stopAll = () => {
@@ -2084,9 +2100,27 @@ window.__ModuleLoader__.load({
 					return;
 				}
 			};
-			const refresh = async () => {
+			const moduleUrl = (shape) => {
+				const entry = shape.clientEntry ?? "";
+				const base = `/dsh-shape/client/${encodeURIComponent(shape.id)}/`;
+				if (shape.clientHash === void 0 || shape.clientHash === "") return `${base}${entry}?v=${encodeURIComponent(shape.version)}-${String(Date.now())}`;
+				const restart = restarts.get(shape.id) ?? 0;
+				return `${base}@${shape.clientHash}${restart === 0 ? "" : `.${String(restart)}`}/${entry}`;
+			};
+			const stopShape = (id) => {
+				const at = active.findIndex((candidate) => candidate.id === id);
+				if (at === -1) return;
+				const [stopped] = active.splice(at, 1);
+				stopped?.dispose();
+			};
+			const upToDate = (shape) => {
+				const running = active.find((candidate) => candidate.id === shape.id);
+				if (running === void 0) return false;
+				if (shape.clientHash === void 0 || running.hash === "") return false;
+				return running.hash === shape.clientHash;
+			};
+			const refresh = async (options = {}) => {
 				const current = ++generation;
-				stopAll();
 				let shapes;
 				try {
 					const response = await fetch("/dsh-shape/api/shapes", {
@@ -2100,9 +2134,21 @@ window.__ModuleLoader__.load({
 				} catch {
 					return;
 				}
+				if (current !== generation) return;
+				if (options.force === true) {
+					stopAll();
+				} else {
+					for (const running of [...active]) {
+						const next = shapes.find((candidate) => candidate.id === running.id);
+						if (next === void 0 || next.enabled === false || !next.valid || next.clientEntry === void 0 || !upToDate(next)) {
+							stopShape(running.id);
+						}
+					}
+				}
 				for (const shape of shapes) {
 					if (current !== generation) return;
 					if (shape.enabled === false || !shape.valid || shape.clientEntry === void 0) continue;
+					if (active.some((candidate) => candidate.id === shape.id)) continue;
 					if (!supportsShapeApiVersion(shape.shapeApiVersion)) continue;
 					const resolution = capabilities.resolve(shape.requirements ?? []);
 					if (!resolution.ok) continue;
@@ -2273,8 +2319,7 @@ window.__ModuleLoader__.load({
 							return registerShortcuts(binding.keys, binding.run);
 						} }
 					};
-					let url = `/dsh-shape/client/${encodeURIComponent(shape.id)}/${shape.clientEntry}`;
-					url += `?v=${encodeURIComponent(shape.version)}-${String(Date.now())}`;
+					const url = moduleUrl(shape);
 					try {
 						const module = await import(
 							/* @vite-ignore */
@@ -2287,6 +2332,7 @@ window.__ModuleLoader__.load({
 						else if (result !== void 0 && typeof result.dispose === "function") state.cleanup = result.dispose;
 						active.push({
 							id: shape.id,
+							hash: shape.clientHash ?? "",
 							dispose: () => {
 								state.cleanup?.();
 								module.deactivate?.();
@@ -2314,6 +2360,11 @@ window.__ModuleLoader__.load({
 					}
 				}
 			};
+			const restartShape = async (id) => {
+				restarts.set(id, (restarts.get(id) ?? 0) + 1);
+				stopShape(id);
+				await refresh();
+			};
 			const start = () => {
 				if (started) throw new Error("shape runtime already started");
 				started = true;
@@ -2321,8 +2372,16 @@ window.__ModuleLoader__.load({
 				const reload = () => {
 					refresh();
 				};
+				const rebuild = () => {
+					refresh({ force: true });
+				};
+				const onRestart = (event) => {
+					const id = event.detail?.id;
+					if (typeof id === "string" && id !== "") restartShape(id);
+				};
 				window.addEventListener("dsh-shape:refresh", reload);
-				window.addEventListener("dsh-shape:capabilities", reload);
+				window.addEventListener("dsh-shape:capabilities", rebuild);
+				window.addEventListener("dsh-shape:restart", onRestart);
 				refresh();
 				return () => {
 					started = false;
@@ -2330,7 +2389,8 @@ window.__ModuleLoader__.load({
 					stopAll();
 					window.removeEventListener("keydown", onKeyDown);
 					window.removeEventListener("dsh-shape:refresh", reload);
-					window.removeEventListener("dsh-shape:capabilities", reload);
+					window.removeEventListener("dsh-shape:capabilities", rebuild);
+					window.removeEventListener("dsh-shape:restart", onRestart);
 				};
 			};
 			return { start };

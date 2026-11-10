@@ -58,10 +58,9 @@ function describeMissing(item: ShapeMissingCapability): string {
 /**
  * Read the current shape list.
  * @param refresh - ask the Host to rescan the shape roots first.
- * @returns the snapshot, or null when the page is reloading to pick up changed client modules.
+ * @returns the snapshot.
  */
-async function readShapes(refresh: boolean): Promise<Snapshot | null> {
-  let rescanChanged = false
+async function readShapes(refresh: boolean): Promise<Snapshot> {
   if (refresh) {
     const rescan = await fetch('/dsh-shape/api/refresh', {
       method: 'POST',
@@ -69,8 +68,6 @@ async function readShapes(refresh: boolean): Promise<Snapshot | null> {
       headers: { accept: 'application/json' },
     })
     if (!rescan.ok) throw new Error(`refresh failed (${String(rescan.status)})`)
-    const receipt = await rescan.json().catch(() => null) as { changed?: boolean } | null
-    rescanChanged = receipt?.changed === true
   }
 
   const response = await fetch('/dsh-shape/api/shapes', {
@@ -81,12 +78,8 @@ async function readShapes(refresh: boolean): Promise<Snapshot | null> {
   if (!response.ok) throw new Error(`HTTP ${String(response.status)}`)
   const payload = await response.json() as { ok?: boolean; shapes?: ShapeInfo[]; roots?: Snapshot['roots'] }
   if (payload.ok !== true || !Array.isArray(payload.shapes)) throw new Error('invalid shape response')
-  // A shape's client modules are imported once per page load, and a module URL
-  // that answered 404 keeps failing; only a reload can pick up a changed set.
-  if (rescanChanged) {
-    window.location.reload()
-    return null
-  }
+  // The runtime addresses each shape's modules by their `clientHash`, so a changed
+  // file set gets fresh URLs and the page keeps running: no reload here.
   return {
     shapes: payload.shapes,
     ...(payload.roots === undefined ? {} : { roots: payload.roots }),
@@ -132,7 +125,6 @@ export function ShapeDialog({
     setError('')
     try {
       const snapshot = await readShapes(refresh)
-      if (snapshot === null) return
       setShapes(snapshot.shapes)
       setRoots(snapshot.roots)
       setStatus('ready')
@@ -202,6 +194,10 @@ export function ShapeDialog({
     } finally {
       setBusyId('')
     }
+  }, [])
+
+  const restartShape = useCallback((shape: ShapeInfo): void => {
+    window.dispatchEvent(new CustomEvent('dsh-shape:restart', { detail: { id: shape.id } }))
   }, [])
 
   const deleteShape = useCallback(async (shape: ShapeInfo): Promise<void> => {
@@ -466,7 +462,7 @@ export function ShapeDialog({
                           无效 package.json：{shape.error ?? '缺少 id 或 name'}
                         </span>
                       )}
-                      <div className={css.cardFooter}>
+                      <div className={css.cardFooter} style={{ paddingRight: 66 }}>
                         <span className={css.origin}>{shape.origin === 'bundled' ? '内置' : '用户'}</span>
                         <span className={css.badge}>v{shape.version}</span>
                         <span className={css.badge}>{String(shape.views.length)} views</span>
@@ -489,6 +485,19 @@ export function ShapeDialog({
                       disabled={busyId === shape.id}
                       onClick={() => { void toggleShape(shape) }}
                     />
+                    <button
+                      type="button"
+                      className={css.iconButton}
+                      style={{ position: 'absolute', right: 42, bottom: 9, zIndex: 2 }}
+                      aria-label={`重启 ${shape.title}`}
+                      title={`重启 ${shape.title}（只重载这个 shape，不刷新页面）`}
+                      data-testid="dsh-shape-restart"
+                      data-restart-shape-id={shape.id}
+                      disabled={busyId === shape.id || !enabled}
+                      onClick={() => { restartShape(shape) }}
+                    >
+                      <IconRefreshOutlineRegular />
+                    </button>
                     <button
                       type="button"
                       className={css.deleteButton}

@@ -2,7 +2,8 @@
  * Shape discovery: read shape folders under a root and parse their manifests.
  * @module @belowthetree/dsh-shape/host/shapes
  */
-import { readdir, readFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 /**
  * List files below one directory, relative to it and using `/` separators.
@@ -131,6 +132,31 @@ function readShapeConfig(manifest) {
   return { apiVersion, kind, requirements }
 }
 /**
+ * Signature of a shape's `client/` folder: the file set plus each file's size and
+ * mtime. A page imports those modules by URL and the browser never re-evaluates a
+ * URL, so this signature is what lets the runtime address a fresh copy of the graph
+ * (`/client/<id>/@<hash>/index.js`) instead of reloading the whole page.
+ * @param dir - the shape's `client/` directory.
+ * @param files - relative file names below it.
+ * @returns 10 hex characters, or `''` when the folder has no files.
+ */
+async function clientSignature(dir, files) {
+  if (files.length === 0)
+    return ''
+  const hash = createHash('sha1')
+  for (const file of files) {
+    let info
+    try {
+      info = await stat(path.join(dir, file))
+    }
+    catch {
+      continue
+    }
+    hash.update(`${file}:${String(info.size)}:${String(Math.trunc(info.mtimeMs))}\n`)
+  }
+  return hash.digest('hex').slice(0, 10)
+}
+/**
  * Read one shape folder.
  * @param dir - the shape folder.
  * @param origin - which root discovered it.
@@ -158,6 +184,7 @@ async function readShape(dir, origin) {
   const slotData = await readSlotData(path.join(dir, 'slots'), slots)
   const clientFiles = await listFiles(path.join(dir, 'client'))
   const clientEntry = clientFiles.includes('index.js') ? 'index.js' : undefined
+  const clientHash = await clientSignature(path.join(dir, 'client'), clientFiles)
   return {
     id,
     title,
@@ -170,6 +197,7 @@ async function readShape(dir, origin) {
     requirements: shapeConfig.requirements,
     views: await listFiles(path.join(dir, 'views')),
     clientFiles,
+    clientHash,
     ...(clientEntry === undefined ? {} : { clientEntry }),
     slots,
     slotData,
