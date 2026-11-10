@@ -41,6 +41,7 @@ import {
 import { createUiControl } from './ui-control.ts'
 import { createWorkspaceSwitch } from './workspace.ts'
 import { createWorkspaceFiles } from './workspace-files.ts'
+import { createShapeShell } from './shell.ts'
 
 /** The leading header seat and composer dock are owned by the conversation client. */
 export const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace']
@@ -143,6 +144,15 @@ export function apply(ctx: Context): void {
     usage: 'workspace() returns { id, path } for the active workspace, or null. read(path, { offset, limit, unit }) returns UTF-8 text or a line/byte slice; write(path, content, { mode }) replaces (default) or appends and returns { bytes, total }; append(path, content) adds to the end; replace(path, search, replacement, { limit = 1 }) replaces occurrences (limit 0 = all) and returns { replaced, bytes }; list(path = ".") returns { name, type, size } entries. Paths are relative to the workspace root; absolute paths and ".." are rejected. Reads and writes are limited to 1 MB.',
     api: createWorkspaceFiles(ctx),
   }), 'dsh-shape: files capability')
+
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'shell',
+    version: '1.0.0',
+    description: 'Run command lines on the Host inside the workspace of the active Session.',
+    usage: 'workspace() returns { id, path } for the active workspace, or null. run(command, { cwd, timeoutMs, maxBytes, env, stdin, mode }) runs one command line in the host\'s default shell — PowerShell (pwsh) on Windows, bash elsewhere — and resolves with { command, workdir, mode, platform, exitCode, signal, timedOut, aborted, timeoutMs, maxBytes, durationMs, stdout, stderr, sandbox }; a non-zero exit resolves rather than throwing. cwd is relative to the workspace root and must stay inside it; mode defaults to workspace-write and accepts read-only. stdout is captured and truncated at maxBytes (default 256 KB) while stderr uses the host\'s cap; timeoutMs defaults to 30000 and is capped at 300000. Commands run confined by the Host sandbox; a Host with no shell service, or one that does not apply a sandbox, refuses with an error instead of running unconfined.',
+    api: createShapeShell(ctx),
+  }), 'dsh-shape: shell capability')
 
   ctx.effect(() => capabilities.provide({
     plugin: 'dsh-shape',

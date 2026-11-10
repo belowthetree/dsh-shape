@@ -26,7 +26,7 @@ dsh web --no-open --port 0
 
 ```sh
 curl http://127.0.0.1:<port>/dsh-shape/api/health
-# {"ok":true,"count":6,"capabilities":10,"roots":{...}}
+# {"ok":true,"count":6,"capabilities":12,"roots":{...}}
 ```
 
 `ok` 为真但 `count` 或 `capabilities` 为 0，说明形态目录没扫到或客户端还没同步能力。
@@ -38,7 +38,7 @@ curl http://127.0.0.1:<port>/dsh-shape/api/health
 | 入口 | 组成 |
 | --- | --- |
 | `index.js` | 八行 re-export，指向 `src/host/plugin.js` |
-| `src/host/` | `plugin`（装配与路由分派）、`http`（JSON 与静态文件）、`shapes`（扫描与清单解析）、`data`（`/api/data`）、`state`（启停开关与能力镜像） |
+| `src/host/` | `plugin`（装配与路由分派）、`http`（JSON 与静态文件）、`shapes`（扫描与清单解析）、`data`（`/api/data`）、`files`（`/api/files` 工作区读写）、`shell`（`/api/shell` 命令行）、`paths`（两个路由共用的路径包含校验）、`state`（启停开关与能力镜像） |
 | `client.js` | 由 `src/client/**` 与 `src/shared/**` 构建，按 `//#region` 分区 |
 | `tools.js`、`skill.js` | 手写 |
 

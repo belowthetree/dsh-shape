@@ -1,6 +1,6 @@
 # 能力参考
 
-11 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
+12 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
 
 ```json
 { "plugin": "dsh-shape", "capability": "conversation", "version": "^1.0.0" }
@@ -54,6 +54,31 @@ await files.list('notes')
 `write()` 默认是**整体覆盖**（截断后写入），不是追加；需要追加用 `append()` 或 `write(..., { mode: 'append' })`。`replace()` 基于当前文件内容做文本替换，写回时同样是整体写回。
 
 文件操作由宿主侧的 `/dsh-shape/api/files` 路由执行，写入只会落在 `workspace().path` 之内；读取和列目录会校验解析后的真实路径，防止符号链接逃出工作区。没有打开工作区时调用文件方法会抛 `dsh-shape#files: no workspace is currently open`。
+
+## shell
+
+在当前会话的工作区里执行一条命令行，返回退出码与输出。命令经宿主的 `shell` 服务执行，因此受宿主沙箱约束，不是绕开沙箱的裸 `child_process`。
+
+| 方法 | 返回 | 说明 |
+| --- | --- | --- |
+| `workspace()` | `{ id, path } \| null` | 当前会话所在工作区；没有选中会话时为 `null` |
+| `run(command, { cwd, timeoutMs, maxBytes, env, stdin, mode })` | `{ command, workdir, mode, platform, exitCode, signal, timedOut, aborted, timeoutMs, maxBytes, durationMs, stdout, stderr, sandbox }` | 执行一条命令行；非零退出也正常返回 |
+
+```js
+const shell = api.require('dsh-shape', 'shell')
+const result = await shell.run('git status --short')
+const tracked = await shell.run('git ls-files', { cwd: 'src', timeoutMs: 10000 })
+if (result.exitCode !== 0) console.warn(result.stderr.text)
+```
+
+- 命令交给宿主的默认 shell 解释：Windows 上是 PowerShell（`pwsh -NoLogo -NoProfile -NonInteractive -Command`），POSIX 上是 `bash -c`；同一个形态要跨平台时按 `platform` 分支。
+- `cwd` 相对于工作区根目录，默认根目录本身；绝对路径、`..` 以及解析后逃出工作区的符号链接都会被拒绝。
+- `mode` 默认 `workspace-write`（工作区内可写），也可以传 `read-only`；`danger-full-access` 不被接受。
+- `timeoutMs` 默认 `30000`，范围 1000–300000；`maxBytes` 是 stdout 的采集上限，默认 256 KB，范围 4 KB–1 MB，stderr 用宿主自己的上限（默认 64 KB）。
+- `stdout` / `stderr` 形如 `{ text, truncated, spillPath? }`：超过上限时 `truncated` 为 `true`，宿主把完整流落到 `spillPath`。
+- `timedOut` 表示超时被杀，`aborted` 表示页面离开导致中止（命令随之终止），`platform` 是宿主平台（`win32` / `darwin` / `linux`）。
+- 非零退出**不抛错**，由调用方判断 `exitCode`；宿主没有 `shell` 服务、或该服务不套沙箱时**拒绝执行**并说明（不会在无沙箱的情况下跑）。
+- `sandbox` 是 `{ mode, denied, enforcement?, runnerFailed? }`：被沙箱拒绝时 `denied` 为 `true`，`enforcement` 用 `full` / `partial` 说明该后端能约束到什么程度。
 
 ## ui
 

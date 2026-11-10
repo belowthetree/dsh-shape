@@ -22,6 +22,9 @@ The package's bundled `skills/shape-development/` is a different layer: it ships
 | `src/host/http.js` | Route prefixes, `json`, `readJsonBody`, and the view/client static routes |
 | `src/host/shapes.js` | Shape discovery: folder scan, manifest parse, slot descriptors |
 | `src/host/data.js` | The `/api/data` storage route |
+| `src/host/files.js` | The `/api/files` workspace read/write/list route |
+| `src/host/shell.js` | The `/api/shell` command route: runs one command line through the host `shell` service and its sandbox |
+| `src/host/paths.js` | Containment checks and failure replies shared by the file and shell routes |
 | `src/host/state.js` | Enable/disable map and the capability mirror under `$DSH_HOME/dsh-shape` |
 | `client.js` | Browser bundle (hand-maintained, region-spliced from `src/client/` and `src/shared/`) |
 | `src/shared/capabilities.ts` | ABI, version types, and the capability registry, used by both halves and published as `./capabilities` |

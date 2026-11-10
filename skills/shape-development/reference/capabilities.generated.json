@@ -1,5 +1,5 @@
 {
-  "packageVersion": "0.6.0",
+  "packageVersion": "0.8.0",
   "capabilities": [
     {
       "plugin": "dsh-shape",
@@ -39,6 +39,18 @@
         "replace",
         "workspace",
         "write"
+      ],
+      "fields": []
+    },
+    {
+      "plugin": "dsh-shape",
+      "capability": "shell",
+      "version": "1.0.0",
+      "description": "Run command lines on the Host inside the workspace of the active Session.",
+      "usage": "workspace() returns { id, path } for the active workspace, or null. run(command, { cwd, timeoutMs, maxBytes, env, stdin, mode }) runs one command line in the host's default shell — PowerShell (pwsh) on Windows, bash elsewhere — and resolves with { command, workdir, mode, platform, exitCode, signal, timedOut, aborted, timeoutMs, maxBytes, durationMs, stdout, stderr, sandbox }; a non-zero exit resolves rather than throwing. cwd is relative to the workspace root and must stay inside it; mode defaults to workspace-write and accepts read-only. stdout is captured and truncated at maxBytes (default 256 KB) while stderr uses the host's cap; timeoutMs defaults to 30000 and is capped at 300000. Commands run confined by the Host sandbox; a Host with no shell service, or one that does not apply a sandbox, refuses with an error instead of running unconfined.",
+      "methods": [
+        "run",
+        "workspace"
       ],
       "fields": []
     },

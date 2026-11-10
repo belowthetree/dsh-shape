@@ -20,7 +20,7 @@ dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extensio
 - **Shape deletion**: a delete button on each card removes that shape's folder from disk after confirmation
 - **Capability requirements**: shapes declare required plugin capabilities and versions; missing dependencies prevent startup and hide their slot entries
 - **Capability catalog**: inspect which capabilities are available to shapes, including versions, purpose, usage, and API method names
-- **Built-in capabilities**: eleven capabilities cover workspace switching, workspace files, surface control, shortcuts, slots, events, storage, the composer, the conversation, and MCP server management; see [Built-in capabilities](#built-in-capabilities) below
+- **Built-in capabilities**: twelve capabilities cover workspace switching, workspace files, command-line execution, surface control, shortcuts, slots, events, storage, the composer, the conversation, and MCP server management; see [Built-in capabilities](#built-in-capabilities) below
 - **Bundled shapes**: `chat-search` (find in the conversation, Ctrl+F) and `workspace-tab-switch` (workspace switcher, Ctrl+Tab) ship with the package; enable, disable, or delete them from the shapes panel, and a user shape with the same id overrides either one
 - **Instant updates**: editing an existing file in a shape folder only needs a page reload; adding or deleting files needs a refresh from the shapes panel (or `POST /dsh-shape/api/refresh`), which reloads the page for you
 
@@ -44,6 +44,7 @@ A shape declares what it needs in `shape.requires` and reads it with `api.requir
 | `dsh-shape#core` | 1.0.0 | field `apiVersion` | Read the shape ABI |
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | Switch workspaces and reveal the target group |
 | `dsh-shape#files` | 1.0.0 | `workspace` `read` `write` `append` `replace` `list` | Read, write, append, replace, and list files inside the current workspace; `read` takes line/byte ranges, `write` replaces by default and can append; paths are workspace-relative and each read/write is capped at 1 MB |
+| `dsh-shape#shell` | 1.0.0 | `workspace` `run` | Run command lines inside the current workspace through the host `shell` service and its sandbox; `cwd` is workspace-relative, `mode` defaults to `workspace-write` and accepts `read-only`, timeout and output caps are per call, and a non-zero exit still returns `exitCode`, `stdout`, `stderr`, and the sandbox facts |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | Navigate, move panels, switch themes, act on the conversation, show toasts, open Shapes |
 | `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | Register shape actions as DSH commands users can rebind; `regions` decides whether they also fire while the composer has focus |
 | `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | Inspect the ten slots, mount into them, count occupancy |

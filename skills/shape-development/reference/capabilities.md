@@ -51,6 +51,7 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 - `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`; ABI metadata.
 - `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation. Switching also expands the target workspace group in the sidebar and scrolls it into view.
 - `dsh-shape#files` version `1.0.0`; methods `workspace`, `read`, `write`, `list`; read/write/list files inside the active workspace and report its `{ id, path }`. Paths are relative to the workspace root; absolute paths and `..` are rejected, and each read/write is capped at 1 MB.
+- `dsh-shape#shell` version `1.0.0`; methods `workspace`, `run`; run one command line in the active workspace through the host shell service and its sandbox, resolving with the exit code, captured streams, and sandbox facts. `cwd` stays inside the workspace, `mode` defaults to `workspace-write` (or `read-only`), and a non-zero exit resolves rather than throwing.
 - `dsh-shape#ui` version `1.0.0`; methods `openSession`, `openWorkspace`, `toggleSidebar`, `selectPanel`, `getTheme`, `setTheme`, `send`, `cancelTurn`, `notify`, `openShapeBrowser`; controls the DSH surface.
 - `dsh-shape#shortcuts` version `1.0.0`; methods `register`, `list`; registers DSH keyboard commands under the shape's own namespace.
 - `dsh-shape#slots` version `1.0.0`; methods `list`, `mount`, `entries`; discovers the conversation slots and renders into them.
@@ -75,6 +76,19 @@ for (const entry of await files.list('notes')) console.log(entry.name, entry.typ
 ```
 
 `workspace()` resolves the current Session's Workspace and returns its absolute `path`. `read(path, { offset, limit, unit })` returns the whole UTF-8 file or a slice: `unit` is `line` (default, zero-based line offset) or `byte`. `write(path, content, { mode })` creates parent directories; `mode` defaults to `replace` (whole-file overwrite) and accepts `append`, returning `{ bytes, total }`. `append(path, content)` is the append shorthand, and `replace(path, search, replacement, { limit })` replaces text in place and returns `{ replaced, bytes }` (`limit` defaults to 1, `0` means every occurrence; an empty `search` is rejected and a miss writes nothing). `list(path = '.')` returns `{ name, type, size? }` entries, directories first. Paths are relative to the workspace root; absolute paths and `..` are rejected, reads and writes are capped at 1 MB, and one list returns at most 2,000 entries. The Host executes the operations under `/dsh-shape/api/files`, and reads/lists verify the resolved real path so a symlink cannot escape the workspace.
+
+### `dsh-shape#shell`
+
+```js
+const shell = api.require('dsh-shape', 'shell')
+const status = await shell.run('git status --short')
+console.log(status.exitCode, status.stdout.text, status.stderr.text)
+
+const build = await shell.run('npm run build', { timeoutMs: 120000, maxBytes: 512 * 1024 })
+if (build.timedOut) api.notify('build hit the deadline')
+```
+
+`workspace()` returns `{ id, path }` for the active Session's workspace or `null`. `run(command, { cwd, timeoutMs, maxBytes, env, stdin, mode })` runs one command line and resolves with `{ command, workdir, mode, platform, exitCode, signal, timedOut, aborted, timeoutMs, maxBytes, durationMs, stdout, stderr, sandbox }`. The command runs in the Host's default shell — PowerShell (`pwsh -NoLogo -NoProfile -NonInteractive -Command`) on Windows, `bash -c` elsewhere — so branch on `platform` when one shape must run on both. `cwd` is relative to the workspace root and must stay inside it; `mode` defaults to `workspace-write` and accepts `read-only`. `timeoutMs` defaults to 30,000 and is capped at 300,000; `maxBytes` caps captured standard output (default 256 KB, up to 1 MB) while standard error uses the Host's own cap, and a truncated stream reports `spillPath` when the Host spooled the rest. A non-zero exit resolves rather than throwing, `timedOut` marks a deadline kill, and `aborted` marks a command killed because the page went away. Commands run through the Host `shell` service under its sandbox — the `sandbox` record reports `mode`, `denied`, `enforcement` (`full`/`partial`), and `runnerFailed`. A Host with no shell service, or one whose service does not apply a sandbox, refuses with an error instead of running unconfined.
 
 ### `dsh-shape#conversation`
 

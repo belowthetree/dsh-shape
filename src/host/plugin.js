@@ -10,6 +10,7 @@ import { isInsideRoot, readRoot } from './shapes.js'
 import { API, CLIENT, ROUTE, VIEW, json, readJsonBody, serveClient, serveView } from './http.js'
 import { serveData } from './data.js'
 import { serveFiles } from './files.js'
+import { serveShell } from './shell.js'
 import { dshHome, readCapabilityCatalog, readCapabilityMirror, readEnabledState, writeCapabilityMirror, writeEnabledState } from './state.js'
 /** Plugin name shown in the Loader. */
 export const name = '@belowthetree/dsh-shape'
@@ -213,6 +214,12 @@ export async function apply(ctx, config = {}) {
     }
     if ((req.method === 'GET' || req.method === 'POST') && url.pathname === `${API}/files`) {
       await serveFiles(req, res)
+      return
+    }
+    if (url.pathname === `${API}/shell`) {
+      // The `shell` service is optional: a host that does not mount one answers
+      // 501 from the route instead of failing to load this plugin.
+      await serveShell(req, res, () => ctx.get('shell'))
       return
     }
     if (req.method === 'GET' && url.pathname.startsWith(`${VIEW}/`)) {

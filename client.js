@@ -2590,19 +2590,25 @@ window.__ModuleLoader__.load({
 		/** Options accepted by `replace()`. */
 		/** API passed to shapes that require `dsh-shape#files`. */
 		/**
+		 * Workspace of the active Session, or null when none is selected.
+		 * @param ctx - Client context with workspace and session registries.
+		 * @returns the workspace id and absolute path.
+		 */
+		function activeWorkspace(ctx) {
+		  const sessions = ctx.sessions.list.getSnapshot();
+		  const active = Object.values(sessions.byId).find((row) => (row.retainedBy?.mainView ?? 0) > 0);
+		  if (active === void 0) return null;
+		  const workspace = ctx.workspaces.list.getSnapshot().items.find((item) => item.sessionIds.includes(active.id));
+		  if (workspace === void 0) return null;
+		  return { id: workspace.workspaceId, path: workspace.path };
+		}
+		/**
 		 * Build the files capability.
 		 * @param ctx - Client context with workspace and session registries.
 		 * @returns the capability API.
 		 */
 		function createWorkspaceFiles(ctx) {
-		  const currentWorkspace = () => {
-		    const sessions = ctx.sessions.list.getSnapshot();
-		    const active = Object.values(sessions.byId).find((row) => (row.retainedBy?.mainView ?? 0) > 0);
-		    if (active === void 0) return null;
-		    const workspace = ctx.workspaces.list.getSnapshot().items.find((item) => item.sessionIds.includes(active.id));
-		    if (workspace === void 0) return null;
-		    return { id: workspace.workspaceId, path: workspace.path };
-		  };
+		  const currentWorkspace = () => activeWorkspace(ctx);
 		  /** Request deadline; a wedged Host request must surface as an error, never a freeze. */
 		  const REQUEST_TIMEOUT_MS = 3e4;
 		  /** Active workspace, or a clear error when none is open. */
@@ -2704,6 +2710,138 @@ window.__ModuleLoader__.load({
 		      const result = await get("list", { path });
 		      return Array.isArray(result.entries) ? result.entries : [];
 		    }
+		  };
+		}
+		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/shell.ts
+		/** Built-in shell capability: run one command line on the Host inside the workspace. */
+		/** Deadline applied when the caller names none. */
+		const DEFAULT_TIMEOUT_MS = 30_000;
+		/** Longest deadline the Host accepts. */
+		const MAX_TIMEOUT_MS = 300_000;
+		/** Shortest deadline the Host accepts. */
+		const MIN_TIMEOUT_MS = 1_000;
+		/** Extra wait on top of the command deadline before the request itself fails. */
+		const REQUEST_SLACK_MS = 15_000;
+		/**
+		 * Project one captured stream without trusting the Host's shape.
+		 * @param value - raw stream value.
+		 * @returns a well-formed output record.
+		 */
+		function outputOf(value) {
+		  const record = typeof value === 'object' && value !== null ? value : {};
+		  return {
+		    text: typeof record.text === 'string' ? record.text : '',
+		    truncated: record.truncated === true,
+		    ...(typeof record.spillPath === 'string' ? { spillPath: record.spillPath } : {}),
+		  };
+		}
+		/**
+		 * Project the sandbox facts of one run.
+		 * @param value - raw sandbox value.
+		 * @returns the sandbox record, or null.
+		 */
+		function sandboxOf(value) {
+		  if (typeof value !== 'object' || value === null)
+		    return null;
+		  const record = value;
+		  return {
+		    mode: typeof record.mode === 'string' ? record.mode : 'unknown',
+		    denied: record.denied === true,
+		    ...(typeof record.enforcement === 'string' ? { enforcement: record.enforcement } : {}),
+		    ...(record.runnerFailed === true ? { runnerFailed: true } : {}),
+		  };
+		}
+		/**
+		 * Build the shell capability.
+		 * @param ctx - Client context with workspace and session registries.
+		 * @returns the capability API.
+		 */
+		function createShapeShell(ctx) {
+		  const workspace = () => activeWorkspace(ctx);
+		  /** Active workspace, or a clear error when none is open. */
+		  const requireWorkspace = () => {
+		    const current = workspace();
+		    if (current === null)
+		      throw new Error('dsh-shape#shell: no workspace is currently open');
+		    return current;
+		  };
+		  /** Post one JSON request with a deadline and the shared error envelope. */
+		  const fetchJson = async (input, init, deadlineMs) => {
+		    const controller = new AbortController();
+		    const timer = setTimeout(() => { controller.abort(); }, deadlineMs);
+		    try {
+		      const response = await fetch(input, {
+		        credentials: 'same-origin',
+		        headers: { accept: 'application/json' },
+		        signal: controller.signal,
+		        ...init,
+		      });
+		      const payload = await response.json().catch(() => null);
+		      if (!response.ok || payload?.ok !== true) {
+		        const message = typeof payload?.error?.message === 'string'
+		          ? payload.error.message
+		          : `dsh-shape#shell: HTTP ${String(response.status)}`;
+		        throw new Error(message);
+		      }
+		      return payload;
+		    }
+		    catch (error) {
+		      if (error instanceof Error && error.name === 'AbortError') {
+		        throw new Error(`dsh-shape#shell: request timed out after ${String(deadlineMs)} ms`);
+		      }
+		      throw error;
+		    }
+		    finally {
+		      clearTimeout(timer);
+		    }
+		  };
+		  return {
+		    workspace,
+		    async run(command, options) {
+		      if (typeof command !== 'string' || command.trim().length === 0) {
+		        throw new Error('dsh-shape#shell: command must be a non-empty string');
+		      }
+		      const current = requireWorkspace();
+		      const requested = typeof options?.timeoutMs === 'number' && Number.isFinite(options.timeoutMs)
+		        ? options.timeoutMs
+		        : DEFAULT_TIMEOUT_MS;
+		      const deadline = Math.min(Math.max(Math.trunc(requested), MIN_TIMEOUT_MS), MAX_TIMEOUT_MS);
+		      const body = { root: current.path, command };
+		      if (options?.cwd !== undefined)
+		        body.cwd = options.cwd;
+		      if (options?.timeoutMs !== undefined)
+		        body.timeoutMs = options.timeoutMs;
+		      if (options?.maxBytes !== undefined)
+		        body.maxBytes = options.maxBytes;
+		      if (options?.env !== undefined)
+		        body.env = options.env;
+		      if (options?.stdin !== undefined)
+		        body.stdin = options.stdin;
+		      if (options?.mode !== undefined)
+		        body.mode = options.mode;
+		      const result = await fetchJson('/dsh-shape/api/shell', {
+		        method: 'POST',
+		        headers: { 'content-type': 'application/json', accept: 'application/json' },
+		        body: JSON.stringify(body),
+		      }, deadline + REQUEST_SLACK_MS);
+		      return {
+		        command: typeof result.command === 'string' ? result.command : command,
+		        workdir: typeof result.workdir === 'string' ? result.workdir : current.path,
+		        mode: typeof result.mode === 'string' ? result.mode : 'workspace-write',
+		        platform: typeof result.platform === 'string' ? result.platform : 'unknown',
+		        exitCode: typeof result.exitCode === 'number' ? result.exitCode : null,
+		        signal: typeof result.signal === 'string' ? result.signal : null,
+		        timedOut: result.timedOut === true,
+		        aborted: result.aborted === true,
+		        timeoutMs: typeof result.timeoutMs === 'number' ? result.timeoutMs : deadline,
+		        maxBytes: typeof result.maxBytes === 'number' ? result.maxBytes : 0,
+		        durationMs: typeof result.durationMs === 'number' ? result.durationMs : 0,
+		        stdout: outputOf(result.stdout),
+		        stderr: outputOf(result.stderr),
+		        sandbox: sandboxOf(result.sandbox),
+		      };
+		    },
 		  };
 		}
 		//#endregion
@@ -5251,6 +5389,14 @@ window.__ModuleLoader__.load({
 		        usage: 'workspace() returns { id, path } for the active workspace, or null. read(path, { offset, limit, unit }) returns UTF-8 text or a line/byte slice; write(path, content, { mode }) replaces (default) or appends and returns { bytes, total }; append(path, content) adds to the end; replace(path, search, replacement, { limit = 1 }) replaces occurrences (limit 0 = all) and returns { replaced, bytes }; list(path = ".") returns { name, type, size } entries. Paths are relative to the workspace root; absolute paths and ".." are rejected. Reads and writes are limited to 1 MB.',
 		        api: createWorkspaceFiles(ctx),
 		    }), 'dsh-shape: files capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'shell',
+		        version: '1.0.0',
+		        description: 'Run command lines on the Host inside the workspace of the active Session.',
+		        usage: 'workspace() returns { id, path } for the active workspace, or null. run(command, { cwd, timeoutMs, maxBytes, env, stdin, mode }) runs one command line in the host\'s default shell — PowerShell (pwsh) on Windows, bash elsewhere — and resolves with { command, workdir, mode, platform, exitCode, signal, timedOut, aborted, timeoutMs, maxBytes, durationMs, stdout, stderr, sandbox }; a non-zero exit resolves rather than throwing. cwd is relative to the workspace root and must stay inside it; mode defaults to workspace-write and accepts read-only. stdout is captured and truncated at maxBytes (default 256 KB) while stderr uses the host\'s cap; timeoutMs defaults to 30000 and is capped at 300000. Commands run confined by the Host sandbox; a Host with no shell service, or one that does not apply a sandbox, refuses with an error instead of running unconfined.',
+		        api: createShapeShell(ctx),
+		    }), 'dsh-shape: shell capability');
 		    ctx.effect(() => capabilities.provide({
 		        plugin: 'dsh-shape',
 		        capability: 'ui',

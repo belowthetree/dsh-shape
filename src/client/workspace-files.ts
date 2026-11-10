@@ -62,20 +62,27 @@ export interface ShapeFilesApi {
 }
 
 /**
+ * Workspace of the active Session, or null when none is selected.
+ * @param ctx - Client context with workspace and session registries.
+ * @returns the workspace id and absolute path.
+ */
+export function activeWorkspace(ctx: Context): ShapeWorkspaceRef | null {
+  const sessions = ctx.sessions.list.getSnapshot()
+  const active = Object.values(sessions.byId).find(row => (row.retainedBy?.mainView ?? 0) > 0)
+  if (active === undefined) return null
+  const workspace = ctx.workspaces.list.getSnapshot().items
+    .find(item => item.sessionIds.includes(active.id))
+  if (workspace === undefined) return null
+  return { id: workspace.workspaceId, path: workspace.path }
+}
+
+/**
  * Build the files capability.
  * @param ctx - Client context with workspace and session registries.
  * @returns the capability API.
  */
 export function createWorkspaceFiles(ctx: Context): ShapeFilesApi {
-  const currentWorkspace = (): ShapeWorkspaceRef | null => {
-    const sessions = ctx.sessions.list.getSnapshot()
-    const active = Object.values(sessions.byId).find(row => (row.retainedBy?.mainView ?? 0) > 0)
-    if (active === undefined) return null
-    const workspace = ctx.workspaces.list.getSnapshot().items
-      .find(item => item.sessionIds.includes(active.id))
-    if (workspace === undefined) return null
-    return { id: workspace.workspaceId, path: workspace.path }
-  }
+  const currentWorkspace = (): ShapeWorkspaceRef | null => activeWorkspace(ctx)
 
   /** Request deadline; a wedged Host request must surface as an error, never a freeze. */
   const REQUEST_TIMEOUT_MS = 30_000
