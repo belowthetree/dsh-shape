@@ -43,11 +43,12 @@ const WORKBENCH_WINDOW: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   width: 'min(80vw, calc(100vw - 48px))',
-  height: 'min(80vh, calc(100dvh - 48px))',
+  height: 'min(80vh, calc(100dvh - 96px))',
   minWidth: 320,
   minHeight: 240,
   overflow: 'hidden',
   outline: 'none',
+  pointerEvents: 'auto',
   color: 'var(--dsw-alias-label-primary, #e6edf3)',
   background: 'var(--dsw-alias-bg-layer-2, #1b1d22)',
   border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))',
@@ -55,16 +56,31 @@ const WORKBENCH_WINDOW: CSSProperties = {
   boxShadow: 'var(--dsw-elevation-prominent, 0 24px 80px rgba(0, 0, 0, 0.36))',
 }
 
-/** Workbench tabs above the footer: a label column and selection dot each. */
+/** Window plus the tab strip underneath; the gap stays click-through to the backdrop. */
+const WORKBENCH_STACK: CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 10,
+  maxHeight: '100%',
+  pointerEvents: 'none',
+}
+
+/** Workbench tabs below the window: a label column and selection dot each. */
 const WORKBENCH_TABS: CSSProperties = {
   display: 'flex',
   flex: 'none',
   alignItems: 'flex-start',
   justifyContent: 'center',
   gap: 18,
-  padding: '7px 20px 6px',
+  maxWidth: 'calc(100vw - 48px)',
+  padding: '6px 14px',
   overflowX: 'auto',
-  borderTop: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))',
+  pointerEvents: 'auto',
+  background: 'color-mix(in srgb, var(--dsw-alias-bg-layer-2, #1b1d22) 92%, transparent)',
+  border: '1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))',
+  borderRadius: 12,
+  backdropFilter: 'blur(8px)',
 }
 
 /** One workbench tab: its title above the selection dot. */
@@ -370,20 +386,26 @@ export function ShapeWorkbenchLayer() {
       data-testid="dsh-shape-workbench-backdrop"
       onMouseDown={(event) => { if (event.target === event.currentTarget) closeShapeWorkbench() }}
     >
-      <section
-        ref={windowRef}
-        tabIndex={-1}
-        style={WORKBENCH_WINDOW}
-        role="dialog"
-        aria-modal="true"
-        aria-label="shape 工作台"
-        data-testid="dsh-shape-workbench"
-      >
-        <div style={WORKBENCH_BODY}>
-          {active === null
-            ? <WorkbenchEmptyState installed={installed} />
-            : <WorkbenchSurface key={active.id} workbench={active} />}
-        </div>
+      <div style={WORKBENCH_STACK}>
+        <section
+          ref={windowRef}
+          tabIndex={-1}
+          style={WORKBENCH_WINDOW}
+          role="dialog"
+          aria-modal="true"
+          aria-label="shape 工作台"
+          data-testid="dsh-shape-workbench"
+        >
+          <div style={WORKBENCH_BODY}>
+            {active === null
+              ? <WorkbenchEmptyState installed={installed} />
+              : <WorkbenchSurface key={active.id} workbench={active} />}
+          </div>
+          <footer style={WORKBENCH_FOOTER}>
+            <span>Esc、点击空白处或 Ctrl+Alt+W 关闭</span>
+            <span>Ctrl+Alt+←/→ 切换工作台</span>
+          </footer>
+        </section>
         {workbenches.length > 0 && (
           <div style={WORKBENCH_TABS} role="tablist" aria-label="切换 shape 工作台">
             {workbenches.map((workbench) => {
@@ -412,11 +434,7 @@ export function ShapeWorkbenchLayer() {
             })}
           </div>
         )}
-        <footer style={WORKBENCH_FOOTER}>
-          <span>Esc、点击空白处或 Ctrl+Alt+W 关闭</span>
-          <span>Ctrl+Alt+←/→ 切换工作台</span>
-        </footer>
-      </section>
+      </div>
     </div>
   ), document.body)
 }

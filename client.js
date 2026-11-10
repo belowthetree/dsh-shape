@@ -2581,6 +2581,132 @@ window.__ModuleLoader__.load({
 			};
 		}
 		//#endregion
+		//#region ../../dsh-plugins/dsh-shape/src/client/workspace-files.ts
+		/** Built-in files capability: read, write, and list inside the current workspace. */
+		/** Current workspace of the active Session. */
+		/** One directory entry returned by `list()`. */
+		/** Options accepted by `read()`. */
+		/** Options accepted by `write()`. */
+		/** Options accepted by `replace()`. */
+		/** API passed to shapes that require `dsh-shape#files`. */
+		/**
+		 * Build the files capability.
+		 * @param ctx - Client context with workspace and session registries.
+		 * @returns the capability API.
+		 */
+		function createWorkspaceFiles(ctx) {
+		  const currentWorkspace = () => {
+		    const sessions = ctx.sessions.list.getSnapshot();
+		    const active = Object.values(sessions.byId).find((row) => (row.retainedBy?.mainView ?? 0) > 0);
+		    if (active === void 0) return null;
+		    const workspace = ctx.workspaces.list.getSnapshot().items.find((item) => item.sessionIds.includes(active.id));
+		    if (workspace === void 0) return null;
+		    return { id: workspace.workspaceId, path: workspace.path };
+		  };
+		  /** Request deadline; a wedged Host request must surface as an error, never a freeze. */
+		  const REQUEST_TIMEOUT_MS = 3e4;
+		  /** Active workspace, or a clear error when none is open. */
+		  const requireWorkspace = () => {
+		    const workspace = currentWorkspace();
+		    if (workspace === null) throw new Error("dsh-shape#files: no workspace is currently open");
+		    return workspace;
+		  };
+		  /** Fetch one JSON reply with a deadline and the shared error envelope. */
+		  const fetchJson = async (input, init) => {
+		    const controller = new AbortController();
+		    const timer = setTimeout(() => {
+		      controller.abort();
+		    }, REQUEST_TIMEOUT_MS);
+		    try {
+		      const response = await fetch(input, {
+		        credentials: "same-origin",
+		        headers: { accept: "application/json" },
+		        signal: controller.signal,
+		        ...init
+		      });
+		      const payload = await response.json().catch(() => null);
+		      if (!response.ok || payload?.ok !== true) {
+		        const message = typeof payload?.error?.message === "string" ? payload.error.message : `dsh-shape#files: HTTP ${String(response.status)}`;
+		        throw new Error(message);
+		      }
+		      return payload;
+		    } catch (error) {
+		      if (error instanceof Error && error.name === "AbortError") {
+		        throw new Error(`dsh-shape#files: request timed out after ${String(REQUEST_TIMEOUT_MS)} ms`);
+		      }
+		      throw error;
+		    } finally {
+		      clearTimeout(timer);
+		    }
+		  };
+		  /** Read-only operations use GET so a stalled POST path cannot freeze the tree. */
+		  const get = (op, params) => {
+		    const workspace = requireWorkspace();
+		    const query = new URLSearchParams({ op, root: workspace.path });
+		    for (const [key, value] of Object.entries(params)) {
+		      if (value !== void 0) query.set(key, String(value));
+		    }
+		    return fetchJson(`/dsh-shape/api/files?${query.toString()}`);
+		  };
+		  /** Mutating operations use POST with a JSON body. */
+		  const post = (body) => {
+		    const workspace = requireWorkspace();
+		    return fetchJson("/dsh-shape/api/files", {
+		      method: "POST",
+		      headers: { "content-type": "application/json", accept: "application/json" },
+		      body: JSON.stringify({ root: workspace.path, ...body })
+		    });
+		  };
+		  return {
+		    workspace: currentWorkspace,
+		    async read(path, options) {
+		      const result = await get("read", {
+		        path,
+		        offset: options?.offset,
+		        limit: options?.limit,
+		        unit: options?.unit
+		      });
+		      return typeof result.content === "string" ? result.content : "";
+		    },
+		    async write(path, content, options) {
+		      const result = await post({
+		        op: "write",
+		        path,
+		        content,
+		        ...options?.mode === void 0 ? {} : { mode: options.mode }
+		      });
+		      return {
+		        bytes: typeof result.bytes === "number" ? result.bytes : 0,
+		        total: typeof result.total === "number" ? result.total : 0
+		      };
+		    },
+		    async append(path, content) {
+		      const result = await post({ op: "write", path, content, mode: "append" });
+		      return {
+		        bytes: typeof result.bytes === "number" ? result.bytes : 0,
+		        total: typeof result.total === "number" ? result.total : 0
+		      };
+		    },
+		    async replace(path, search, replacement, options) {
+		      const result = await post({
+		        op: "replace",
+		        path,
+		        search,
+		        replacement,
+		        ...options?.limit === void 0 ? {} : { limit: options.limit }
+		      });
+		      return {
+		        replaced: typeof result.replaced === "number" ? result.replaced : 0,
+		        bytes: typeof result.bytes === "number" ? result.bytes : 0
+		      };
+		    },
+		    async list(path = ".") {
+		      const result = await get("list", { path });
+		      return Array.isArray(result.entries) ? result.entries : [];
+		    }
+		  };
+		}
+		//#endregion
 		//#region ../../dsh-plugins/dsh-shape/src/client/toast.ts
 		/** Toast layer for capability-driven notifications. */
 		const MAX_VISIBLE = 4;
@@ -4001,27 +4127,42 @@ window.__ModuleLoader__.load({
 		  display: "flex",
 		  flexDirection: "column",
 		  width: "min(80vw, calc(100vw - 48px))",
-		  height: "min(80vh, calc(100dvh - 48px))",
+		  height: "min(80vh, calc(100dvh - 96px))",
 		  minWidth: 320,
 		  minHeight: 240,
 		  overflow: "hidden",
 		  outline: "none",
+		  pointerEvents: "auto",
 		  color: "var(--dsw-alias-label-primary, #e6edf3)",
 		  background: "var(--dsw-alias-bg-layer-2, #1b1d22)",
 		  border: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))",
 		  borderRadius: "var(--dsw-radius-panel, 18px)",
 		  boxShadow: "var(--dsw-elevation-prominent, 0 24px 80px rgba(0, 0, 0, 0.36))"
 		};
-		/** Workbench tabs above the footer: a label column and selection dot each. */
+		/** Window plus the tab strip underneath; the gap stays click-through to the backdrop. */
+		const WORKBENCH_STACK = {
+		  display: "flex",
+		  flexDirection: "column",
+		  alignItems: "center",
+		  gap: 10,
+		  maxHeight: "100%",
+		  pointerEvents: "none"
+		};
+		/** Workbench tabs below the window: a label column and selection dot each. */
 		const WORKBENCH_TABS = {
 		  display: "flex",
 		  flex: "none",
 		  alignItems: "flex-start",
 		  justifyContent: "center",
 		  gap: 18,
-		  padding: "7px 20px 6px",
+		  maxWidth: "calc(100vw - 48px)",
+		  padding: "6px 14px",
 		  overflowX: "auto",
-		  borderTop: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))"
+		  pointerEvents: "auto",
+		  background: "color-mix(in srgb, var(--dsw-alias-bg-layer-2, #1b1d22) 92%, transparent)",
+		  border: "1px solid var(--dsw-alias-border-secondary, rgba(255, 255, 255, 0.08))",
+		  borderRadius: 12,
+		  backdropFilter: "blur(8px)"
 		};
 		/** One workbench tab: its title above the selection dot. */
 		const WORKBENCH_TAB = {
@@ -4305,54 +4446,56 @@ window.__ModuleLoader__.load({
 		      onMouseDown: (event) => {
 		        if (event.target === event.currentTarget) closeShapeWorkbench();
 		      },
-		      children: /* @__PURE__ */ react_jsx_runtime.jsxs(
-		        "section",
-		        {
-		          ref: windowRef,
-		          tabIndex: -1,
-		          style: WORKBENCH_WINDOW,
-		          role: "dialog",
-		          "aria-modal": "true",
-		          "aria-label": "shape 工作台",
-		          "data-testid": "dsh-shape-workbench",
-		          children: [
-		            /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_BODY, children: active === null ? /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchEmptyState, { installed }) : /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchSurface, { workbench: active }, active.id) }),
-		            workbenches.length > 0 && /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_TABS, role: "tablist", "aria-label": "切换 shape 工作台", children: workbenches.map((workbench) => {
-		              const selected = workbench.id === active?.id;
-		              return /* @__PURE__ */ react_jsx_runtime.jsxs(
-		                "button",
-		                {
-		                  type: "button",
-		                  role: "tab",
-		                  "aria-selected": selected,
-		                  "data-testid": "dsh-shape-workbench-tab",
-		                  "data-shape-workbench-id": workbench.id,
-		                  "data-active": selected ? "true" : "false",
-		                  style: WORKBENCH_TAB,
-		                  onClick: () => {
-		                    selectShapeWorkbench(workbench.id);
-		                  },
-		                  children: [
-		                    /* @__PURE__ */ react_jsx_runtime.jsx("span", { style: selected ? { ...WORKBENCH_TAB_LABEL, ...WORKBENCH_TAB_LABEL_ACTIVE } : WORKBENCH_TAB_LABEL, children: workbench.title }),
-		                    /* @__PURE__ */ react_jsx_runtime.jsx(
-		                      "span",
-		                      {
-		                        style: selected ? { ...WORKBENCH_DOT, ...WORKBENCH_DOT_ACTIVE } : WORKBENCH_DOT,
-		                        "aria-hidden": "true"
-		                      }
-		                    )
-		                  ]
-		                },
-		                workbench.id
-		              );
-		            }) }),
-		            /* @__PURE__ */ react_jsx_runtime.jsxs("footer", { style: WORKBENCH_FOOTER, children: [
-		              /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Esc、点击空白处或 Ctrl+Alt+W 关闭" }),
-		              /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Ctrl+Alt+←/→ 切换工作台" })
-		            ] })
-		          ]
-		        }
-		      )
+		      children: /* @__PURE__ */ react_jsx_runtime.jsxs("div", { style: WORKBENCH_STACK, children: [
+		        /* @__PURE__ */ react_jsx_runtime.jsxs(
+		          "section",
+		          {
+		            ref: windowRef,
+		            tabIndex: -1,
+		            style: WORKBENCH_WINDOW,
+		            role: "dialog",
+		            "aria-modal": "true",
+		            "aria-label": "shape 工作台",
+		            "data-testid": "dsh-shape-workbench",
+		            children: [
+		              /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_BODY, children: active === null ? /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchEmptyState, { installed }) : /* @__PURE__ */ react_jsx_runtime.jsx(WorkbenchSurface, { workbench: active }, active.id) }),
+		              /* @__PURE__ */ react_jsx_runtime.jsxs("footer", { style: WORKBENCH_FOOTER, children: [
+		                /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Esc、点击空白处或 Ctrl+Alt+W 关闭" }),
+		                /* @__PURE__ */ react_jsx_runtime.jsx("span", { children: "Ctrl+Alt+←/→ 切换工作台" })
+		              ] })
+		            ]
+		          }
+		        ),
+		        workbenches.length > 0 && /* @__PURE__ */ react_jsx_runtime.jsx("div", { style: WORKBENCH_TABS, role: "tablist", "aria-label": "切换 shape 工作台", children: workbenches.map((workbench) => {
+		          const selected = workbench.id === active?.id;
+		          return /* @__PURE__ */ react_jsx_runtime.jsxs(
+		            "button",
+		            {
+		              type: "button",
+		              role: "tab",
+		              "aria-selected": selected,
+		              "data-testid": "dsh-shape-workbench-tab",
+		              "data-shape-workbench-id": workbench.id,
+		              "data-active": selected ? "true" : "false",
+		              style: WORKBENCH_TAB,
+		              onClick: () => {
+		                selectShapeWorkbench(workbench.id);
+		              },
+		              children: [
+		                /* @__PURE__ */ react_jsx_runtime.jsx("span", { style: selected ? { ...WORKBENCH_TAB_LABEL, ...WORKBENCH_TAB_LABEL_ACTIVE } : WORKBENCH_TAB_LABEL, children: workbench.title }),
+		                /* @__PURE__ */ react_jsx_runtime.jsx(
+		                  "span",
+		                  {
+		                    style: selected ? { ...WORKBENCH_DOT, ...WORKBENCH_DOT_ACTIVE } : WORKBENCH_DOT,
+		                    "aria-hidden": "true"
+		                  }
+		                )
+		              ]
+		            },
+		            workbench.id
+		          );
+		        }) })
+		      ] })
 		    }
 		  ), document.body);
 		}
@@ -5100,6 +5243,14 @@ window.__ModuleLoader__.load({
 		        usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.',
 		        api: createWorkspaceSwitch(ctx),
 		    }), 'dsh-shape: workspace capability');
+		    ctx.effect(() => capabilities.provide({
+		        plugin: 'dsh-shape',
+		        capability: 'files',
+		        version: '1.0.0',
+		        description: 'Read, write, and list files inside the workspace of the active Session.',
+		        usage: 'workspace() returns { id, path } for the active workspace, or null. read(path, { offset, limit, unit }) returns UTF-8 text or a line/byte slice; write(path, content, { mode }) replaces (default) or appends and returns { bytes, total }; append(path, content) adds to the end; replace(path, search, replacement, { limit = 1 }) replaces occurrences (limit 0 = all) and returns { replaced, bytes }; list(path = ".") returns { name, type, size } entries. Paths are relative to the workspace root; absolute paths and ".." are rejected. Reads and writes are limited to 1 MB.',
+		        api: createWorkspaceFiles(ctx),
+		    }), 'dsh-shape: files capability');
 		    ctx.effect(() => capabilities.provide({
 		        plugin: 'dsh-shape',
 		        capability: 'ui',

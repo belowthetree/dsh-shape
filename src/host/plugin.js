@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { isInsideRoot, readRoot } from './shapes.js'
 import { API, CLIENT, ROUTE, VIEW, json, readJsonBody, serveClient, serveView } from './http.js'
 import { serveData } from './data.js'
+import { serveFiles } from './files.js'
 import { dshHome, readCapabilityCatalog, readCapabilityMirror, readEnabledState, writeCapabilityMirror, writeEnabledState } from './state.js'
 /** Plugin name shown in the Loader. */
 export const name = '@belowthetree/dsh-shape'
@@ -204,6 +205,10 @@ export async function apply(ctx, config = {}) {
     }
     if (req.method === 'POST' && url.pathname === `${API}/data`) {
       await serveData(req, res, shapes)
+      return
+    }
+    if ((req.method === 'GET' || req.method === 'POST') && url.pathname === `${API}/files`) {
+      await serveFiles(req, res)
       return
     }
     if (req.method === 'GET' && url.pathname.startsWith(`${VIEW}/`)) {

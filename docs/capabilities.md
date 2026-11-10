@@ -1,6 +1,6 @@
 # 能力参考
 
-10 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
+11 个内置能力都由 `dsh-shape` 插件提供，版本 `1.0.0`。形态在清单里声明需要哪些能力，再用 `api.require('dsh-shape', '<能力>')` 取用。
 
 ```json
 { "plugin": "dsh-shape", "capability": "conversation", "version": "^1.0.0" }
@@ -23,6 +23,37 @@
 | `next()` / `previous()` | `string \| null` | 循环切换，返回切换后的 id |
 
 切换会打开目标工作区最近的一次会话（没有就开一个空白会话），并展开、滚动到该分组。
+
+## files
+
+读写当前工作区里的文件，并读取当前工作区路径。所有路径都相对于工作区根目录，绝对路径与含 `..` 的路径会被拒绝。
+
+| 方法 | 返回 | 说明 |
+| --- | --- | --- |
+| `workspace()` | `{ id, path } \| null` | 当前会话所在工作区；没有选中会话时为 `null` |
+| `read(path, { offset, limit, unit })` | `string` | 读整文件或片段；`unit` 为 `line`（默认，0 基行偏移）或 `byte`；整文件上限 1 MB |
+| `write(path, content, { mode })` | `{ bytes, total }` | `mode: 'replace'`（默认，整体覆盖）或 `'append'`（追加）；自动建父目录，结果上限 1 MB |
+| `append(path, content)` | `{ bytes, total }` | 追加到文件末尾，等价 `write(..., { mode: 'append' })`；文件不存在则创建 |
+| `replace(path, search, replacement, { limit })` | `{ replaced, bytes }` | 文本替换；`limit` 默认 `1`，`0` 表示全部；空 `search` 被拒绝；无命中不写盘 |
+| `list(path = '.')` | `{ name, type, size? }[]` | 列目录，目录在前、名字排序，一次最多 2000 项 |
+
+```js
+const files = api.require('dsh-shape', 'files')
+const workspace = files.workspace()          // { id, path } 或 null
+
+await files.write('notes/todo.md', '# 任务\n')          // 整体覆盖
+await files.append('notes/todo.md', '- 第二行\n')        // 追加
+await files.replace('notes/todo.md', '任务', '待办')      // 只替换第一处
+await files.replace('notes/todo.md', 'todo', 'done', { limit: 0 })  // 全部替换
+await files.read('notes/todo.md')                        // 整文件
+await files.read('notes/todo.md', { offset: 1, limit: 10 })         // 第 2 行起 10 行
+await files.read('notes/todo.md', { offset: 0, limit: 64, unit: 'byte' })
+await files.list('notes')
+```
+
+`write()` 默认是**整体覆盖**（截断后写入），不是追加；需要追加用 `append()` 或 `write(..., { mode: 'append' })`。`replace()` 基于当前文件内容做文本替换，写回时同样是整体写回。
+
+文件操作由宿主侧的 `/dsh-shape/api/files` 路由执行，写入只会落在 `workspace().path` 之内；读取和列目录会校验解析后的真实路径，防止符号链接逃出工作区。没有打开工作区时调用文件方法会抛 `dsh-shape#files: no workspace is currently open`。
 
 ## ui
 

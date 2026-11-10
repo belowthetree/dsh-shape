@@ -50,6 +50,7 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 
 - `dsh-shape#core` version `1.0.0`; field `apiVersion: 1`; ABI metadata.
 - `dsh-shape#workspace` version `1.0.0`; methods `list`, `current`, `next`, `previous`; workspace navigation. Switching also expands the target workspace group in the sidebar and scrolls it into view.
+- `dsh-shape#files` version `1.0.0`; methods `workspace`, `read`, `write`, `list`; read/write/list files inside the active workspace and report its `{ id, path }`. Paths are relative to the workspace root; absolute paths and `..` are rejected, and each read/write is capped at 1 MB.
 - `dsh-shape#ui` version `1.0.0`; methods `openSession`, `openWorkspace`, `toggleSidebar`, `selectPanel`, `getTheme`, `setTheme`, `send`, `cancelTurn`, `notify`, `openShapeBrowser`; controls the DSH surface.
 - `dsh-shape#shortcuts` version `1.0.0`; methods `register`, `list`; registers DSH keyboard commands under the shape's own namespace.
 - `dsh-shape#slots` version `1.0.0`; methods `list`, `mount`, `entries`; discovers the conversation slots and renders into them.
@@ -58,6 +59,22 @@ Requirements live in `package.json` under `shape.requires`, using `plugin`, `cap
 - `dsh-shape#composer` version `1.0.0`; methods `getText`, `setText`, `insert`, `submit`, `sessionId`; the draft of the composer currently mounted in the conversation.
 - `dsh-shape#conversation` version `1.0.0`; methods `messages`, `find`, `reveal`, `subscribe`; the rendered transcript, for search and jump-to-message.
 - `dsh-shape#mcp` version `1.0.0`; methods `available`, `list`, `projects`, `get`, `add`, `update`, `remove`, `setMode`, `setProjectTrusted`, `session`; the MCP servers configured for this harness, their workspace scoping and workspace-config trust, and the servers one Session sees, through the `dsh-mcp-setting` admin API.
+
+### `dsh-shape#files`
+
+```js
+const files = api.require('dsh-shape', 'files')
+const workspace = files.workspace()          // { id, path } or null
+await files.write('notes/todo.md', '# 任务\n')          // whole-file replace
+await files.append('notes/todo.md', '- 第二行\n')        // append
+await files.replace('notes/todo.md', '任务', '待办')      // first occurrence
+await files.replace('notes/todo.md', 'todo', 'done', { limit: 0 })  // every occurrence
+await files.read('notes/todo.md')                        // whole file
+await files.read('notes/todo.md', { offset: 1, limit: 10 })         // lines 2-11
+for (const entry of await files.list('notes')) console.log(entry.name, entry.type, entry.size)
+```
+
+`workspace()` resolves the current Session's Workspace and returns its absolute `path`. `read(path, { offset, limit, unit })` returns the whole UTF-8 file or a slice: `unit` is `line` (default, zero-based line offset) or `byte`. `write(path, content, { mode })` creates parent directories; `mode` defaults to `replace` (whole-file overwrite) and accepts `append`, returning `{ bytes, total }`. `append(path, content)` is the append shorthand, and `replace(path, search, replacement, { limit })` replaces text in place and returns `{ replaced, bytes }` (`limit` defaults to 1, `0` means every occurrence; an empty `search` is rejected and a miss writes nothing). `list(path = '.')` returns `{ name, type, size? }` entries, directories first. Paths are relative to the workspace root; absolute paths and `..` are rejected, reads and writes are capped at 1 MB, and one list returns at most 2,000 entries. The Host executes the operations under `/dsh-shape/api/files`, and reads/lists verify the resolved real path so a symlink cannot escape the workspace.
 
 ### `dsh-shape#conversation`
 

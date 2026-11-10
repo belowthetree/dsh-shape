@@ -93,6 +93,16 @@ Verified: the dsh-shape 0.5.0 build registered `ShapeButton` and `ShapeWorkbench
 
 Diagnostic that cut this open: wrap `exports.apply` in the shipped `client.js` with a try/catch that appends `error.stack` to `document.body`, restart the host so the bundle revision changes, and reload — the boot page then prints the real exception instead of `<id>: failed`. Remove the wrapper afterwards.
 
+## `hidden` loses to your own `display`
+
+Symptom: a loading overlay never disappears. The code clearly ran past `overlay.hidden = true`, the data behind it is loaded, and the app is not frozen — but the opaque overlay keeps covering the surface.
+
+Cause: the HTML `hidden` attribute only wins through the user-agent rule `[hidden]{display:none}`, and **author CSS overrides the user-agent sheet**. An overlay styled `.overlay{display:flex}` therefore stays visible after `hidden = true`. Reading `element.hidden` in a test reports `true` and hides the bug; `getComputedStyle(overlay).display` reports `flex`.
+
+Fix: make the attribute win explicitly — `.overlay[hidden]{display:none}` — or toggle a class whose rule sets `display:none` instead of relying on `hidden`.
+
+Verified by: the `source-workbench` shape's "正在读取工作区…" overlay covered a directory tree that had already loaded; the DOM had `hidden` set and the computed display was `flex`. Adding `.sw-overlay[hidden]{display:none}` hid it immediately on the next page load, and the tree underneath appeared.
+
 ## Cards come from descriptors, not from code
 
 `slots/*.json` produces a card in the input dock. If the user asked for a find bar and a card appeared instead, the card is the descriptor, not the client module. Deleting the file removes the card; the client keeps working.

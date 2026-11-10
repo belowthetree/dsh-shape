@@ -100,6 +100,7 @@ export function activate(api) {
 
 - `api.shape` 是 `{ id, title, version }`；
 - `api.require(plugin, capability)` 返回能力对象，未声明或版本不符时抛错；
+- `api.require('dsh-shape', 'files')` 提供工作区文件能力：`workspace()` 返回 `{ id, path }`，`read()`（可带行/字节范围）、`write()`（默认整体覆盖，可追加）、`append()`、`replace()`、`list()` 以工作区为根操作文件（见[能力参考](capabilities.md#files)）。
 - `api.mount(slot, render, options?)` 往槽位挂 DOM，`render(container)` 返回清理函数；
 - `api.panel(...)` 注册一个浮动面板，`open()` 后在会话输入区上方显示；`api.tab(...)` 注册右侧页签（见[已知问题](known-issues.md)）；
 - `api.edge(...)` 注册一个边缘弹窗，从屏幕边缘滑入并显示 `views/` 里的页面（见下）；
@@ -140,7 +141,7 @@ export function activate(api) {
 
 工作台是顶栏左侧 **shape 工作台** 按钮（或 `Ctrl + Alt + W`）打开的独立窗口，约占视口 80%。窗口没有标题栏，形态内容直接铺满整个窗口。窗口没有关闭按钮：按 `Esc`、点窗口外的空白处、或再按一次 `Ctrl + Alt + W` 关闭。
 
-窗口打开时，底部的**工作台**条列出所有已注册的工作台：名称下方的圆点表示当前选中情况，空心圆是未选中，白色实心圆是当前工作台。按 `Ctrl + Alt + ←/→`（环形）切换，点击名称也可以切换；选择会被记住，下次打开仍停在上一项。窗口打开期间这个组合键只作用于工作台，不会触发布内的 `workspace-tab-switch`。
+窗口打开时，**窗口下方**的标签条列出所有已注册的工作台：名称下方的圆点表示当前选中情况，空心圆是未选中，白色实心圆是当前工作台。按 `Ctrl + Alt + ←/→`（环形）切换，点击名称也可以切换；选择会被记住，下次打开仍停在上一项。窗口打开期间这个组合键只作用于工作台，不会触发布内的 `workspace-tab-switch`。
 
 只有 `package.json` 里声明 `"shape": { "kind": "workbench" }` 的形态才能注册工作台内容。在 `client/index.js` 里：
 
@@ -161,7 +162,7 @@ export function activate(api) {
 
 - `render(container)` 拿到的是工作台窗口自己的容器，直接写 DOM；返回值在窗口关闭或切到别的工作台时执行。
 - 工作台内容在宿主文档里渲染，不是沙箱 iframe，因此 `Esc`、`Ctrl + Alt + W` 和 `dsh-shape#shortcuts` 注册的快捷键都照常可用，也能直接使用 `api.require()` 拿到的能力。
-- 每个工作台在底部标签条里占一项，`order`（默认 `100`）决定顺序；`id` 会命名空间化为 `shape:<形态 id>:<id>`，不同形态可以重名。
+- 每个工作台在窗口下方的标签条里占一项，`order`（默认 `100`）决定顺序；`id` 会命名空间化为 `shape:<形态 id>:<id>`，不同形态可以重名。
 - 没有工作台形态时，窗口显示引导：用 Shape Studio 预设新建形态（`shape_scaffold` 传 `kind: 'workbench'` 可直接生成），或在 `shape` 块里写 `"kind": "workbench"` 并调用 `api.workbench()`。
 - 形态被停用或加载失败时，它注册的工作台一起移除；窗口会在下一次打开时更新。
 

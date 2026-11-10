@@ -9,7 +9,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 ├── package.json      清单：exports、files、dsh.bundle 与 dsh.client
 ├── cordis.patch.yml  包补丁：插入插件行与 preset-shape 预设行
 ├── index.js          入口：八行 re-export，指向 src/host/plugin.js
-├── client.js         浏览器 bundle：槽位桥接、形态客户端加载、10 个能力
+├── client.js         浏览器 bundle：槽位桥接、形态客户端加载、11 个能力
 ├── tools.js          Shape Studio 预设的工具集（11 个工具）
 ├── skill.js          Shape Studio 预设的两份 skill
 ├── src/
@@ -46,6 +46,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 | `POST /dsh-shape/api/toggle` | `{ id, enabled }` 启停一个形态 |
 | `POST /dsh-shape/api/delete` | 删除用户形态目录 |
 | `GET/POST /dsh-shape/api/data` | 读写形态 `data/` 下的 JSON |
+| `GET/POST /dsh-shape/api/files` | 在给定工作区根内读、写、列文件（`dsh-shape#files` 能力使用；读/列走 GET，写操作走 POST；1 MB 读写上限） |
 | `GET /dsh-shape/view/<id>/…` | 形态视图静态文件 |
 | `GET /dsh-shape/client/<id>/…` | 形态客户端模块 |
 
@@ -62,7 +63,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 
 1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`；另一个 `shell.overlay` 座位是工作台窗口（`ShapeWorkbenchLayer`），内容来自 `shape.kind: "workbench"` 的形态通过 `api.workbench()` 注册的 `render`，窗口本身没有关闭按钮，由 `Esc`、空白处点击和 `Ctrl + Alt + W` 关闭。
 2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。
-3. **能力实现**：实现 10 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
+3. **能力实现**：实现 11 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
 4. **能力目录同步**：把当前能力清单 `POST` 回宿主的 `/api/capabilities`，落盘为 `$DSH_HOME/dsh-shape/capabilities.json`，供 `shape_capabilities` 工具读取。
 
 形态 ABI 是 `apiVersion: 1`；声明了不兼容的 `apiVersion` 或缺少必需能力时，形态不启动，槽位里也不会出现它的条目。

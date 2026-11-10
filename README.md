@@ -14,13 +14,13 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 - **浮动面板**：`api.panel()` 注册一个面板，`open()` 后作为浮动窗口出现在会话输入区上方——可拖动、可吸附到屏幕边缘、自动记住位置，随形态停用一起消失
 - **右侧页签**：`api.tab()` 往右侧栏加一种页面，`open()` 打开，同一页重复打开只聚焦不重复
 - **边缘弹窗**：`api.edge()` 注册一个从屏幕**上/右/下/左边缘居中滑入**的窗口，内容是形态 `views/` 目录里的页面；`keys` 直接绑定快捷键，`Esc` 关闭（`esc: false` 关掉），拖动内边可调整大小并记住尺寸，`width`/`height` 写 `'full'` 即可左右或上下占满，顶部窗口与占满的窗口会避开 Windows 顶栏
-- **工作台**：声明 `shape.kind: "workbench"` 的形态用 `api.workbench()` 注册自己的界面，顶栏 **shape 工作台** 按钮或 `Ctrl + Alt + W` 打开约占 80% 视口的窗口；窗口没有标题栏，形态内容直接铺满，也没有关闭按钮，按 `Esc`、点窗口外的空白处或再按一次快捷键关闭；窗口底部用标签列出所有工作台，圆点标记当前选中（空心未选中、白色实心选中），`Ctrl + Alt + ←/→` 或点击切换；没有工作台形态时，窗口直接提示用 Shape Studio 预设新建
+- **工作台**：声明 `shape.kind: "workbench"` 的形态用 `api.workbench()` 注册自己的界面，顶栏 **shape 工作台** 按钮或 `Ctrl + Alt + W` 打开约占 80% 视口的窗口；窗口没有标题栏，形态内容直接铺满，也没有关闭按钮，按 `Esc`、点窗口外的空白处或再按一次快捷键关闭；窗口下方用标签列出所有工作台，圆点标记当前选中（空心未选中、白色实心选中），`Ctrl + Alt + ←/→` 或点击切换；没有工作台形态时，窗口直接提示用 Shape Studio 预设新建
 - **单个开关**：每个形态独立启停；关闭后它的视图、槽位条目和客户端逻辑一起失效
 - **客户端逻辑**：形态可以注册页面级行为和快捷键，并按需读取已声明能力的接口
 - **删除形态**：卡片右上角的删除按钮，确认后把该形态目录从磁盘移除
 - **能力依赖**：形态声明需要的插件能力与版本，缺少依赖时不会启动，也不会显示槽位条目
 - **能力目录**：可以查看当前有哪些形态可用能力、版本、用途、用法和 API 方法名
-- **内置能力**：10 个内置能力覆盖工作区切换、界面控制、快捷键、槽位、事件、存储、输入框、对话读取与 MCP 服务器管理，见下文[内置能力](#内置能力)
+- **内置能力**：11 个内置能力覆盖工作区切换、文件读写、界面控制、快捷键、槽位、事件、存储、输入框、对话读取与 MCP 服务器管理，见下文[内置能力](#内置能力)
 - **内置形态**：随包提供 `chat-search`（对话内搜索，Ctrl+F）和 `workspace-tab-switch`（工作区切换器，Ctrl+Tab），可在形态面板里启停或删除；用户目录下同 id 的形态会覆盖它们
 - **即时生效**：修改形态目录里已有文件后刷新页面即可；新增或删除文件需先在形态面板点刷新（或 `POST /dsh-shape/api/refresh`），面板会自动重载页面
 
@@ -43,6 +43,7 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 | --- | --- | --- | --- |
 | `dsh-shape#core` | 1.0.0 | 字段 `apiVersion` | 判断形态 ABI |
 | `dsh-shape#workspace` | 1.0.0 | `list` `current` `next` `previous` | 切换工作区，并展开、滚动到目标分组 |
+| `dsh-shape#files` | 1.0.0 | `workspace` `read` `write` `append` `replace` `list` | 读写、追加、替换、列出当前工作区内的文件；`read` 支持按行/字节取片段，`write` 默认整体覆盖、可追加；路径相对工作区，读写上限 1 MB |
 | `dsh-shape#ui` | 1.0.0 | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` | 控制 DSH 界面：导航、面板、主题、对话、通知、打开 Shapes |
 | `dsh-shape#shortcuts` | 1.0.0 | `register` `list` | 把形态动作注册成 DSH 命令，用户可在设置里重绑；`regions` 决定输入框聚焦时是否也触发 |
 | `dsh-shape#slots` | 1.0.0 | `list` `mount` `entries` | 查询 10 个槽位、运行时挂载、统计占用 |
@@ -68,7 +69,7 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 - [文档索引](docs/README.md)
 - [架构](docs/architecture.md)：宿主插件、客户端 bundle、形态加载与能力系统
 - [形态目录](docs/shapes.md)：清单字段、视图、槽位条目、客户端模块
-- [能力参考](docs/capabilities.md)：10 个能力的方法、返回值与失败行为
+- [能力参考](docs/capabilities.md)：11 个能力的方法、返回值与失败行为
 - [开发与发布](docs/development.md)：本地联调、发布前检查、client.js 拼接注意事项
 - [已知问题](docs/known-issues.md)：当前不可用的 API 与踩过的坑
 

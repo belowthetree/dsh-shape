@@ -40,6 +40,7 @@ import {
 } from './shape-surfaces.ts'
 import { createUiControl } from './ui-control.ts'
 import { createWorkspaceSwitch } from './workspace.ts'
+import { createWorkspaceFiles } from './workspace-files.ts'
 
 /** The leading header seat and composer dock are owned by the conversation client. */
 export const inject = ['slots', 'workspaces', 'sessions', 'uiWorkspace']
@@ -133,6 +134,15 @@ export function apply(ctx: Context): void {
     usage: 'Call next() or previous() to switch with wrap-around. list() returns { id, title } entries and current() returns the active workspace id or null. Switching opens the target workspace\'s most recent Session, or its blank Session when none exists, then expands and scrolls that workspace group into view in the sidebar.',
     api: createWorkspaceSwitch(ctx),
   }), 'dsh-shape: workspace capability')
+
+  ctx.effect(() => capabilities.provide({
+    plugin: 'dsh-shape',
+    capability: 'files',
+    version: '1.0.0',
+    description: 'Read, write, and list files inside the workspace of the active Session.',
+    usage: 'workspace() returns { id, path } for the active workspace, or null. read(path, { offset, limit, unit }) returns UTF-8 text or a line/byte slice; write(path, content, { mode }) replaces (default) or appends and returns { bytes, total }; append(path, content) adds to the end; replace(path, search, replacement, { limit = 1 }) replaces occurrences (limit 0 = all) and returns { replaced, bytes }; list(path = ".") returns { name, type, size } entries. Paths are relative to the workspace root; absolute paths and ".." are rejected. Reads and writes are limited to 1 MB.',
+    api: createWorkspaceFiles(ctx),
+  }), 'dsh-shape: files capability')
 
   ctx.effect(() => capabilities.provide({
     plugin: 'dsh-shape',

@@ -1,5 +1,5 @@
 {
-  "packageVersion": "0.4.31",
+  "packageVersion": "0.6.0",
   "capabilities": [
     {
       "plugin": "dsh-shape",
@@ -23,6 +23,22 @@
         "list",
         "next",
         "previous"
+      ],
+      "fields": []
+    },
+    {
+      "plugin": "dsh-shape",
+      "capability": "files",
+      "version": "1.0.0",
+      "description": "Read, write, and list files inside the workspace of the active Session.",
+      "usage": "workspace() returns { id, path } for the active workspace, or null. read(path, { offset, limit, unit }) returns UTF-8 text or a line/byte slice; write(path, content, { mode }) replaces (default) or appends and returns { bytes, total }; append(path, content) adds to the end; replace(path, search, replacement, { limit = 1 }) replaces occurrences (limit 0 = all) and returns { replaced, bytes }; list(path = \".\") returns { name, type, size } entries. Paths are relative to the workspace root; absolute paths and \"..\" are rejected. Reads and writes are limited to 1 MB.",
+      "methods": [
+        "append",
+        "list",
+        "read",
+        "replace",
+        "workspace",
+        "write"
       ],
       "fields": []
     },

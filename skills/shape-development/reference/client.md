@@ -42,6 +42,7 @@ Capabilities are read with `api.require`, never off `api.capabilities` directly,
 | Capability | Methods |
 | --- | --- |
 | `dsh-shape#workspace` | `list` `current` `next` `previous` |
+| `dsh-shape#files` | `workspace` `read` `write` `append` `replace` `list` |
 | `dsh-shape#ui` | `openSession` `openWorkspace` `toggleSidebar` `selectPanel` `getTheme` `setTheme` `send` `cancelTurn` `notify` `openShapeBrowser` |
 | `dsh-shape#shortcuts` | `register` `list` |
 | `dsh-shape#slots` | `list` `mount` `entries` |
@@ -55,6 +56,7 @@ Details:
 - `api.shape`: `{ id, title, version }`.
 - `api.capabilities`: object keyed by `plugin#capability`, containing resolved API objects.
 - `api.require(plugin, capability)`: returns the declared capability API; throws otherwise.
+- `dsh-shape#files`'s `workspace()` returns `{ id, path }` for the active Session's workspace or `null`; `read(path, { offset, limit, unit })` returns text or a line (`line`, default) / byte (`byte`) slice; `write(path, content, { mode })` overwrites by default, accepts `mode: 'append'`, creates parent directories, and returns `{ bytes, total }`; `append(path, content)` is the append shorthand; `replace(path, search, replacement, { limit })` replaces text in place and returns `{ replaced, bytes }` (`limit` defaults to 1, `0` means all, a miss writes nothing); `list(path = '.')` returns `{ name, type, size? }`. Paths are workspace-relative, absolute paths and `..` are rejected, and each read/write is capped at 1 MB.
 - `api.shortcuts.register(binding)`: registers one or more shortcuts; returns an idempotent disposer.
 - `dsh-shape#shortcuts`'s `register` takes `{ id, label, keys?, regions?, profiles?, modals?, run }` and returns a disposer. `keys` becomes a rebindable default in every profile the runtime admits. `regions` defaults to `['page']`; add `'editable'` for a command that must fire while the composer has the caret. `profiles: ['desktop']` (or `['web']`) narrows the runtimes that get a default — use it when another command already owns the combination on the other runtime, because one overlapping default invalidates the whole catalog at the desktop IPC boundary.
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
@@ -155,7 +157,7 @@ export function activate(api) {
 
 - `render(container)` receives a host-owned container and re-runs if the window remounts; the returned cleanup runs when the window drops the surface or switches to another workbench.
 - The surface renders in the host document, not in an iframe, so host shortcuts, `Esc`, and every capability API work as usual.
-- The id becomes `shape:<shapeId>:<id>`; `order` (default `100`) sorts the workbench tabs. Every registered workbench gets a tab above the footer — its title with a dot below, hollow when inactive and filled white for the active one. `Ctrl+Alt+ArrowLeft` / `Ctrl+Alt+ArrowRight` cycle through them (window capture, so the bundled Ctrl+Tab switcher does not also fire), clicking a tab selects it, and the selection is remembered across close/reopen. The window has no title bar: the surface fills it.
+- The id becomes `shape:<shapeId>:<id>`; `order` (default `100`) sorts the workbench tabs. Every registered workbench gets a tab in the strip **below the window** — its title with a dot below, hollow when inactive and filled white for the active one. `Ctrl+Alt+ArrowLeft` / `Ctrl+Alt+ArrowRight` cycle through them (window capture, so the bundled Ctrl+Tab switcher does not also fire), clicking a tab selects it, and the selection is remembered across close/reopen. The window has no title bar: the surface fills it.
 - If no workbench is registered, the window shows how to add one — the Shape Studio preset can scaffold a workbench shape (`shape_scaffold` with `kind: "workbench"`).
 - Disabling or reloading a shape removes its workbench with the rest of its registrations.
 
