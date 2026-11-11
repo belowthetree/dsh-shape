@@ -72,6 +72,12 @@ node scripts/check-tool-schemas.mjs               # 工具 schema 在 DSH 支持
 
 拼接后必须跑 `node --check client.js` 和 `check-client-bundle.mjs`。
 
+### CSS 模块也内联在 bundle 里
+
+`src/client/*.module.css` 不单独发布：编译后是 `client.js` 里 `const css = "..."` 那一整段字符串。改样式要**两边同时改**——只改 `.module.css`，生效的仍是 bundle 里的旧字符串，刷新页面看不出任何变化。
+
+卡片右下角的重启、删除按钮绝对定位在 `.cardShell` 上（按钮不能嵌进 `<button class="card">`），所以壳必须 `display: grid`：网格行会把每个壳拉到该行最高卡片的高度，卡片若不适配这个高度，矮卡片的按钮就会掉到自己的下边框外面——这正是 0.8.1 修掉的问题。
+
 ## 版本与发布
 
 - 版本写在 `package.json`；发布由 GitHub Actions 在 `main` 上检测到未发布版本时自动执行。

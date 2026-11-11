@@ -10,8 +10,17 @@ The Host scans bundled `shapes/` and `$DSH_HOME/dsh-shape/shapes/` at startup. A
 - Adding or editing a shape folder takes effect after refresh.
 - Views are read from disk when opened; replacing a file does not require a refresh, though the iframe must be reopened.
 - Slot cards update on the next card load after refresh.
-- The shape client runtime listens for refresh and capability-change events; it stops current modules and re-imports eligible ones.
+- The shape client runtime listens for refresh and capability-change events; it stops current modules, re-imports eager shapes, and rebuilds the wake-key bindings for the dormant ones.
 - Changes to dsh-shape's own Host or Client code require a DSH restart.
+
+## Waking
+
+- Client modules are dormant by default: no import and no `activate` call at page open.
+- `shape.wake.keys` binds page-level combinations to the still-dormant shape. Pressing one imports the module, calls `activate`, then replays the same press into the shape's own bindings.
+- Opening the shape's card in the Shape browser calls `wakeShape(id)` before showing the view; restarting a shape from its card also wakes it.
+- `shape.wake.eager: true` restores the old behavior (import at page open) for shapes that must show an entry point immediately.
+- Opening the shape 工作台 window wakes every dormant `kind: "workbench"` shape (the `dsh-shape:workbench-open` event), so workbench surfaces appear without eager loading; reopening does not re-import them.
+- Waking lasts until the shape is disabled, restarted, or the page reloads.
 
 ## Enablement
 

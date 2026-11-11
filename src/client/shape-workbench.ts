@@ -93,6 +93,9 @@ export function disposeShapeWorkbenches(shapeId: string): void {
   if (changed) notifyWorkbenches()
 }
 
+/** Event fired when the window changes from closed to open. */
+const WORKBENCH_OPEN_EVENT = 'dsh-shape:workbench-open'
+
 /**
  * Whether the workbench window is showing.
  * @returns the open state.
@@ -127,8 +130,15 @@ export function openShapeWorkbench(id?: string): void {
   const changed = id !== undefined && id !== requestedId
   if (id !== undefined) requestedId = id
   if (workbenchOpen && !changed) return
+  const wasOpen = workbenchOpen
   workbenchOpen = true
   notifyWindow()
+  // Opening the window is the wake signal for dormant `kind: "workbench"`
+  // shapes: they register their surfaces only after activation, and the window
+  // is the only place those surfaces can appear.
+  if (!wasOpen && typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(WORKBENCH_OPEN_EVENT))
+  }
 }
 
 /**

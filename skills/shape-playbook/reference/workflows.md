@@ -81,13 +81,21 @@ Verified: a preference surviving a full page reload while other shapes kept thei
      return () => popup.dispose()
    }
    ```
-3. `edge` is `top` / `right` / `bottom` / `left`; sides default to 380×560 and top/bottom to 640×420, and the window never leaves the viewport. `width`/`height` accept pixels or `'full'`: a full axis spans the viewport (the anchored edge keeps its 12px gap), so `edge: 'top'` + `width: 'full'` is a full-width bar.
+3. `edge` is `top` / `right` / `bottom` / `left`; sides default to 380×560 and top/bottom to 640×420, and the window never leaves the viewport. `width`/`height` accept pixels or `'full'`: a full axis spans the viewport (the anchored edge keeps its gap), so `edge: 'top'` + `width: 'full'` is a full-width bar. A right window stops 52px short of the viewport edge so the conversation's turn rail stays visible (12px rail gap + 28px rail + 12px breathing room); the other three edges keep 12px.
 4. `keys` binds a private page-level shortcut that toggles the window (any combination, invisible in Settings). For a rebindable command, register it through `dsh-shape#shortcuts` and call `popup.toggle()`.
 5. `Esc` closes the topmost popup; `esc: false` opts out, and `finishShapeEdgeClose` drops the window after its exit animation. The title bar's close button works even when focus is inside the sandboxed view.
 6. The inner edge is a resize strip (right window → left edge, top window → bottom edge, …). Dragging it updates the perpendicular dimension, clamped to the viewport with a 240×160 minimum; the size is stored per popup in `localStorage` and restored on the next open. `resizable: false` removes the strip, and a `'full'` axis is not resizable.
 7. A shape may open several popups at once; the one opened last is on top, and `open()` raises an already-open window.
+8. `peek: true` parks the window on its edge: only a 10px strip stays on screen, the pointer (or keyboard focus) slides it out, and it slides back 240ms after the pointer leaves — unless focus is still inside the view. The parked window sits off-screen behind the edge, so a top window ignores `peek` (sliding it up would paint over the Windows caption row).
 
-Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. Dragging the right window's inner edge 120px grew it from 360 to exactly 480 and the size survived a page reload; `edge: 'top'` + `width: 'full'` measured 1280×260 at the top edge and `edge: 'left'` + `height: 'full'` measured 320×900, both with their remaining axis still resizable; `resizable: false` exposed no strip. With `--dsh-frame-chrome-top: 40px` (the Windows caption) the top window moved to y=52, the full-height left window to y=40/h=860, the centered right window to y=210, and a dragged top window clamped at 836px (900−40−24), so no edge window crosses the caption. This has not yet been run inside the full DSH GUI.
+Verified: the shipped `client.js` loaded in Chromium through a harness page with stubbed slots (React 18 UMD), a demo shape calling `api.edge()` for all four edges. Windows landed centered on their edge (top/bottom 12px from the edge, sides 12px and vertically centered — that harness run predates the turn-rail inset below), the iframe showed `views/index.html`, `Escape` closed only the topmost popup, `Ctrl+Alt+E` reopened it, `esc: false` ignored `Escape`, and stopping the shape runtime closed every window with no console or surface errors. Dragging the right window's inner edge 120px grew it from 360 to exactly 480 and the size survived a page reload; `edge: 'top'` + `width: 'full'` measured 1280×260 at the top edge and `edge: 'left'` + `height: 'full'` measured 320×900, both with their remaining axis still resizable; `resizable: false` exposed no strip. With `--dsh-frame-chrome-top: 40px` (the Windows caption) the top window moved to y=52, the full-height left window to y=40/h=860, the centered right window to y=210, and a dragged top window clamped at 836px (900−40−24), so no edge window crosses the caption. This has not yet been run inside the full DSH GUI.
+
+Right-edge clearance (0.8.1): the conversation view draws its turn rail 12px inside the transcript's right edge, 28px wide (`ui-chat/.../TurnNavigator.module.css`, `.frame { right: 12px; width: 28px }`), so a window anchored at 12px sat on top of it. `ShapeEdgeLayer.tsx` now anchors `edge: 'right'` at 52px and subtracts that inset from the width budget. Verified from the shipped bundle, not the source: `stripStyle` and `viewportLimit` were cut out of `client.js` and run with a stubbed 1000×900 viewport — right resolved to `{ right: 52 }` with no `left`, full-width right to `{ right: 52, left: 0 }`, left stayed `{ left: 12 }`, top/bottom kept their 12px gaps, and the width clamp became `1000 − 64` (7/7 checks, `node .tmp-scan/check-edge-geometry.mjs`, script not committed). On-screen confirmation with a right-edge popup in a multi-turn session is still pending.
+
+Peek (0.8.1): `peek: true` parks a popup as a 10px strip on its edge. Two checks, both run:
+
+- Bundle geometry: the pure helpers were cut out of `client.js` and run with a stubbed 1000×900 viewport — `peekTransform('right')` parks at `translate3d(calc(100% + 42px), 0, 0)` (52px anchor + 10px strip), left/bottom park at the 12px anchor + 10px strip, the strip hit test accepts only the outer 10px of its own edge span and rejects the turn-rail band, and the parked state wires `data-peek`, a pointer-transparent iframe, and no resize strip (15/15 checks, `node .tmp-scan/check-peek.mjs`).
+- Browser interaction: a temporary harness page (React 18 UMD, jsx runtime and `dsh-client-ui-primitives` stubbed, the shipped `client.js` region mounted directly, 1280×900) opened the popup parked — left edge 1270, 10px visible, `matrix(1, 0, 0, 1, 422, 0)`. A synthetic `pointermove` on the strip slid it out to 848..1228 (52px clear of the right edge), a move to 500 re-parked it after the delay, a point above the window's span did not reveal it, and a `peek: true` top-edge popup stayed anchored at y=12 with no `data-peek`. 8/8 behavioural checks, no page or console errors.
 
 ## 7. A workbench shape
 
@@ -115,6 +123,7 @@ Verified: the shipped `client.js` loaded in Chromium through a harness page with
 4. Open the window with the header's **shape 工作台** action or `Ctrl+Alt+W`; close it with `Esc`, a press on the blank area around the window, or `Ctrl+Alt+W` again. There is deliberately no close button.
 5. While it is open, the strip **below the window** lists every registered workbench; the dot under each name is hollow when inactive and filled white for the active one. `Ctrl+Alt+ArrowLeft` / `Ctrl+Alt+ArrowRight` cycle through the workbenches (window capture plus `stopImmediatePropagation`, so the bundled `workspace-tab-switch` shape's `document` capture listener does not also switch), and the selection is remembered across close/reopen.
 6. The layer renders into `document.body` and unmounts while closed, so it only owns the DSH modal role while it is open (see [keyboard.md](keyboard.md)). There is no title bar: the surface fills the window, and the tabs sit outside the dialog element.
+7. Workbench shapes sleep like every other shape by default. The first open of the window dispatches `dsh-shape:workbench-open`; the runtime wakes every dormant `kind: "workbench"` shape there, so do **not** add `wake.eager` just to make a workbench appear. Reopening the window does not re-import them. A workbench shape whose own shortcut should work before the window was ever opened still needs `wake.keys`.
 
 Verified on 0.5.5 (sources, bundle, and the desktop boot path), except for one on-screen confirmation noted at the end:
 
@@ -136,3 +145,22 @@ Pending: a manual `Ctrl+Alt+W` / **shape 工作台** click in the running deskto
 3. Switch sessions and back; the UI is still there and still focused where it should be.
 4. `shape_inspect` shows the files you expect, with no stray `client/` duplicates.
 5. Record anything new that the run taught you in this document (see the rule in [SKILL.md](../SKILL.md)).
+
+## 9. A dormant shape woken by a shortcut
+
+1. Keep the manifest minimal: `wake` is optional and its absence is the default — the shape is not imported at page open.
+2. Register the key in the manifest if the shape should be reachable without opening the Shapes browser:
+
+   ```json
+   "shape": {
+     "apiVersion": 1,
+     "wake": { "keys": ["Ctrl+Alt+K"] }
+   }
+   ```
+
+3. Write the client as usual (`api.edge({ keys: 'Ctrl+Alt+K' })` or `api.shortcuts.register`) — the runtime registers the wake key before the module loads, and after `activate` returns it replays the waking press into those bindings. Do not add a second private `keydown` listener for the same combination.
+4. A shape whose entry point must be visible before any wake (a header button, an injected chip) has to opt out: `"wake": { "eager": true }`. The bundled `chat-search` and `workspace-tab-switch` do this. `kind: "workbench"` shapes are the exception: opening the workbench window wakes them, so they stay dormant without `eager`.
+5. Opening the shape's card in the Shapes browser wakes it too (`wakeShape(id)` is what the card calls). Restarting a dormant shape wakes it.
+6. Verify without the GUI: serve a page that stubs `fetch('/dsh-shape/api/shapes')` with `wake` policies and imports fake `client/index.js` modules that push to a global on `activate`; start `createShapeRuntime` and check which modules ran.
+
+Verified on the shipped `client.js` (harness page in Chrome, real dynamic imports, 10 checks): only the `eager` shape had been imported 600ms after boot; `Ctrl+Alt+D` then imported the dormant shape and ran its own `Ctrl+Alt+D` binding from the same press; a second press ran that binding again without re-importing; calling the bundle's `openShapeWorkbench()` imported the dormant `kind: "workbench"` shape while leaving a dormant key-shape asleep, and closing/reopening did not re-import it; `wakeShape('keyed')` (the card path) imported its module and did not run a key binding; the key worked afterwards. Host side, a stub-context boot on `GET /dsh-shape/api/shapes` reported `{ keys: [], eager: false }` for a shape without `wake`, the declared keys for one with them, `eager: true` for one opting out, and marked `wake: { keys: [42] }` invalid with `shape.wake.keys must be a string or an array of strings` (4 checks).

@@ -23,6 +23,8 @@ export interface ShapeEdgePopup {
   readonly resizable: boolean
   /** Whether Escape closes the window; defaults to true. */
   readonly esc: boolean
+  /** Whether the window rests as a strip on its edge until the pointer reaches it. */
+  readonly peek: boolean
 }
 
 /** What the layer renders: open popup ids in stacking order plus the ones animating out. */

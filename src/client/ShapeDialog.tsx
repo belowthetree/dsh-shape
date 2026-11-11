@@ -14,6 +14,7 @@ import type {
   ShapeResolverInjected,
 } from '../shared/capabilities.ts'
 import { SHAPE_API_VERSION, supportsShapeApiVersion } from '../shared/capabilities.ts'
+import { wakeShape } from './shape-runtime.ts'
 import css from './shape-dialog.module.css'
 
 interface ShapeInfo {
@@ -440,7 +441,12 @@ export function ShapeDialog({
                       aria-haspopup="dialog"
                       aria-label={`打开 ${shape.title}`}
                       disabled={!enabled || blocked}
-                      onClick={() => { void openView(shape) }}
+                      onClick={() => {
+                        // Opening a card is an explicit use: wake the shape's client
+                        // before showing its view, so its panels and bindings exist.
+                        wakeShape(shape.id)
+                        void openView(shape)
+                      }}
                     >
                       <div className={css.cardHead}>
                         <span className={css.appIcon} aria-hidden="true">{initial.toLocaleUpperCase()}</span>

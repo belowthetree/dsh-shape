@@ -1,8 +1,10 @@
 # Shape client module
 
-`client/index.js` is optional. After the shape is enabled, valid, has a supported ABI, and all required capabilities resolve, dsh-shape imports the entry and calls `activate`.
+`client/index.js` is optional. After the shape is enabled, valid, has a supported ABI, all required capabilities resolve, **and the shape is awake**, dsh-shape imports the entry and calls `activate`.
 
 ## Activation
+
+Shapes are dormant by default: nothing is imported at page open until the user presses one of the manifest's `shape.wake.keys` or opens the shape's card in the Shapes browser. The wake key is registered before the module loads; the press that woke the shape is then replayed into the bindings `activate` just registered. `shape.wake.eager: true` restores eager loading for shapes that need an always-visible entry point.
 
 ```js
 export function activate(api) {
@@ -33,7 +35,7 @@ export function activate(api) {
 | `api.mount(slot, render, options?)` | disposer | One of the ten slots; `options` is `{ placement, snap }` for `conversation.input.overlay`. |
 | `api.panel({ id, title, order?, render })` | `{ id, open, dispose }` | Floating window over the conversation input; `open()` shows it. |
 | `api.tab({ id, title, render })` | `{ id, open, dispose }` | Right sidebar page; `open()` shows it as a tab. |
-| `api.edge({ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views. |
+| `api.edge({ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc?, peek? })` | `{ id, open, close, toggle, isOpen, dispose }` | Edge popup: a window that slides in from one viewport edge and shows one of the shape's views; `peek: true` parks it as a 10px strip until the pointer reaches it. |
 | `api.workbench({ id, title, order?, render })` | `{ id, open, dispose }` | Workbench surface in the shape 工作台 window; only for `shape.kind: "workbench"`. |
 | `api.shortcuts.register({ keys, run })` | disposer | Private `keydown` listener: not rebindable and invisible in Settings. |
 
@@ -64,7 +66,7 @@ Details:
 - `api.mount(slot, render, options)`: renders into a supported conversation slot; throws for an unsupported slot and returns an idempotent disposer. `options.placement` (`anchored` | `floating`) and `options.snap` apply to `conversation.input.overlay`. See [slots.md](slots.md) for the slot list, the container contract, and floating windows.
 - `api.panel(options)`: registers a panel and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the panel as a floating window over the conversation input.
 - `api.tab(options)`: adds a page type to the right sidebar and returns `{ id, open(), dispose() }`. `options` is `{ id, title, render }`; `open()` shows it as a tab.
-- `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc? }`; the window shows `views/<view>` in a sandboxed iframe. `width`/`height` accept pixels or `'full'` to span the viewport axis.
+- `api.edge(options)`: registers an edge popup and returns `{ id, open(), close(), toggle(), isOpen(), dispose() }`. `options` is `{ id, title?, edge?, view?, width?, height?, keys?, resizable?, esc?, peek? }`; the window shows `views/<view>` in a sandboxed iframe. `width`/`height` accept pixels or `'full'` to span the viewport axis. `peek: true` rests the window as a 10px strip on its edge and slides it out when the pointer (or keyboard focus) reaches the strip; it leaves after 240ms once the pointer is away and nothing inside is focused. `edge: 'top'` ignores `peek`.
 - `api.workbench(options)`: registers a workbench surface and returns `{ id, open(), dispose() }`. `options` is `{ id, title, order?, render }`; `open()` shows the shape 工作台 window with this workbench selected.
 
 ## Panels

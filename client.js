@@ -1166,7 +1166,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region \0dsh-css:shape-dialog.module.css.mjs
-		const css = ".TTllmG_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_window:focus{outline:none}.TTllmG_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.TTllmG_heading{align-items:center;gap:12px;min-width:0;display:flex}.TTllmG_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.TTllmG_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.TTllmG_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.TTllmG_headingText{min-width:0}.TTllmG_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.TTllmG_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.TTllmG_actions{flex:none;gap:4px;display:flex}.TTllmG_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.TTllmG_iconButton>svg{width:16px;height:16px}@media (hover:hover){.TTllmG_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.TTllmG_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.TTllmG_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_content{flex:1;min-height:0;padding:22px;overflow:auto}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.TTllmG_cardShell{min-width:0;position:relative}.TTllmG_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.TTllmG_card:disabled{cursor:default;opacity:.55}.TTllmG_cardShell[data-enabled=false] .TTllmG_card{opacity:.55}@media (hover:hover){.TTllmG_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.TTllmG_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.TTllmG_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;flex:none;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.TTllmG_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.TTllmG_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.TTllmG_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.TTllmG_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch:disabled{cursor:wait;opacity:.5}.TTllmG_deleteButton{z-index:2;width:26px;height:26px;color:var(--dsw-alias-label-secondary,#fff9);cursor:pointer;opacity:.72;background:0 0;border:1px solid #0000;border-radius:8px;place-items:center;padding:0;font-size:14px;line-height:1;transition:color .14s,background .14s,border-color .14s;display:grid;position:absolute;bottom:10px;right:10px}.TTllmG_deleteButton svg{width:14px;height:14px}.TTllmG_deleteButton:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 14%, transparent);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 32%, transparent)}.TTllmG_deleteButton:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_deleteButton:disabled{cursor:wait;opacity:.4}@media (hover:none){.TTllmG_deleteButton{opacity:1}}.TTllmG_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.TTllmG_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.TTllmG_cardIdentity{flex:1;min-width:0}.TTllmG_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.TTllmG_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.TTllmG_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;flex:1;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.TTllmG_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;padding-right:34px;display:flex}.TTllmG_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.TTllmG_blocked{color:var(--dsw-alias-state-warn-primary,#f0c36a);font-size:11px;line-height:1.4}.TTllmG_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.TTllmG_confirmBar{color:var(--dsw-alias-label-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 12%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 38%, transparent);border-radius:8px;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;padding:10px 12px;font-size:12px;line-height:1.5;display:flex}.TTllmG_confirmText{min-width:0}.TTllmG_confirmActions{flex:none;align-items:center;gap:8px;display:flex}.TTllmG_confirmDelete{color:var(--dsw-alias-state-error-primary,#ff9b9b);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 42%, transparent)}.TTllmG_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.TTllmG_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.TTllmG_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.TTllmG_placeholderMessage{max-width:540px;line-height:1.5}.TTllmG_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite TTllmG_shimmer}.TTllmG_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_viewWindow:focus{outline:none}.TTllmG_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.TTllmG_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.TTllmG_viewHeadingText{min-width:0}.TTllmG_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.TTllmG_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.TTllmG_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.TTllmG_viewBody .TTllmG_placeholder{flex:1;width:100%}.TTllmG_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.TTllmG_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.TTllmG_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.TTllmG_footerCount{flex:none}@keyframes TTllmG_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes TTllmG_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes TTllmG_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.TTllmG_backdrop{padding:8px}.TTllmG_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_header{padding:14px 16px}.TTllmG_content{padding:14px}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.TTllmG_card{min-height:176px;padding:12px}.TTllmG_confirmBar{flex-wrap:wrap}.TTllmG_subtitle{display:none}.TTllmG_footer{padding:8px 16px}.TTllmG_viewBackdrop{padding:8px}.TTllmG_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_viewHeader{padding:12px 14px}.TTllmG_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.TTllmG_backdrop,.TTllmG_window,.TTllmG_skeletonCard{animation:none}.TTllmG_card{transition:none}}";
+		const css = ".TTllmG_backdrop{z-index:1200;background:var(--dsw-alias-bg-mask-1,#00000080);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_window{width:min(1120px,94vw);height:min(760px,90vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_window:focus{outline:none}.TTllmG_header{border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);background:color-mix(in srgb, var(--dsw-alias-bg-layer-2) 84%, transparent);justify-content:space-between;align-items:center;gap:20px;padding:18px 22px;display:flex}.TTllmG_heading{align-items:center;gap:12px;min-width:0;display:flex}.TTllmG_appMark{width:36px;height:36px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 28%, transparent);border-radius:10px;flex:none;place-items:center;display:grid}.TTllmG_appMarkGrid{grid-template-rows:repeat(2,5px);grid-template-columns:repeat(2,5px);gap:2px;display:grid}.TTllmG_appMarkGrid>span{opacity:.9;background:currentColor;border-radius:1.5px}.TTllmG_headingText{min-width:0}.TTllmG_title{margin:0;font-size:17px;font-weight:500;line-height:24px}.TTllmG_subtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:12px;line-height:18px;overflow:hidden}.TTllmG_actions{flex:none;gap:4px;display:flex}.TTllmG_iconButton{width:28px;height:28px;color:var(--dsw-alias-label-secondary,#fff9);border-radius:var(--dsw-radius-sm,8px);cursor:pointer;background:0 0;border:0;place-items:center;padding:0;display:grid}.TTllmG_iconButton>svg{width:16px;height:16px}@media (hover:hover){.TTllmG_iconButton:hover{color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg-hover)}}.TTllmG_iconButton:active{background:var(--dsw-alias-interactive-bg-active)}.TTllmG_iconButton:focus-visible{color:var(--dsw-alias-label-primary);box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_content{flex:1;min-height:0;padding:22px;overflow:auto}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));align-content:start;gap:12px;display:grid}.TTllmG_cardShell{min-width:0;position:relative;display:grid}.TTllmG_card{width:100%;min-height:190px;color:inherit;font:inherit;text-align:left;appearance:none;cursor:pointer;background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;flex-direction:column;gap:10px;margin:0;padding:14px;transition:border-color .14s,box-shadow .14s,transform .14s,opacity .14s;display:flex}.TTllmG_card:disabled{cursor:default;opacity:.55}.TTllmG_cardShell[data-enabled=false] .TTllmG_card{opacity:.55}@media (hover:hover){.TTllmG_card:hover{border-color:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 34%, var(--dsw-alias-border-secondary,transparent));box-shadow:var(--dsw-elevation-soft,0 8px 24px #0000002e);transform:translateY(-1px)}.TTllmG_card:disabled:hover{border-color:var(--dsw-alias-border-secondary,#ffffff14);box-shadow:none;transform:none}}.TTllmG_card:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch{z-index:2;background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-secondary,#ffffff2e);cursor:pointer;border-radius:999px;flex:none;width:32px;height:18px;padding:0;transition:background .14s,border-color .14s,opacity .14s;position:absolute;top:12px;right:12px}.TTllmG_switch:after{content:\"\";background:var(--dsw-alias-label-secondary,#ffffffa6);border-radius:50%;width:12px;height:12px;transition:transform .14s,background .14s;position:absolute;top:2px;left:2px}.TTllmG_switch[aria-checked=true]{background:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);border-color:#0000}.TTllmG_switch[aria-checked=true]:after{background:#fff;transform:translate(14px)}.TTllmG_switch:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_switch:disabled{cursor:wait;opacity:.5}.TTllmG_deleteButton{z-index:2;width:26px;height:26px;color:var(--dsw-alias-label-secondary,#fff9);cursor:pointer;opacity:.72;background:0 0;border:1px solid #0000;border-radius:8px;place-items:center;padding:0;font-size:14px;line-height:1;transition:color .14s,background .14s,border-color .14s;display:grid;position:absolute;bottom:10px;right:10px}.TTllmG_deleteButton svg{width:14px;height:14px}.TTllmG_deleteButton:hover:not(:disabled){color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 14%, transparent);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 32%, transparent)}.TTllmG_deleteButton:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary,#6ea6ff));outline:none}.TTllmG_deleteButton:disabled{cursor:wait;opacity:.4}@media (hover:none){.TTllmG_deleteButton{opacity:1}}.TTllmG_cardHead{align-items:flex-start;gap:10px;min-width:0;padding-right:36px;display:flex}.TTllmG_appIcon{width:42px;height:42px;color:var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff);background:color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 14%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-brand-primary-new-colorprimary-new-color,#6ea6ff) 24%, transparent);border-radius:11px;flex:none;place-items:center;font-size:17px;font-weight:500;line-height:1;display:grid}.TTllmG_cardIdentity{flex:1;min-width:0}.TTllmG_cardTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:13.5px;font-weight:500;line-height:18px;overflow:hidden}.TTllmG_cardId{color:var(--dsw-alias-label-secondary,#fff9);font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;margin-top:2px;font-size:10.5px;line-height:14px;display:block;overflow:hidden}.TTllmG_origin{color:var(--dsw-alias-label-secondary,#fff9);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:999px;flex:none;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_description{color:var(--dsw-alias-label-secondary,#fff9);-webkit-line-clamp:3;-webkit-box-orient:vertical;margin:0;font-size:12px;line-height:1.5;display:-webkit-box;overflow:hidden}.TTllmG_cardFooter{flex-wrap:wrap;align-items:center;gap:4px;margin-top:auto;padding-right:34px;display:flex}.TTllmG_badge{color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-2);border-radius:5px;padding:1px 6px;font-size:10px;line-height:16px}.TTllmG_invalid{color:var(--dsw-alias-state-error-primary,#ff9b9b);font-size:11px}.TTllmG_blocked{color:var(--dsw-alias-state-warn-primary,#f0c36a);font-size:11px;line-height:1.4}.TTllmG_toggleError{color:var(--dsw-alias-state-error-primary,#ff9b9b);background:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 8%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 28%, transparent);border-radius:8px;margin-bottom:12px;padding:8px 10px;font-size:12px;line-height:1.5}.TTllmG_confirmBar{color:var(--dsw-alias-label-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 12%, transparent);border:1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary,#f0c36a) 38%, transparent);border-radius:8px;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;padding:10px 12px;font-size:12px;line-height:1.5;display:flex}.TTllmG_confirmText{min-width:0}.TTllmG_confirmActions{flex:none;align-items:center;gap:8px;display:flex}.TTllmG_confirmDelete{color:var(--dsw-alias-state-error-primary,#ff9b9b);border-color:color-mix(in srgb, var(--dsw-alias-state-error-primary,#ff9b9b) 42%, transparent)}.TTllmG_placeholder{min-height:320px;color:var(--dsw-alias-label-secondary,#fff9);text-align:center;flex-direction:column;justify-content:center;align-items:center;gap:8px;font-size:13px;display:flex}.TTllmG_placeholderMark{width:54px;height:54px;color:var(--dsw-alias-label-secondary,#fff9);background:var(--dsw-alias-bg-layer-3);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:14px;place-items:center;margin-bottom:4px;font-size:22px;display:grid}.TTllmG_placeholderPath{max-width:540px;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;font-size:11px;overflow:hidden}.TTllmG_placeholderMessage{max-width:540px;line-height:1.5}.TTllmG_skeletonCard{background:linear-gradient(100deg, var(--dsw-alias-bg-layer-3) 30%, color-mix(in srgb, var(--dsw-alias-bg-layer-3) 70%, var(--dsw-alias-label-secondary,white)) 50%, var(--dsw-alias-bg-layer-3) 70%);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);background-size:240% 100%;border-radius:14px;min-height:190px;animation:1.2s linear infinite TTllmG_shimmer}.TTllmG_viewBackdrop{z-index:1300;background:var(--dsw-alias-bg-mask-3,#0000007a);backdrop-filter:var(--dsw-mask-blur,blur(12px));animation:TTllmG_backdrop-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);justify-content:center;align-items:center;padding:24px;display:flex;position:fixed;inset:0}.TTllmG_viewWindow{width:min(1080px,92vw);height:min(760px,88vh);max-height:calc(100dvh - 48px);color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-secondary,#ffffff14);border-radius:var(--dsw-radius-panel,18px);box-shadow:var(--dsw-elevation-prominent,0 24px 80px #0000005c);animation:TTllmG_window-in var(--ds-transition-duration,.16s) var(--ds-ease-in-out,ease-out);flex-direction:column;display:flex;overflow:hidden}.TTllmG_viewWindow:focus{outline:none}.TTllmG_viewHeader{background:var(--dsw-alias-bg-layer-2);border-bottom:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:16px;padding:14px 18px;display:flex}.TTllmG_viewHeading{align-items:center;gap:10px;min-width:0;display:flex}.TTllmG_viewHeadingText{min-width:0}.TTllmG_viewTitle{text-overflow:ellipsis;white-space:nowrap;margin:0;font-size:15px;font-weight:500;line-height:20px;overflow:hidden}.TTllmG_viewSubtitle{color:var(--dsw-alias-label-secondary,#fff9);text-overflow:ellipsis;white-space:nowrap;margin:1px 0 0;font-size:11px;line-height:16px;overflow:hidden}.TTllmG_viewBody{background:var(--dsw-alias-bg-layer-1);flex:1;min-height:0;display:flex}.TTllmG_viewBody .TTllmG_placeholder{flex:1;width:100%}.TTllmG_viewFrame{background:var(--dsw-alias-bg-layer-1);color-scheme:normal;border:0;width:100%;height:100%;display:block}.TTllmG_footer{color:var(--dsw-alias-label-secondary,#fff9);border-top:1px solid var(--dsw-alias-border-secondary,#ffffff14);justify-content:space-between;align-items:center;gap:12px;padding:10px 22px;font-size:11px;line-height:16px;display:flex}.TTllmG_footerPath{min-width:0;font-family:var(--dsw-font-mono,ui-monospace, SFMono-Regular, Consolas, monospace);text-overflow:ellipsis;white-space:nowrap;overflow:hidden}.TTllmG_footerCount{flex:none}@keyframes TTllmG_backdrop-in{0%{opacity:0}to{opacity:1}}@keyframes TTllmG_window-in{0%{opacity:0;transform:translateY(6px)scale(.992)}to{opacity:1;transform:translateY(0)scale(1)}}@keyframes TTllmG_shimmer{0%{background-position:140% 0}to{background-position:-100% 0}}@media (width<=720px){.TTllmG_backdrop{padding:8px}.TTllmG_window{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_header{padding:14px 16px}.TTllmG_content{padding:14px}.TTllmG_grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:10px}.TTllmG_card{min-height:176px;padding:12px}.TTllmG_confirmBar{flex-wrap:wrap}.TTllmG_subtitle{display:none}.TTllmG_footer{padding:8px 16px}.TTllmG_viewBackdrop{padding:8px}.TTllmG_viewWindow{border-radius:14px;width:100%;height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.TTllmG_viewHeader{padding:12px 14px}.TTllmG_viewSubtitle{display:none}}@media (prefers-reduced-motion:reduce){.TTllmG_backdrop,.TTllmG_window,.TTllmG_skeletonCard{animation:none}.TTllmG_card{transition:none}}";
 		const tagId = "dsh-shape/shape-dialog.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -1629,6 +1629,7 @@ window.__ModuleLoader__.load({
 													"aria-label": `打开 ${shape.title}`,
 													disabled: !enabled || blocked,
 													onClick: () => {
+														wakeShape(shape.id);
 														openView(shape);
 													},
 													children: [
@@ -2029,6 +2030,9 @@ window.__ModuleLoader__.load({
 		* @param shortcut - parsed combination.
 		* @returns true on an exact modifier and key match.
 		*/
+		function combinationKey(parsed) {
+			return `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`;
+		}
 		function matchesShortcut(event, shortcut) {
 			if (event.ctrlKey !== shortcut.ctrl || event.altKey !== shortcut.alt || event.shiftKey !== shortcut.shift || event.metaKey !== shortcut.meta) return false;
 			return (event.key.length === 1 ? event.key.toLowerCase() : event.key) === shortcut.key || event.code === shortcut.key;
@@ -2070,6 +2074,10 @@ window.__ModuleLoader__.load({
 			if (!Number.isFinite(value) || value <= 0) throw new Error(`dsh-shape: edge popup ${field} must be a positive number of pixels or "full"`);
 			return Math.round(value);
 		}
+		let wakeRequest;
+		function wakeShape(id) {
+			wakeRequest?.(id);
+		}
 		/**
 		* Create the shape Client runtime.
 		* @param capabilities - registry used for startup dependency checks.
@@ -2078,15 +2086,17 @@ window.__ModuleLoader__.load({
 		function createShapeRuntime(capabilities) {
 			const shortcuts = /* @__PURE__ */ new Map();
 			const active = [];
+			const wakeBindings = /* @__PURE__ */ new Map();
+			const waking = /* @__PURE__ */ new Set();
 			const restarts = /* @__PURE__ */ new Map();
 			let generation = 0;
 			let started = false;
 			const stopAll = () => {
 				for (const shape of active.splice(0)) shape.dispose();
 				shortcuts.clear();
+				wakeBindings.clear();
 			};
-			const onKeyDown = (event) => {
-				if (event.defaultPrevented || event.repeat || event.isComposing) return;
+			const runShortcut = (event) => {
 				for (const shortcut of shortcuts.values()) {
 					if (!matchesShortcut(event, shortcut)) continue;
 					event.preventDefault();
@@ -2097,8 +2107,66 @@ window.__ModuleLoader__.load({
 					} catch (cause) {
 						console.warn("dsh-shape: shortcut failed", cause);
 					}
+					return true;
+				}
+				return false;
+			};
+			const onKeyDown = (event) => {
+				if (event.defaultPrevented || event.repeat || event.isComposing) return;
+				if (runShortcut(event)) return;
+				for (const binding of wakeBindings.values()) {
+					if (!matchesShortcut(event, binding.parsed)) continue;
+					event.preventDefault();
+					wakeShapeNow(binding.shape.id, event);
 					return;
 				}
+			};
+			const canStart = (shape) => {
+				if (shape.enabled === false || !shape.valid || shape.clientEntry === void 0) return false;
+				if (!supportsShapeApiVersion(shape.shapeApiVersion)) return false;
+				return capabilities.resolve(shape.requirements ?? []).ok;
+			};
+			const syncWake = (shapes) => {
+				const live = /* @__PURE__ */ new Set();
+				for (const shape of shapes) {
+					if (shape.wake?.eager === true || !canStart(shape)) continue;
+					if (active.some((candidate) => candidate.id === shape.id)) continue;
+					const keys = shape.wake?.keys ?? [];
+					if (keys.length === 0) continue;
+					live.add(shape.id);
+					for (const spec of keys) {
+						let parsed;
+						try {
+							parsed = parseShortcut(spec);
+						} catch (cause) {
+							console.warn(`dsh-shape: ${shape.id} has an invalid wake key "${spec}"`, cause);
+							continue;
+						}
+						const key = combinationKey(parsed);
+						if (shortcuts.has(key) || wakeBindings.has(key)) continue;
+						wakeBindings.set(key, { key, shape, parsed });
+					}
+				}
+				for (const [key, binding] of wakeBindings) {
+					if (!live.has(binding.shape.id)) wakeBindings.delete(key);
+				}
+			};
+			const wakeShapeNow = async (id, event) => {
+				if (active.some((candidate) => candidate.id === id)) {
+					if (event !== void 0) runShortcut(event);
+					return;
+				}
+				if (waking.has(id)) return;
+				waking.add(id);
+				try {
+					const awake = await refresh({ wake: id });
+					if (awake && event !== void 0) runShortcut(event);
+				} finally {
+					waking.delete(id);
+				}
+			};
+			const wakeKindShapes = async (kind) => {
+				await refresh({ wakeKind: kind });
 			};
 			const moduleUrl = (shape) => {
 				const entry = shape.clientEntry ?? "";
@@ -2127,14 +2195,14 @@ window.__ModuleLoader__.load({
 						credentials: "same-origin",
 						cache: "no-store"
 					});
-					if (!response.ok) return;
+					if (!response.ok) return false;
 					const payload = await response.json();
-					if (payload.ok !== true || !Array.isArray(payload.shapes)) return;
+					if (payload.ok !== true || !Array.isArray(payload.shapes)) return false;
 					shapes = payload.shapes;
 				} catch {
-					return;
+					return false;
 				}
-				if (current !== generation) return;
+				if (current !== generation) return false;
 				if (options.force === true) {
 					stopAll();
 				} else {
@@ -2145,11 +2213,16 @@ window.__ModuleLoader__.load({
 						}
 					}
 				}
+				let woke = false;
+				if (options.wake !== void 0 && active.some((candidate) => candidate.id === options.wake)) woke = true;
 				for (const shape of shapes) {
-					if (current !== generation) return;
-					if (shape.enabled === false || !shape.valid || shape.clientEntry === void 0) continue;
+					if (current !== generation) return false;
+					if (!canStart(shape)) continue;
 					if (active.some((candidate) => candidate.id === shape.id)) continue;
-					if (!supportsShapeApiVersion(shape.shapeApiVersion)) continue;
+					const targeted = shape.id === options.wake || options.wakeKind !== void 0 && shape.kind === options.wakeKind;
+					// Everything is dormant by default: only eager shapes and the one being
+					// woken pay the import cost here.
+					if (shape.wake?.eager !== true && !targeted) continue;
 					const resolution = capabilities.resolve(shape.requirements ?? []);
 					if (!resolution.ok) continue;
 					const state = {
@@ -2270,6 +2343,7 @@ window.__ModuleLoader__.load({
 						        ...(height === void 0 ? {} : { height }),
 						        resizable: options.resizable !== false,
 						        esc: options.esc !== false,
+						        peek: options.peek === true,
 						    });
 						    let disposed = false;
 						    const dispose = () => {
@@ -2325,7 +2399,7 @@ window.__ModuleLoader__.load({
 							/* @vite-ignore */
 							url
 );
-						if (current !== generation) return;
+						if (current !== generation) return false;
 						if (typeof module.activate !== "function") continue;
 						const result = module.activate(api);
 						if (typeof result === "function") state.cleanup = result;
@@ -2346,6 +2420,7 @@ window.__ModuleLoader__.load({
 								disposeShapeWorkbenches(shape.id);
 							}
 						});
+						if (targeted) woke = true;
 					} catch (cause) {
 						for (const off of state.mounts) off();
 						for (const off of state.shortcuts) off();
@@ -2359,11 +2434,14 @@ window.__ModuleLoader__.load({
 						console.warn(`dsh-shape: failed to activate ${shape.id}`, cause);
 					}
 				}
+				syncWake(shapes);
+				return woke;
 			};
 			const restartShape = async (id) => {
 				restarts.set(id, (restarts.get(id) ?? 0) + 1);
 				stopShape(id);
-				await refresh();
+				// A restart is an explicit action: it wakes a dormant shape.
+				await refresh({ wake: id });
 			};
 			const start = () => {
 				if (started) throw new Error("shape runtime already started");
@@ -2382,15 +2460,26 @@ window.__ModuleLoader__.load({
 				window.addEventListener("dsh-shape:refresh", reload);
 				window.addEventListener("dsh-shape:capabilities", rebuild);
 				window.addEventListener("dsh-shape:restart", onRestart);
+				// The Workbench window is the only surface for `kind: "workbench"`
+				// shapes, so opening it wakes them instead of requiring eager.
+				const onWorkbenchOpen = () => {
+					wakeKindShapes("workbench");
+				};
+				window.addEventListener("dsh-shape:workbench-open", onWorkbenchOpen);
+				wakeRequest = (id) => {
+					wakeShapeNow(id);
+				};
 				refresh();
 				return () => {
 					started = false;
+					wakeRequest = void 0;
 					generation++;
 					stopAll();
 					window.removeEventListener("keydown", onKeyDown);
 					window.removeEventListener("dsh-shape:refresh", reload);
 					window.removeEventListener("dsh-shape:capabilities", rebuild);
 					window.removeEventListener("dsh-shape:restart", onRestart);
+					window.removeEventListener("dsh-shape:workbench-open", onWorkbenchOpen);
 				};
 			};
 			return { start };
@@ -3062,6 +3151,8 @@ window.__ModuleLoader__.load({
 		const workbenchListeners = /* @__PURE__ */ new Set();
 		const windowListeners = /* @__PURE__ */ new Set();
 		let workbenchOpen = false;
+		/** Event fired when the window changes from closed to open. */
+		const WORKBENCH_OPEN_EVENT = "dsh-shape:workbench-open";
 		let requestedId = null;
 		/**
 		 * Notify every observer of the registered workbenches.
@@ -3155,8 +3246,15 @@ window.__ModuleLoader__.load({
 		  const changed = id !== void 0 && id !== requestedId;
 		  if (id !== void 0) requestedId = id;
 		  if (workbenchOpen && !changed) return;
+		  const wasOpen = workbenchOpen;
 		  workbenchOpen = true;
 		  notifyWindow();
+		  // Opening the window is the wake signal for dormant `kind: "workbench"`
+		  // shapes: they register their surfaces only after activation, and the
+		  // window is the only place those surfaces can appear.
+		  if (!wasOpen && typeof window !== "undefined") {
+		    window.dispatchEvent(new CustomEvent(WORKBENCH_OPEN_EVENT));
+		  }
 		}
 		/**
 		 * Hide the workbench window.
@@ -3865,6 +3963,19 @@ window.__ModuleLoader__.load({
 		/** Gap kept between a window and the viewport edge it sits on. */
 		const EDGE_MARGIN = 12;
 		/**
+		 * Right inset for side windows. The conversation view draws its turn rail
+		 * 12px inside the transcript's right edge, 28px wide; a window anchored at
+		 * `EDGE_MARGIN` sat on top of the rail and hid it. Anchor a full edge margin
+		 * past the rail instead, so the rail stays visible and clickable.
+		 */
+		const RIGHT_INSET = 12 + 28 + 12;
+		/** Pixels of a `peek` window that stay on screen while it is parked. */
+		const PEEK_VISIBLE = 10;
+		/** Time a parked `peek` window waits after the pointer leaves before it hides. */
+		const PEEK_HIDE_MS = 240;
+		/** Time a `peek` window takes to slide out and back. */
+		const PEEK_MS = 200;
+		/**
 		 * Top boundary published by the DSH frame: the Windows caption row, 0 while
 		 * fullscreen. The fallback keeps Web and macOS at the plain viewport edge, so
 		 * the same expression works in a browser and inside the desktop shell.
@@ -4008,7 +4119,7 @@ window.__ModuleLoader__.load({
 		        top: FRAME_TOP,
 		        bottom: 0,
 		        alignItems: 'center',
-		        ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: EDGE_MARGIN }),
+		        ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: RIGHT_INSET }),
 		        ...(fullWidth ? (edge === 'left' ? { right: 0 } : { left: 0 }) : {}),
 		    };
 		}
@@ -4024,6 +4135,46 @@ window.__ModuleLoader__.load({
 		        maxWidth: size.width === 'full' ? '100vw' : 'calc(100vw - 24px)',
 		        maxHeight: size.height === 'full' ? '100vh' : `calc(100vh - ${FRAME_TOP} - 24px)`,
 		    };
+		}
+		/**
+		 * Transform that parks a window outside its edge, leaving only the peek strip
+		 * on screen. A top window never parks: sliding it up would paint over the
+		 * Windows caption row, so `peek` is ignored there and the window stays put.
+		 * @param edge - edge the window is parked on.
+		 * @returns the transform for the parked state.
+		 */
+		function peekTransform(edge) {
+		    const gap = edge === 'right' ? RIGHT_INSET - PEEK_VISIBLE : EDGE_MARGIN - PEEK_VISIBLE;
+		    if (edge === 'right')
+		        return `translate3d(calc(100% + ${String(gap)}px), 0, 0)`;
+		    if (edge === 'left')
+		        return `translate3d(calc(-100% - ${String(gap)}px), 0, 0)`;
+		    return `translate3d(0, calc(100% + ${String(gap)}px), 0)`;
+		}
+		/**
+		 * Whether a viewport point lies inside a box.
+		 * @param rect - box to test.
+		 * @param x - viewport x.
+		 * @param y - viewport y.
+		 * @returns true when the point is inside.
+		 */
+		function inBox(rect, x, y) {
+		    return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+		}
+		/**
+		 * Whether a viewport point sits on the strip a parked window leaves on screen.
+		 * @param edge - edge the window is anchored to.
+		 * @param rect - the window's current box.
+		 * @param x - viewport x.
+		 * @param y - viewport y.
+		 * @returns true while the pointer is over the visible strip.
+		 */
+		function onPeekStrip(edge, rect, x, y) {
+		    if (edge === 'right')
+		        return x >= window.innerWidth - PEEK_VISIBLE && y >= rect.top && y <= rect.bottom;
+		    if (edge === 'left')
+		        return x <= PEEK_VISIBLE && y >= rect.top && y <= rect.bottom;
+		    return y >= window.innerHeight - PEEK_VISIBLE && x >= rect.left && x <= rect.right;
 		}
 		/**
 		 * Position the resize strip on the window's inner edge.
@@ -4065,7 +4216,11 @@ window.__ModuleLoader__.load({
 		 */
 		function viewportLimit(axis) {
 		    const total = axis === 'width' ? window.innerWidth : window.innerHeight;
-		    const inset = axis === 'height' ? EDGE_MARGIN * 2 + frameTopInset() : EDGE_MARGIN * 2;
+		    // A right window keeps clear of the turn rail, so its width budget starts
+		    // at the rail's inset instead of the plain edge margin.
+		    const inset = axis === 'height'
+		        ? EDGE_MARGIN * 2 + frameTopInset()
+		        : RIGHT_INSET + EDGE_MARGIN;
 		    return Math.max(axis === 'width' ? MIN_WIDTH : MIN_HEIGHT, total - inset);
 		}
 		/**
@@ -4167,14 +4322,24 @@ window.__ModuleLoader__.load({
 		    const axis = popup.edge === 'left' || popup.edge === 'right' ? 'width' : 'height';
 		    const direction = popup.edge === 'top' || popup.edge === 'left' ? 1 : -1;
 		    const resizable = popup.resizable && size[axis] !== 'full';
+		    /** Parked popups rest as a strip on their edge; a top window cannot park. */
+		    const peek = popup.peek && popup.edge !== 'top';
+		    const [expanded, setExpanded] = react.useState(() => !peek);
+		    const parked = peek && !expanded;
 		    react.useEffect(() => {
 		        const element = ref.current;
 		        if (element === null)
 		            return;
-		        restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-		        element.focus({ preventScroll: true });
-		        const slide = SLIDE[popup.edge];
-		        if (typeof element.animate === 'function' && !prefersReducedMotion()) {
+		        // A parked window is a hover surface: taking focus out of the composer
+		        // would be a surprise, and the strip is not the thing being used yet.
+		        if (!peek) {
+		            restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+		            element.focus({ preventScroll: true });
+		        }
+		        // A parked window is positioned by its peek transform; the entry animation
+		        // would overwrite that transform mid-flight.
+		        if (typeof element.animate === 'function' && !prefersReducedMotion() && !peek) {
+		            const slide = SLIDE[popup.edge];
 		            const animation = element.animate([
 		                { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
 		                { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
@@ -4186,7 +4351,50 @@ window.__ModuleLoader__.load({
 		            if (previous !== null && previous.isConnected)
 		                previous.focus({ preventScroll: true });
 		        };
-		    }, [popup.edge]);
+		    }, [peek, popup.edge]);
+		    /**
+		     * Parked windows slide out under the pointer. Enter/leave events cannot carry
+		     * this: the view is an iframe, so boundary events inside it never reach this
+		     * document. Follow the pointer, compare it with the window and the strip, and
+		     * cancel a pending hide as soon as either one is reached.
+		     */
+		    react.useEffect(() => {
+		        if (!peek)
+		            return;
+		        const element = ref.current;
+		        if (element === null)
+		            return;
+		        let timer = 0;
+		        const reveal = () => {
+		            window.clearTimeout(timer);
+		            setExpanded(true);
+		        };
+		        const hide = () => {
+		            window.clearTimeout(timer);
+		            timer = window.setTimeout(() => {
+		                // A focused view keeps its window: hiding it would strand the caret.
+		                // The wrapper itself does not count — clicking the strip focuses it.
+		                if (document.activeElement !== element && element.contains(document.activeElement))
+		                    return;
+		                setExpanded(false);
+		            }, PEEK_HIDE_MS);
+		        };
+		        const onMove = (event) => {
+		            const rect = element.getBoundingClientRect();
+		            if (onPeekStrip(popup.edge, rect, event.clientX, event.clientY)
+		                || (expanded && inBox(rect, event.clientX, event.clientY)))
+		                reveal();
+		            else if (expanded)
+		                hide();
+		        };
+		        document.addEventListener('pointermove', onMove, true);
+		        element.addEventListener('focusin', reveal);
+		        return () => {
+		            window.clearTimeout(timer);
+		            document.removeEventListener('pointermove', onMove, true);
+		            element.removeEventListener('focusin', reveal);
+		        };
+		    }, [expanded, peek, popup.edge]);
 		    react.useEffect(() => {
 		        if (!closing)
 		            return;
@@ -4202,11 +4410,16 @@ window.__ModuleLoader__.load({
 		            settle();
 		            return;
 		        }
+		        // A parked window fades instead of sliding: its transform already tracks
+		        // the peek state, and rewriting it would jump the strip off the edge.
 		        const slide = SLIDE[popup.edge];
-		        const animation = element.animate([
-		            { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
-		            { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
-		        ], { duration: EXIT_MS, easing: EXIT_EASING, fill: 'forwards' });
+		        const frames = peek
+		            ? [{ opacity: 1 }, { opacity: 0 }]
+		            : [
+		                { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
+		                { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
+		            ];
+		        const animation = element.animate(frames, { duration: EXIT_MS, easing: EXIT_EASING, fill: 'forwards' });
 		        animation.finished.then(settle, settle);
 		        // A tab switched to the background can starve `finished`; drop the window anyway.
 		        const timer = window.setTimeout(settle, EXIT_MS + 120);
@@ -4214,7 +4427,7 @@ window.__ModuleLoader__.load({
 		            window.clearTimeout(timer);
 		            animation.cancel();
 		        };
-		    }, [closing, popup.edge, popup.id]);
+		    }, [closing, peek, popup.edge, popup.id]);
 		    const onResizeStart = (event) => {
 		        if (event.button !== 0 || !resizable)
 		            return;
@@ -4264,7 +4477,15 @@ window.__ModuleLoader__.load({
 		            });
 		        }
 		    };
-		    return (react_jsx_runtime.jsx("div", { style: stripStyle(popup.edge, size), "data-shape-edge-strip": popup.id, children: react_jsx_runtime.jsxs("div", { ref: ref, tabIndex: -1, role: "dialog", "aria-label": popup.title, style: { ...WINDOW, ...sizeStyle(size) }, "data-testid": "dsh-shape-edge", "data-shape-edge": popup.id, "data-edge": popup.edge, "data-width": size.width === 'full' ? 'full' : String(size.width), "data-height": size.height === 'full' ? 'full' : String(size.height), children: [react_jsx_runtime.jsxs("div", { style: BAR, children: [react_jsx_runtime.jsx("span", { style: BAR_TITLE, title: popup.title, children: popup.title }), react_jsx_runtime.jsx("button", { type: "button", style: BAR_CLOSE, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED (Esc)", "data-testid": "dsh-shape-edge-close", onClick: () => { closeShapeEdge(popup.id); }, children: "\u00D7" })] }), react_jsx_runtime.jsx("iframe", { style: FRAME, title: popup.title, src: viewUrl(popup), referrerPolicy: "no-referrer", sandbox: "allow-scripts allow-forms allow-modals allow-popups" }), resizable && (react_jsx_runtime.jsx("div", { style: resizeStripStyle(popup.edge), role: "separator", "aria-orientation": axis === 'width' ? 'vertical' : 'horizontal', "aria-label": "\u8C03\u6574\u7A97\u53E3\u5927\u5C0F", "data-testid": "dsh-shape-edge-resize", onPointerDown: onResizeStart, onPointerMove: onResizeMove, onPointerUp: onResizeEnd, onPointerCancel: onResizeEnd, children: react_jsx_runtime.jsx("span", { style: gripStyle(axis), "aria-hidden": "true" }) }))] }) }));
+		    /** Parked windows slide between their strip and their anchored position. */
+		    const motion = peek ? {
+		        transform: parked ? peekTransform(popup.edge) : 'translate3d(0, 0, 0)',
+		        transition: prefersReducedMotion()
+		            ? 'none'
+		            : `transform ${String(PEEK_MS)}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+		        willChange: 'transform',
+		    } : {};
+		    return (react_jsx_runtime.jsx("div", { style: stripStyle(popup.edge, size), "data-shape-edge-strip": popup.id, children: react_jsx_runtime.jsxs("div", { ref: ref, tabIndex: -1, role: "dialog", "aria-label": popup.title, style: { ...WINDOW, ...sizeStyle(size), ...motion }, "data-testid": "dsh-shape-edge", "data-shape-edge": popup.id, "data-edge": popup.edge, "data-peek": peek ? (parked ? 'parked' : 'open') : undefined, "data-width": size.width === 'full' ? 'full' : String(size.width), "data-height": size.height === 'full' ? 'full' : String(size.height), onPointerDown: parked ? () => { setExpanded(true); } : undefined, children: [react_jsx_runtime.jsxs("div", { style: BAR, children: [react_jsx_runtime.jsx("span", { style: BAR_TITLE, title: popup.title, children: popup.title }), react_jsx_runtime.jsx("button", { type: "button", style: BAR_CLOSE, "aria-label": "\u5173\u95ED", title: "\u5173\u95ED (Esc)", "data-testid": "dsh-shape-edge-close", onClick: () => { closeShapeEdge(popup.id); }, children: "\u00D7" })] }), react_jsx_runtime.jsx("iframe", { style: parked ? { ...FRAME, pointerEvents: 'none' } : FRAME, title: popup.title, src: viewUrl(popup), referrerPolicy: "no-referrer", sandbox: "allow-scripts allow-forms allow-modals allow-popups" }), resizable && !parked && (react_jsx_runtime.jsx("div", { style: resizeStripStyle(popup.edge), role: "separator", "aria-orientation": axis === 'width' ? 'vertical' : 'horizontal', "aria-label": "\u8C03\u6574\u7A97\u53E3\u5927\u5C0F", "data-testid": "dsh-shape-edge-resize", onPointerDown: onResizeStart, onPointerMove: onResizeMove, onPointerUp: onResizeEnd, onPointerCancel: onResizeEnd, children: react_jsx_runtime.jsx("span", { style: gripStyle(axis), "aria-hidden": "true" }) }))] }) }));
 		}
 		/**
 		 * Render every open edge popup into a fixed layer above the app.

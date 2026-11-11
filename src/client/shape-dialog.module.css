@@ -150,8 +150,13 @@
   align-content: start;
 }
 
+/* The shell is the positioning context for the toggle and the two corner actions,
+   so the card must fill it: a grid row stretches every shell to the tallest card,
+   and without `display: grid` a shorter card leaves its action buttons hanging
+   below its own bottom border. */
 .cardShell {
   position: relative;
+  display: grid;
   min-width: 0;
 }
 
@@ -356,9 +361,11 @@
   border-radius: 999px;
 }
 
+/* No `flex: 1` here: a stretched card must keep its three-line summary and let the
+   free space fall between the text and the footer (`margin-top: auto` pins it),
+   otherwise the clamp expands and the taller cards quietly show a fourth line. */
 .description {
   display: -webkit-box;
-  flex: 1;
   overflow: hidden;
   margin: 0;
   color: var(--dsw-alias-label-secondary, rgba(255, 255, 255, 0.6));

@@ -42,6 +42,12 @@ interface ShapeInfo {
   clientHash?: string
   /** Files below `views/`, relative to that directory. */
   views?: string[]
+  /**
+   * How the shape is woken: `eager` activates it at page load, `keys` are
+   * page-level combinations that wake it first. Absent means dormant until the
+   * Shapes browser opens it.
+   */
+  wake?: { keys?: readonly string[]; eager?: boolean }
 }
 
 /** One shortcut a shape asks the runtime to own. */
@@ -171,6 +177,11 @@ export interface ShapeEdgeOptions {
   resizable?: boolean
   /** Whether Escape closes the popup; defaults to true. */
   esc?: boolean
+  /**
+   * Whether the window rests as a thin strip on its edge and slides out when
+   * the pointer reaches it; defaults to false. Top-edge popups ignore it.
+   */
+  peek?: boolean
 }
 
 /** Handle returned by `api.edge()`. */
@@ -252,6 +263,16 @@ interface RegisteredShortcut extends ParsedShortcut {
   run: () => void | Promise<void>
 }
 
+/** One wake key bound to a shape that has not been imported yet. */
+interface WakeBinding {
+  /** Combination key the binding is stored under. */
+  key: string
+  /** Dormant shape the key wakes. */
+  shape: ShapeInfo
+  /** Parsed combination. */
+  parsed: ParsedShortcut
+}
+
 interface ActiveShape {
   id: string
   /** `clientHash` the running module graph was imported from. */
@@ -331,6 +352,15 @@ function matchesShortcut(event: KeyboardEvent, shortcut: ParsedShortcut): boolea
 }
 
 /**
+ * Stable key for one combination, so bindings and wake keys stay unique.
+ * @param parsed - parsed shortcut.
+ * @returns the map key.
+ */
+function combinationKey(parsed: ParsedShortcut): string {
+  return `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`
+}
+
+/**
  * Normalize the view path an edge popup declares.
  * @param view - path relative to the shape's `views/` directory.
  * @returns the posix path the Host serves.
@@ -375,6 +405,18 @@ function normalizeDimension(value: number | 'full' | undefined, field: string): 
   return Math.round(value)
 }
 
+/** Set while a runtime is started; the Shapes browser wakes cards through it. */
+let wakeRequest: ((id: string) => void) | undefined
+
+/**
+ * Wake one dormant shape. The Shapes browser calls this when a card is opened;
+ * it is a no-op when no runtime is running or the shape is already awake.
+ * @param id - shape id.
+ */
+export function wakeShape(id: string): void {
+  wakeRequest?.(id)
+}
+
 /**
  * Create the shape Client runtime.
  * @param capabilities - registry used for startup dependency checks.
@@ -383,6 +425,10 @@ function normalizeDimension(value: number | 'full' | undefined, field: string): 
 export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { start: () => () => void } {
   const shortcuts = new Map<string, RegisteredShortcut>()
   const active: ActiveShape[] = []
+  /** Wake keys owned by dormant shapes, keyed by combination. */
+  const wakeBindings = new Map<string, WakeBinding>()
+  /** Shapes whose module is being imported right now, so a held key wakes once. */
+  const waking = new Set<string>()
   /** Restart counters, so restarting one shape gives it a fresh module URL. */
   const restarts = new Map<string, number>()
   let generation = 0
@@ -391,10 +437,15 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
   const stopAll = (): void => {
     for (const shape of active.splice(0)) shape.dispose()
     shortcuts.clear()
+    wakeBindings.clear()
   }
 
-  const onKeyDown = (event: KeyboardEvent): void => {
-    if (event.defaultPrevented || event.repeat || event.isComposing) return
+  /**
+   * Run the first shape shortcut that matches one key event.
+   * @param event - key event being dispatched.
+   * @returns true when a shortcut consumed the event.
+   */
+  const runShortcut = (event: KeyboardEvent): boolean => {
     for (const shortcut of shortcuts.values()) {
       if (!matchesShortcut(event, shortcut)) continue
       event.preventDefault()
@@ -405,8 +456,91 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
       } catch (cause) {
         console.warn('dsh-shape: shortcut failed', cause)
       }
+      return true
+    }
+    return false
+  }
+
+  const onKeyDown = (event: KeyboardEvent): void => {
+    if (event.defaultPrevented || event.repeat || event.isComposing) return
+    if (runShortcut(event)) return
+    for (const binding of wakeBindings.values()) {
+      if (!matchesShortcut(event, binding.parsed)) continue
+      event.preventDefault()
+      void wakeShapeNow(binding.shape.id, event)
       return
     }
+  }
+
+  /**
+   * Whether a shape can be started at all.
+   * @param shape - shape reported by the Host.
+   * @returns true when it is enabled, valid, has a client, and its capabilities resolve.
+   */
+  const canStart = (shape: ShapeInfo): boolean => {
+    if (shape.enabled === false || !shape.valid || shape.clientEntry === undefined) return false
+    if (!supportsShapeApiVersion(shape.shapeApiVersion)) return false
+    return capabilities.resolve(shape.requirements ?? []).ok
+  }
+
+  /**
+   * Rebuild the wake keys for the shapes that are still dormant.
+   * @param shapes - current Host catalog.
+   */
+  const syncWake = (shapes: ShapeInfo[]): void => {
+    const live = new Set<string>()
+    for (const shape of shapes) {
+      if (shape.wake?.eager === true || !canStart(shape)) continue
+      if (active.some(candidate => candidate.id === shape.id)) continue
+      const keys = shape.wake?.keys ?? []
+      if (keys.length === 0) continue
+      live.add(shape.id)
+      for (const spec of keys) {
+        let parsed: ParsedShortcut
+        try {
+          parsed = parseShortcut(spec)
+        } catch (cause) {
+          console.warn(`dsh-shape: ${shape.id} has an invalid wake key "${spec}"`, cause)
+          continue
+        }
+        const key = combinationKey(parsed)
+        if (shortcuts.has(key) || wakeBindings.has(key)) continue
+        wakeBindings.set(key, { key, shape, parsed })
+      }
+    }
+    for (const [key, binding] of wakeBindings) {
+      if (!live.has(binding.shape.id)) wakeBindings.delete(key)
+    }
+  }
+
+  /**
+   * Wake one shape, then hand the key press that woke it to the shape's own
+   * bindings — the shape registers them while it activates.
+   * @param id - shape id.
+   * @param event - key event that woke it, when waking from a shortcut.
+   */
+  const wakeShapeNow = async (id: string, event?: KeyboardEvent): Promise<void> => {
+    if (active.some(candidate => candidate.id === id)) {
+      if (event !== undefined) runShortcut(event)
+      return
+    }
+    if (waking.has(id)) return
+    waking.add(id)
+    try {
+      const awake = await refresh({ wake: id })
+      if (awake && event !== undefined) runShortcut(event)
+    } finally {
+      waking.delete(id)
+    }
+  }
+
+  /**
+   * Wake every dormant shape of one kind. The Workbench window calls this when
+   * it opens, so `kind: "workbench"` shapes register their surfaces on demand.
+   * @param kind - shape kind to wake.
+   */
+  const wakeKindShapes = async (kind: string): Promise<void> => {
+    await refresh({ wakeKind: kind })
   }
 
   /**
@@ -449,19 +583,19 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
     return running.hash === shape.clientHash
   }
 
-  const refresh = async (options: { force?: boolean } = {}): Promise<void> => {
+  const refresh = async (options: { force?: boolean; wake?: string; wakeKind?: string } = {}): Promise<boolean> => {
     const current = ++generation
     let shapes: ShapeInfo[]
     try {
       const response = await fetch('/dsh-shape/api/shapes', { credentials: 'same-origin', cache: 'no-store' })
-      if (!response.ok) return
+      if (!response.ok) return false
       const payload = await response.json() as { ok?: boolean; shapes?: ShapeInfo[] }
-      if (payload.ok !== true || !Array.isArray(payload.shapes)) return
+      if (payload.ok !== true || !Array.isArray(payload.shapes)) return false
       shapes = payload.shapes
     } catch {
-      return
+      return false
     }
-    if (current !== generation) return
+    if (current !== generation) return false
 
     if (options.force === true) {
       stopAll()
@@ -476,11 +610,18 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
       }
     }
 
+    let woke = false
+    if (options.wake !== undefined && active.some(candidate => candidate.id === options.wake)) woke = true
+
     for (const shape of shapes) {
-      if (current !== generation) return
-      if (shape.enabled === false || !shape.valid || shape.clientEntry === undefined) continue
+      if (current !== generation) return false
+      if (!canStart(shape)) continue
       if (active.some(candidate => candidate.id === shape.id)) continue
-      if (!supportsShapeApiVersion(shape.shapeApiVersion)) continue
+      const targeted = shape.id === options.wake
+        || (options.wakeKind !== undefined && shape.kind === options.wakeKind)
+      // Everything is dormant by default: only eager shapes and the one being
+      // woken pay the import cost here.
+      if (shape.wake?.eager !== true && !targeted) continue
       const resolution = capabilities.resolve(shape.requirements ?? [])
       if (!resolution.ok) continue
 
@@ -506,7 +647,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         try {
           for (const spec of list) {
             const parsed = parseShortcut(spec)
-            const key = `${String(parsed.ctrl)}|${String(parsed.alt)}|${String(parsed.shift)}|${String(parsed.meta)}|${parsed.key}`
+            const key = combinationKey(parsed)
             if (shortcuts.has(key)) throw new Error(`shortcut conflict: ${spec}`)
             const registered: RegisteredShortcut = { ...parsed, run }
             shortcuts.set(key, registered)
@@ -603,6 +744,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             ...(height === undefined ? {} : { height }),
             resizable: options.resizable !== false,
             esc: options.esc !== false,
+            peek: options.peek === true,
           })
           let disposed = false
           const dispose = (): void => {
@@ -662,7 +804,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
       const url = moduleUrl(shape)
       try {
         const module = await import(/* @vite-ignore */ url) as ShapeModule
-        if (current !== generation) return
+        if (current !== generation) return false
         if (typeof module.activate !== 'function') continue
         const result = module.activate(api)
         if (typeof result === 'function') state.cleanup = result
@@ -683,6 +825,7 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
             disposeShapeWorkbenches(shape.id)
           },
         })
+        if (targeted) woke = true
       } catch (cause) {
         for (const off of state.mounts) off()
         for (const off of state.shortcuts) off()
@@ -696,6 +839,8 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
         console.warn(`dsh-shape: failed to activate ${shape.id}`, cause)
       }
     }
+    syncWake(shapes)
+    return woke
   }
 
   /**
@@ -705,7 +850,9 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
   const restartShape = async (id: string): Promise<void> => {
     restarts.set(id, (restarts.get(id) ?? 0) + 1)
     stopShape(id)
-    await refresh()
+    // A restart is an explicit action: it wakes a dormant shape instead of
+    // leaving it asleep.
+    await refresh({ wake: id })
   }
 
   const start = (): (() => void) => {
@@ -722,18 +869,25 @@ export function createShapeRuntime(capabilities: ShapeCapabilityRegistry): { sta
       const id = detail?.id
       if (typeof id === 'string' && id !== '') void restartShape(id)
     }
+    // The Workbench window is the only surface for `kind: "workbench"` shapes,
+    // so opening it wakes them instead of requiring an eager manifest.
+    const onWorkbenchOpen = (): void => { void wakeKindShapes('workbench') }
     window.addEventListener('dsh-shape:refresh', reload)
     window.addEventListener('dsh-shape:capabilities', rebuild)
     window.addEventListener('dsh-shape:restart', onRestart)
+    window.addEventListener('dsh-shape:workbench-open', onWorkbenchOpen)
+    wakeRequest = (id) => { void wakeShapeNow(id) }
     void refresh()
     return () => {
       started = false
+      wakeRequest = undefined
       generation++
       stopAll()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('dsh-shape:refresh', reload)
       window.removeEventListener('dsh-shape:capabilities', rebuild)
       window.removeEventListener('dsh-shape:restart', onRestart)
+      window.removeEventListener('dsh-shape:workbench-open', onWorkbenchOpen)
     }
   }
 

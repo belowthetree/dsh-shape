@@ -262,6 +262,21 @@ async function inspectShape(dir, origin) {
         errors.push(`requirement version is not a semver range: ${String(requirement?.version)}`)
       }
     }
+    if (shape.wake !== undefined) {
+      if (typeof shape.wake !== 'object' || shape.wake === null || Array.isArray(shape.wake)) {
+        errors.push('shape.wake must be an object')
+      } else {
+        if (shape.wake.eager !== undefined && typeof shape.wake.eager !== 'boolean') {
+          errors.push('shape.wake.eager must be a boolean')
+        }
+        if (shape.wake.keys !== undefined) {
+          const keys = typeof shape.wake.keys === 'string' ? [shape.wake.keys] : shape.wake.keys
+          if (!Array.isArray(keys) || keys.some(key => typeof key !== 'string' || key.trim() === '')) {
+            errors.push('shape.wake.keys must be a string or an array of strings')
+          }
+        }
+      }
+    }
   }
   if (!subdirs.has('views')) warnings.push('no views/ directory')
   if (!subdirs.has('slots')) warnings.push('no slots/ directory')
@@ -278,6 +293,7 @@ async function inspectShape(dir, origin) {
     ...(typeof manifest.title === 'string' ? { title: manifest.title } : {}),
     ...(typeof manifest.version === 'string' ? { version: manifest.version } : {}),
     ...(Array.isArray(shape?.requires) ? { requirements: shape.requires } : {}),
+    ...(shape?.wake !== undefined && typeof shape.wake === 'object' ? { wake: shape.wake } : {}),
     ...(client.includes('index.js') ? { clientEntry: 'client/index.js' } : {}),
   }
 }
@@ -377,6 +393,7 @@ async function inspectShapeInterface(id, roots) {
       views: metadata.views ?? [],
       slots,
       tools: metadata.tools ?? [],
+      ...(metadata.wake === undefined ? {} : { wake: metadata.wake }),
       ...(client === undefined ? {} : { client }),
     },
     valid: metadata.valid,
@@ -725,6 +742,7 @@ export function apply(ctx, config) {
                 slots: { type: 'array', items: { type: 'string' } },
                 tools: { type: 'array', items: { type: 'string' } },
                 clientEntry: { type: 'string' },
+                wake: { type: 'object', additionalProperties: true },
               },
             },
           },
@@ -891,6 +909,7 @@ export function apply(ctx, config) {
               views: { type: 'array', items: { type: 'string' } },
               slots: { type: 'array', items: { type: 'object', additionalProperties: true } },
               tools: { type: 'array', items: { type: 'string' } },
+              wake: { type: 'object', additionalProperties: true },
               client: {
                 type: 'object',
                 additionalProperties: false,

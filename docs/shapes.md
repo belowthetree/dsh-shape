@@ -43,8 +43,32 @@
 | `shape.apiVersion` | 否 | 默认 1；ABI 版本 |
 | `shape.kind` | 否 | `shape`（默认）或 `workbench`；`workbench` 才能在[工作台](#工作台)里渲染 |
 | `shape.requires` | 否 | 能力依赖列表 |
+| `shape.wake` | 否 | 唤醒策略：`{ keys?: string \| string[], eager?: boolean }`；默认休眠（见[唤醒](#唤醒)） |
 
 `shape.requires` 的每一项是 `{ plugin, capability, version, optional? }`：`plugin` 目前固定 `dsh-shape`，`capability` 取[能力参考](capabilities.md)里的名字，`version` 是 semver 范围。缺能力或版本不匹配时形态不启动，槽位条目也不会显示。
+
+## 唤醒
+
+形态默认**休眠**：页面打开时不 import 它的 `client/index.js`，它挂的按钮、面板、快捷键都不存在，只有宿主直接渲染的槽位条目（`slots/`）照常显示。唤醒方式有两种，在清单里声明：
+
+```json
+"shape": {
+  "apiVersion": 1,
+  "wake": {
+    "keys": ["Ctrl+Alt+I"],     // 可选；按这些键先唤醒，再把同一次按键交给形态
+    "eager": false              // 可选；true = 页面加载时直接启动（旧行为）
+  }
+}
+```
+
+- **快捷键唤醒**：`wake.keys` 由运行时在挂载阶段就登记（不需要先跑形态代码）。按下后先 import 并调用 `activate(api)`，再把这次按键分发给形态刚注册的快捷键——所以形态里 `api.edge({ keys: 'Ctrl+Alt+I' })` 或 `api.shortcuts.register` 仍按原样写，和 `wake.keys` 保持一致即可。
+- **点开唤醒**：在 Shape 浏览器里点卡片（打开它的视图）会先唤醒该形态；之后它的 `client/` 才真正跑起来。
+- **常驻形态**：需要在页面一打开就显示入口的（顶栏按钮、注入的挂件），写 `"eager": true`，否则第一次唤醒前看不到入口。
+- **工作台形态**：`shape.kind: "workbench"` 的形态不用写 `eager`——打开 shape 工作台窗口（顶栏按钮或 `Ctrl + Alt + W`）时会先唤醒所有工作台形态，再列出它们的面板；窗口只开一次就唤醒一次，关掉再开不会重复加载。
+- 唤醒只发生一次；之后形态一直运行到被停用、重启或页面重载。重启一个休眠形态会把它唤醒。
+
+> 升级提示：默认值变了。之前所有形态都是加载即启动，现在清单里没有 `shape.wake` 的形态会休眠。把原来的入口键写进 `wake.keys`，或加 `"wake": { "eager": true }` 保持原样；只靠点 Shape 卡片打开的形态可以什么都不写。
+
 
 ## 视图（views/）
 
@@ -82,7 +106,7 @@
 
 ## 客户端（client/）
 
-`client/index.js` 必须导出 `activate(api)`，返回的函数会在形态关闭时调用：
+`client/index.js` 必须导出 `activate(api)`，返回的函数会在形态关闭时调用。它默认不会在页面加载时运行——按上面的[唤醒](#唤醒)规则，等用户按了 `wake.keys`、在 Shape 浏览器里点开卡片，或清单声明 `wake.eager: true` 才 import：
 
 ```js
 export function activate(api) {
@@ -123,17 +147,33 @@ export function activate(api) {
     keys: 'Ctrl+Alt+E',     // 可选；绑定一个切换窗口的页面级快捷键
     resizable: true,        // 可选；默认 true，可拖内边调整大小
     esc: true,              // 可选；默认 true
+    peek: false,            // 可选；默认 false，true 时平时只露一条、悬停展开
   })
   popup.open()
   return () => popup.dispose()
 }
 ```
 
+右侧抽屉那种「平时不挡内容、要用才出来」的写法：
+
+```js
+const drawer = api.edge({
+  id: 'drawer',
+  edge: 'right',
+  view: 'index.html',
+  width: 420,
+  peek: true,
+})
+drawer.open()
+```
+
 - 返回 `{ id, open, close, toggle, isOpen, dispose }`；`open()` 会把窗口提到最上方，多个弹窗可以同时开。
 - 窗口内容是 `/dsh-shape/view/<id>/<view>` 的 `iframe`，沙箱**不带 `allow-same-origin`**：视图拿不到宿主 DOM、cookie 或客户端 API，需要交互能力就把逻辑写在 `client/` 里。
 - `keys` 走页面级 `keydown`，不受 Web 组合键限制，也不会出现在设置里；要可重绑的命令，用 `dsh-shape#shortcuts` 注册并在 `run` 里调用 `popup.toggle()`。
 - `esc: false` 只关掉 `Esc`：标题栏的关闭按钮始终可用，鼠标点进视图内部后 `Esc` 也不会传到宿主（沙箱 iframe 是独立文档）。
-- `width`/`height` 默认按边缘取（left/right 380×560，top/bottom 640×420），可以是像素或 `'full'`；`'full'` 沿该轴占满视口（锚定边仍留 12px），例如 `edge: 'top'` + `width: 'full'` 就是一条左右占满的横条。
+- `peek: true` 让窗口先收起：平时只在屏幕边缘露出 10px 宽的一条，鼠标移到这条上（或键盘焦点进入窗口）就滑出到正常位置，指针离开 240ms 后缩回；窗口里还有焦点时不缩回。适合右侧抽屉这类平时不该挡住内容的窗口。`edge: 'top'` 不支持（往上收起会压到 Windows 顶栏），在顶部按普通窗口显示。
+- `width`/`height` 默认按边缘取（left/right 380×560，top/bottom 640×420），可以是像素或 `'full'`；`'full'` 沿该轴占满视口（锚定边仍留边距，右侧留 52px 让开会话进度条），例如 `edge: 'top'` + `width: 'full'` 就是一条左右占满的横条。
+- 右侧窗口停住时不压住会话的轮次进度条（turn rail）：那排刻度占右侧 12px 边距 + 28px 宽，窗口右缘再留 12px，因此 `edge: 'right'` 的窗口离视口右边 52px，`width: 'full'` 也从这条线往左占满；左/上/下三种边缘不受影响。
 - 窗口默认可调整大小：拖右侧窗口的左边、左侧窗口的右边、上方窗口的下边、下方窗口的上边，最小 240×160；尺寸存在 `localStorage` 里，下次打开沿用。`resizable: false` 关闭调整；某一轴是 `'full'` 时该轴不可调整。
 - 顶部区域会避开 DSH 的窗口顶栏：上方窗口从顶栏下方 12px 开始，左右窗口和上下占满的窗口也从顶栏下方开始，全屏时顶栏高度按 0 处理（`--dsh-frame-chrome-top`）。普通浏览器里没有这条顶栏，位置不受影响。
 - 视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
@@ -143,6 +183,8 @@ export function activate(api) {
 工作台是顶栏左侧 **shape 工作台** 按钮（或 `Ctrl + Alt + W`）打开的独立窗口，约占视口 80%。窗口没有标题栏，形态内容直接铺满整个窗口。窗口没有关闭按钮：按 `Esc`、点窗口外的空白处、或再按一次 `Ctrl + Alt + W` 关闭。
 
 窗口打开时，**窗口下方**的标签条列出所有已注册的工作台：名称下方的圆点表示当前选中情况，空心圆是未选中，白色实心圆是当前工作台。按 `Ctrl + Alt + ←/→`（环形）切换，点击名称也可以切换；选择会被记住，下次打开仍停在上一项。窗口打开期间这个组合键只作用于工作台，不会触发布内的 `workspace-tab-switch`。
+
+工作台形态默认也是休眠的；**打开窗口时**运行时会先唤醒所有 `kind: "workbench"` 的形态（见[唤醒](#唤醒)），它们的 `api.workbench()` 注册完成后标签条自动补齐，不需要在清单里写 `wake.eager`。
 
 只有 `package.json` 里声明 `"shape": { "kind": "workbench" }` 的形态才能注册工作台内容。在 `client/index.js` 里：
 

@@ -83,33 +83,68 @@ async function readSlotData(dir, files) {
 const SHAPE_KINDS = ['shape', 'workbench']
 
 /**
+ * Parse `shape.wake`, the policy that decides how a dormant shape is woken.
+ * A shape with no policy stays dormant until the user opens it from the Shapes
+ * browser; `eager` restores activation at page load.
+ * @param value - raw `shape.wake` value.
+ * @returns the validated keys and eagerness, or a configuration error.
+ */
+function readWakeConfig(value) {
+  const dormant = { keys: [], eager: false }
+  if (value === undefined)
+    return dormant
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return { ...dormant, error: 'shape.wake must be an object' }
+  const wake = value
+  if (wake.eager !== undefined && typeof wake.eager !== 'boolean')
+    return { ...dormant, error: 'shape.wake.eager must be a boolean' }
+  const keys = []
+  if (wake.keys !== undefined) {
+    const list = typeof wake.keys === 'string' ? [wake.keys] : wake.keys
+    if (!Array.isArray(list))
+      return { ...dormant, error: 'shape.wake.keys must be a string or an array of strings' }
+    for (const key of list) {
+      if (typeof key !== 'string' || key.trim().length === 0)
+        return { ...dormant, error: 'shape.wake.keys must be a string or an array of strings' }
+      keys.push(key.trim())
+    }
+  }
+  return { keys, eager: wake.eager === true }
+}
+
+/**
  * Parse a shape's optional `shape` manifest object.
  * @param manifest - raw package manifest.
- * @returns validated ABI, kind, and requirements, or a configuration error.
+ * @returns validated ABI, kind, requirements, and wake policy, or a configuration error.
  */
 function readShapeConfig(manifest) {
+  const dormantWake = { keys: [], eager: false }
   if (manifest.shape === undefined)
-    return { apiVersion: 1, kind: 'shape', requirements: [] }
+    return { apiVersion: 1, kind: 'shape', requirements: [], wake: dormantWake }
   if (typeof manifest.shape !== 'object' || manifest.shape === null || Array.isArray(manifest.shape)) {
-    return { apiVersion: 1, kind: 'shape', requirements: [], error: 'shape must be an object' }
+    return { apiVersion: 1, kind: 'shape', requirements: [], wake: dormantWake, error: 'shape must be an object' }
   }
   const config = manifest.shape
   const apiVersion = config.apiVersion ?? 1
   if (typeof apiVersion !== 'number' || !Number.isInteger(apiVersion) || apiVersion < 1) {
-    return { apiVersion: 1, kind: 'shape', requirements: [], error: 'shape.apiVersion must be a positive integer' }
+    return { apiVersion: 1, kind: 'shape', requirements: [], wake: dormantWake, error: 'shape.apiVersion must be a positive integer' }
   }
   const kind = config.kind ?? 'shape'
   if (typeof kind !== 'string' || !SHAPE_KINDS.includes(kind)) {
-    return { apiVersion, kind: 'shape', requirements: [], error: 'shape.kind must be "shape" or "workbench"' }
+    return { apiVersion, kind: 'shape', requirements: [], wake: dormantWake, error: 'shape.kind must be "shape" or "workbench"' }
+  }
+  const wake = readWakeConfig(config.wake)
+  if (wake.error !== undefined) {
+    return { apiVersion, kind, requirements: [], wake: dormantWake, error: wake.error }
   }
   const rawRequires = config.requires ?? []
   if (!Array.isArray(rawRequires)) {
-    return { apiVersion, kind, requirements: [], error: 'shape.requires must be an array' }
+    return { apiVersion, kind, requirements: [], wake, error: 'shape.requires must be an array' }
   }
   const requirements = []
   for (const entry of rawRequires) {
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
-      return { apiVersion, kind, requirements: [], error: 'each shape requirement must be an object' }
+      return { apiVersion, kind, requirements: [], wake, error: 'each shape requirement must be an object' }
     }
     const record = entry
     const plugin = record.plugin
@@ -120,7 +155,7 @@ function readShapeConfig(manifest) {
       || typeof capability !== 'string' || capability.trim().length === 0
       || typeof version !== 'string' || version.trim().length === 0
       || (optional !== undefined && typeof optional !== 'boolean')) {
-      return { apiVersion, kind, requirements: [], error: 'requirement needs plugin, capability, version, and optional boolean' }
+      return { apiVersion, kind, requirements: [], wake, error: 'requirement needs plugin, capability, version, and optional boolean' }
     }
     requirements.push({
       plugin: plugin.trim(),
@@ -129,7 +164,7 @@ function readShapeConfig(manifest) {
       ...(optional === true ? { optional: true } : {}),
     })
   }
-  return { apiVersion, kind, requirements }
+  return { apiVersion, kind, requirements, wake }
 }
 /**
  * Signature of a shape's `client/` folder: the file set plus each file's size and
@@ -195,6 +230,7 @@ async function readShape(dir, origin) {
     shapeApiVersion: shapeConfig.apiVersion,
     kind: shapeConfig.kind,
     requirements: shapeConfig.requirements,
+    wake: shapeConfig.wake,
     views: await listFiles(path.join(dir, 'views')),
     clientFiles,
     clientHash,

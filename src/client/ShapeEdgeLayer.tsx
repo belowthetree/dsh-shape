@@ -27,6 +27,23 @@ const LAYER_Z = 1100
 const EDGE_MARGIN = 12
 
 /**
+ * Right inset for side windows. The conversation view draws its turn rail
+ * 12px inside the transcript's right edge, 28px wide; a window anchored at
+ * `EDGE_MARGIN` sat on top of the rail and hid it. Anchor a full edge margin
+ * past the rail instead, so the rail stays visible and clickable.
+ */
+const RIGHT_INSET = 12 + 28 + 12
+
+/** Pixels of a `peek` window that stay on screen while it is parked. */
+const PEEK_VISIBLE = 10
+
+/** Time a parked `peek` window waits after the pointer leaves before it hides. */
+const PEEK_HIDE_MS = 240
+
+/** Time a `peek` window takes to slide out and back. */
+const PEEK_MS = 200
+
+/**
  * Top boundary published by the DSH frame: the Windows caption row, 0 while
  * fullscreen. The fallback keeps Web and macOS at the plain viewport edge, so
  * the same expression works in a browser and inside the desktop shell.
@@ -193,7 +210,7 @@ function stripStyle(edge: ShapeEdge, size: EdgeSize): CSSProperties {
     top: FRAME_TOP,
     bottom: 0,
     alignItems: 'center',
-    ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: EDGE_MARGIN }),
+    ...(edge === 'left' ? { left: EDGE_MARGIN } : { right: RIGHT_INSET }),
     ...(fullWidth ? (edge === 'left' ? { right: 0 } : { left: 0 }) : {}),
   }
 }
@@ -210,6 +227,45 @@ function sizeStyle(size: EdgeSize): CSSProperties {
     maxWidth: size.width === 'full' ? '100vw' : 'calc(100vw - 24px)',
     maxHeight: size.height === 'full' ? '100vh' : `calc(100vh - ${FRAME_TOP} - 24px)`,
   }
+}
+
+/**
+ * Transform that parks a window outside its edge, leaving only the peek strip
+ * on screen. A top window never parks: sliding it up would paint over the
+ * Windows caption row, so `peek` is ignored there and the window stays put.
+ * @param edge - edge the window is parked on.
+ * @returns the transform for the parked state.
+ */
+function peekTransform(edge: ShapeEdge): string {
+  const gap = edge === 'right' ? RIGHT_INSET - PEEK_VISIBLE : EDGE_MARGIN - PEEK_VISIBLE
+  if (edge === 'right') return `translate3d(calc(100% + ${String(gap)}px), 0, 0)`
+  if (edge === 'left') return `translate3d(calc(-100% - ${String(gap)}px), 0, 0)`
+  return `translate3d(0, calc(100% + ${String(gap)}px), 0)`
+}
+
+/**
+ * Whether a viewport point lies inside a box.
+ * @param rect - box to test.
+ * @param x - viewport x.
+ * @param y - viewport y.
+ * @returns true when the point is inside.
+ */
+function inBox(rect: DOMRect, x: number, y: number): boolean {
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom
+}
+
+/**
+ * Whether a viewport point sits on the strip a parked window leaves on screen.
+ * @param edge - edge the window is anchored to.
+ * @param rect - the window's current box.
+ * @param x - viewport x.
+ * @param y - viewport y.
+ * @returns true while the pointer is over the visible strip.
+ */
+function onPeekStrip(edge: ShapeEdge, rect: DOMRect, x: number, y: number): boolean {
+  if (edge === 'right') return x >= window.innerWidth - PEEK_VISIBLE && y >= rect.top && y <= rect.bottom
+  if (edge === 'left') return x <= PEEK_VISIBLE && y >= rect.top && y <= rect.bottom
+  return y >= window.innerHeight - PEEK_VISIBLE && x >= rect.left && x <= rect.right
 }
 
 /**
@@ -251,7 +307,11 @@ function frameTopInset(): number {
  */
 function viewportLimit(axis: 'width' | 'height'): number {
   const total = axis === 'width' ? window.innerWidth : window.innerHeight
-  const inset = axis === 'height' ? EDGE_MARGIN * 2 + frameTopInset() : EDGE_MARGIN * 2
+  // A right window keeps clear of the turn rail, so its width budget starts
+  // at the rail's inset instead of the plain edge margin.
+  const inset = axis === 'height'
+    ? EDGE_MARGIN * 2 + frameTopInset()
+    : RIGHT_INSET + EDGE_MARGIN
   return Math.max(axis === 'width' ? MIN_WIDTH : MIN_HEIGHT, total - inset)
 }
 
@@ -356,14 +416,24 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
   const axis: 'width' | 'height' = popup.edge === 'left' || popup.edge === 'right' ? 'width' : 'height'
   const direction = popup.edge === 'top' || popup.edge === 'left' ? 1 : -1
   const resizable = popup.resizable && size[axis] !== 'full'
+  /** Parked popups rest as a strip on their edge; a top window cannot park. */
+  const peek = popup.peek && popup.edge !== 'top'
+  const [expanded, setExpanded] = useState(() => !peek)
+  const parked = peek && !expanded
 
   useEffect(() => {
     const element = ref.current
     if (element === null) return
-    restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    element.focus({ preventScroll: true })
-    const slide = SLIDE[popup.edge]
-    if (typeof element.animate === 'function' && !prefersReducedMotion()) {
+    // A parked window is a hover surface: taking focus out of the composer
+    // would be a surprise, and the strip is not the thing being used yet.
+    if (!peek) {
+      restore.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+      element.focus({ preventScroll: true })
+    }
+    // A parked window is positioned by its peek transform; the entry animation
+    // would overwrite that transform mid-flight.
+    if (typeof element.animate === 'function' && !prefersReducedMotion() && !peek) {
+      const slide = SLIDE[popup.edge]
       const animation = element.animate([
         { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
         { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
@@ -374,7 +444,46 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
       const previous = restore.current
       if (previous !== null && previous.isConnected) previous.focus({ preventScroll: true })
     }
-  }, [popup.edge])
+  }, [peek, popup.edge])
+
+  /**
+   * Parked windows slide out under the pointer. Enter/leave events cannot carry
+   * this: the view is an iframe, so boundary events inside it never reach this
+   * document. Follow the pointer, compare it with the window and the strip, and
+   * cancel a pending hide as soon as either one is reached.
+   */
+  useEffect(() => {
+    if (!peek) return
+    const element = ref.current
+    if (element === null) return
+    let timer = 0
+    const reveal = (): void => {
+      window.clearTimeout(timer)
+      setExpanded(true)
+    }
+    const hide = (): void => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        // A focused view keeps its window: hiding it would strand the caret.
+        // The wrapper itself does not count — clicking the strip focuses it.
+        if (document.activeElement !== element && element.contains(document.activeElement)) return
+        setExpanded(false)
+      }, PEEK_HIDE_MS)
+    }
+    const onMove = (event: PointerEvent): void => {
+      const rect = element.getBoundingClientRect()
+      if (onPeekStrip(popup.edge, rect, event.clientX, event.clientY)
+        || (expanded && inBox(rect, event.clientX, event.clientY))) reveal()
+      else if (expanded) hide()
+    }
+    document.addEventListener('pointermove', onMove, true)
+    element.addEventListener('focusin', reveal)
+    return () => {
+      window.clearTimeout(timer)
+      document.removeEventListener('pointermove', onMove, true)
+      element.removeEventListener('focusin', reveal)
+    }
+  }, [expanded, peek, popup.edge])
 
   useEffect(() => {
     if (!closing) return
@@ -389,11 +498,16 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
       settle()
       return
     }
+    // A parked window fades instead of sliding: its transform already tracks
+    // the peek state, and rewriting it would jump the strip off the edge.
     const slide = SLIDE[popup.edge]
-    const animation = element.animate([
-      { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
-      { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
-    ], { duration: EXIT_MS, easing: EXIT_EASING, fill: 'forwards' })
+    const frames: Keyframe[] = peek
+      ? [{ opacity: 1 }, { opacity: 0 }]
+      : [
+          { opacity: 1, transform: 'translate3d(0px, 0px, 0px)' },
+          { opacity: 0, transform: `translate3d(${String(slide.x)}px, ${String(slide.y)}px, 0)` },
+        ]
+    const animation = element.animate(frames, { duration: EXIT_MS, easing: EXIT_EASING, fill: 'forwards' })
     animation.finished.then(settle, settle)
     // A tab switched to the background can starve `finished`; drop the window anyway.
     const timer = window.setTimeout(settle, EXIT_MS + 120)
@@ -401,7 +515,7 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
       window.clearTimeout(timer)
       animation.cancel()
     }
-  }, [closing, popup.edge, popup.id])
+  }, [closing, peek, popup.edge, popup.id])
 
   const onResizeStart = (event: ReactPointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0 || !resizable) return
@@ -450,6 +564,17 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
     }
   }
 
+  /** Parked windows slide between their strip and their anchored position. */
+  const motion: CSSProperties = peek
+    ? {
+        transform: parked ? peekTransform(popup.edge) : 'translate3d(0, 0, 0)',
+        transition: prefersReducedMotion()
+          ? 'none'
+          : `transform ${String(PEEK_MS)}ms cubic-bezier(0.2, 0.8, 0.2, 1)`,
+        willChange: 'transform',
+      }
+    : {}
+
   return (
     <div style={stripStyle(popup.edge, size)} data-shape-edge-strip={popup.id}>
       <div
@@ -457,12 +582,14 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
         tabIndex={-1}
         role="dialog"
         aria-label={popup.title}
-        style={{ ...WINDOW, ...sizeStyle(size) }}
+        style={{ ...WINDOW, ...sizeStyle(size), ...motion }}
         data-testid="dsh-shape-edge"
         data-shape-edge={popup.id}
         data-edge={popup.edge}
+        data-peek={peek ? (parked ? 'parked' : 'open') : undefined}
         data-width={size.width === 'full' ? 'full' : String(size.width)}
         data-height={size.height === 'full' ? 'full' : String(size.height)}
+        onPointerDown={parked ? () => { setExpanded(true) } : undefined}
       >
         <div style={BAR}>
           <span style={BAR_TITLE} title={popup.title}>{popup.title}</span>
@@ -478,13 +605,13 @@ function EdgeWindow({ popup, closing }: { popup: ShapeEdgePopup; closing: boolea
           </button>
         </div>
         <iframe
-          style={FRAME}
+          style={parked ? { ...FRAME, pointerEvents: 'none' } : FRAME}
           title={popup.title}
           src={viewUrl(popup)}
           referrerPolicy="no-referrer"
           sandbox="allow-scripts allow-forms allow-modals allow-popups"
         />
-        {resizable && (
+        {resizable && !parked && (
           <div
             style={resizeStripStyle(popup.edge)}
             role="separator"

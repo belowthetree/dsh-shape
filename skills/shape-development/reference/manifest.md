@@ -17,8 +17,9 @@
 ## `shape` block
 
 - `apiVersion`: positive integer; default `1`. The current runtime supports only `1`. Other values are discovered but the shape is blocked and cannot start.
-- `kind`: `shape` (default) or `workbench`. A `workbench` shape may register a surface with `api.workbench({ render })`, which the host shows in the shape 工作台 window; any other value makes the manifest invalid.
+- `kind`: `shape` (default) or `workbench`. A `workbench` shape may register a surface with `api.workbench({ render })`, which the host shows in the shape 工作台 window; any other value makes the manifest invalid. Workbench shapes stay dormant like any other, but opening the workbench window wakes every `kind: "workbench"` shape, so they do not need `wake.eager`.
 - `requires`: array of capability requirements.
+- `wake`: optional wake policy. `{ keys?: string | string[], eager?: boolean }`. Absent means dormant: the client module is not imported until the shape's card is opened in the Shapes browser. `keys` registers page-level combinations before the module loads and replays the waking press into the bindings `activate` registers; `eager: true` imports and activates the shape at page open, which is what always-visible entry points (header buttons, injected chips) need. Malformed values invalidate the shape.
 - Each requirement: non-empty `plugin`, non-empty `capability`, non-empty semver `version` range, optional boolean `optional`.
 - Missing required capability, invalid range, or version mismatch blocks the shape card, its chat cards, and its client module.
 - `optional: true` means a missing provider does not block startup; the API is simply absent.

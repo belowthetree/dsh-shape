@@ -63,7 +63,7 @@ dsh-shape 由三部分组成：一个 DSH 宿主插件、一个浏览器端 bund
 浏览器 bundle 通过模块加载器注册，`apply(ctx)` 里做四件事：
 
 1. **槽位桥接**：为 10 个受支持槽位各注册一个桥接组件，把该槽位里所有启用形态的条目渲染出来；`shell.overlay` 单独注册为一个固定浮层。同一个槽位还挂着一个边缘弹窗层（`ShapeEdgeLayer`），它把 `api.edge()` 注册的窗口渲染到 `document.body`，并接管 `Esc`；另一个 `shell.overlay` 座位是工作台窗口（`ShapeWorkbenchLayer`），内容来自 `shape.kind: "workbench"` 的形态通过 `api.workbench()` 注册的 `render`，窗口本身没有关闭按钮，由 `Esc`、空白处点击和 `Ctrl + Alt + W` 关闭。
-2. **形态客户端加载**：按 `enabled` 拉取 `/dsh-shape/client/<id>/@<clientHash>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。`clientHash` 是宿主对 `client/` 文件夹算的内容签名（文件名 + 大小 + mtime），放进路径段而不是 query，是因为入口里的相对 import 会按入口 URL 解析——路径段一变，整张模块图都换成新地址，所以增删文件、改依赖内容都不需要重载页面。刷新时只重启签名变了的形态，旧的模块实例留在内存里。
+2. **形态客户端加载**：只启动 `wake.eager` 的形态；其余休眠，等 `shape.wake.keys` 唤醒或 Shape 浏览器里点开卡片时再拉取 `/dsh-shape/client/<id>/@<clientHash>/index.js`，在隔离作用域里调用形态导出的 `activate(api)`，并保存其返回的清理函数。唤醒键在模块加载前就登记，按下时先 import、activate，再把这次按键分发给形态刚注册的绑定。`clientHash` 是宿主对 `client/` 文件夹算的内容签名（文件名 + 大小 + mtime），放进路径段而不是 query，是因为入口里的相对 import 会按入口 URL 解析——路径段一变，整张模块图都换成新地址，所以增删文件、改依赖内容都不需要重载页面。刷新时只重启签名变了的形态，旧的模块实例留在内存里。
 
    宿主没有返回 `clientHash` 时（旧版本宿主）退回 `?v=<version>-<时间戳>`，每次刷新都重新导入。
 3. **能力实现**：实现 12 个能力（见[能力参考](capabilities.md)），按形态声明的 `requires` 做版本校验后再暴露。
