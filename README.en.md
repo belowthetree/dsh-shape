@@ -31,7 +31,7 @@ Ready to use after installation:
 
 | Shape | Trigger | What it does |
 | --- | --- | --- |
-| `chat-search` | `Ctrl + F`, or the 🔍 button in the header | Find text in the conversation: highlights hits, expands collapsed thinking blocks, scrolls to the match; `F3` / `Shift + F3` step through, `Esc` closes |
+| `chat-search` | `Ctrl + F`, or the 🔍 button in the header | Find text in the conversation: highlights hits, expands collapsed thinking blocks, scrolls to the match; the search runs in async slices, so typing stays responsive on long transcripts; `F3` / `Shift + F3` step through, `Esc` closes |
 | `workspace-tab-switch` | Hold `Ctrl` and tap `Tab` | Opens a workspace strip; releasing the key lands on the highlighted one. `Ctrl + Shift + Tab` reverses, arrows move, `Esc` cancels |
 
 Both live in the package's `shapes/`; enable, disable, or delete them from the shapes panel. To customize one, copy its folder into the user shape root under the same id — the user copy overrides the bundled one and survives plugin upgrades.

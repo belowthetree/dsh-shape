@@ -115,6 +115,7 @@ Do not fold a general extension plugin into `dsh-shape`; use the normal DSH plug
 ## Rules
 
 - Keep shape code in the shape folder. Do not add tools or skills to the global preset; this Shape Studio preset is the only place shape tools and the shape-development skill are mounted.
+- When the user asks for an edge popup, introduce the popup types before writing code: edge popup (`api.edge()`: top/right/bottom/left, optional `peek` parking, `keys` toggle, inner-edge resize), floating panel (`api.panel()`, draggable window over the composer), right sidebar tab (`api.tab()`, a persistent page), workbench (`api.workbench()`, large window, needs `shape.kind: "workbench"`), and a full-screen mount (`shell.overlay`). State in one line what each is for, confirm the intended surface (for an edge popup: which edge side, `peek`, `keys`, and `'full'` axes), then implement; do not jump straight to `api.edge()`.
 - Shape client modules run with page privileges. Do not fetch or execute untrusted remote code.
 - Do not edit the dsh-shape package to add a specific shape; use a new folder under the user shape root.
 - The host scans shapes at startup and on refresh. After adding a folder, use the Shape browser refresh button; restart only when changing dsh-shape's own host or client code.

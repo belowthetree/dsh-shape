@@ -178,6 +178,8 @@ drawer.open()
 - 顶部区域会避开 DSH 的窗口顶栏：上方窗口从顶栏下方 12px 开始，左右窗口和上下占满的窗口也从顶栏下方开始，全屏时顶栏高度按 0 处理（`--dsh-frame-chrome-top`）。普通浏览器里没有这条顶栏，位置不受影响。
 - 视图文件不存在时 `api.edge()` 直接抛错并列出可用的 `views`。
 
+仓库的 `demo/shapes/edge-lab`（不随包发布）把上述每个选项都做成了可点的场景（`Ctrl + Alt + E` 打开控制台）：四个边缘、省略 edge/尺寸的默认值、像素与 `'full'`、`keys`、`peek`、`esc: false`、`resizable: false`、同侧叠层，以及视图与 client 之间的 `postMessage` 桥。把它复制到用户形态目录（`$DSH_HOME/dsh-shape/shapes/edge-lab`）即可在本地调试；调参数时改它自己的 `client/index.js` 并在形态面板点刷新，比另建一个形态快。
+
 ## 工作台
 
 工作台是顶栏左侧 **shape 工作台** 按钮（或 `Ctrl + Alt + W`）打开的独立窗口，约占视口 80%。窗口没有标题栏，形态内容直接铺满整个窗口。窗口没有关闭按钮：按 `Esc`、点窗口外的空白处、或再按一次 `Ctrl + Alt + W` 关闭。

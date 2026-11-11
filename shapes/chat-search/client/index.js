@@ -16,6 +16,12 @@
  * text nodes in <mark>. Ranges never modify the host's React-managed DOM, so a
  * re-render cannot orphan a highlight, and every rendered hit is highlighted at
  * once instead of only the row the bar currently stands on.
+ *
+ * Searching is asynchronous: reading the rendered rows and painting their ranges
+ * both run in time-budgeted slices that yield to the event loop, and a newer
+ * keystroke aborts the run in flight. A single synchronous pass over a long
+ * transcript blocked the find input, so every query is cancellable and never
+ * holds the main thread longer than one slice.
  */
 
 const BOX_STYLE = [
@@ -72,6 +78,25 @@ const EXPAND_SETTLE_MS = 60
 const REVEAL_RETRY_MS = 140
 const EMPTY_RETRY_MS = 300
 const HIT_LIMIT = 500
+/** Work one search slice may take before yielding to the next task. */
+const SEARCH_SLICE_MS = 7
+/** Work one paint slice may take before yielding. */
+const PAINT_SLICE_MS = 7
+/** Selector of one rendered message row. */
+const ANCHOR_SELECTOR = '[data-chat-anchor-key]'
+
+/**
+ * Yield to the event loop so keystrokes and clicks are handled between slices.
+ * `scheduler.yield` keeps the continuation ahead of rendering work where it
+ * exists; otherwise a macrotask is enough to unblock input.
+ * @returns promise resolved after the browser had a chance to process input.
+ */
+function yieldToMain() {
+  if (typeof scheduler !== 'undefined' && scheduler !== null && typeof scheduler.yield === 'function') {
+    return scheduler.yield()
+  }
+  return new Promise((resolve) => { window.setTimeout(resolve, 0) })
+}
 
 /**
  * Collect the non-empty text nodes under a row, in document order.
@@ -184,6 +209,14 @@ export function activate(api) {
   let index = -1
   let visible = false
   let retriedFor = null
+  /** True while an async search is running; the counter shows a pending mark. */
+  let searching = false
+  /** Bumped on every keystroke and new search; stale runs compare against it. */
+  let searchGeneration = 0
+  /** Bumped on every paint; only the newest paint applies highlights. */
+  let paintToken = 0
+  /** Bumped on every transcript refresh; the newest refresh wins. */
+  let refreshSeq = 0
 
   /** Timers owned by the current jump; dropped by the next jump or by close(). */
   const jumpTimers = new Set()
@@ -243,6 +276,11 @@ export function activate(api) {
       counter.textContent = ''
       return
     }
+    if (searching) {
+      counter.textContent = '…'
+      counter.title = '正在搜索'
+      return
+    }
     if (hits.length === 0) {
       counter.textContent = '无结果'
       return
@@ -255,27 +293,55 @@ export function activate(api) {
     counter.title = '这条命中所在的历史还没加载'
   }
 
-  /** Repaint every hit, with the current one in its own stronger colour. */
-  const paint = () => {
+  /**
+   * Repaint every hit, with the current one in its own stronger colour. Runs in
+   * slices, so a long transcript cannot block the find input, and the newest
+   * paint wins: a stale one stops at its next slice boundary.
+   */
+  const paint = async () => {
     if (!canHighlight) return
-    const needle = query.trim().toLowerCase()
-    if (needle === '' || hits.length === 0) {
+    const token = ++paintToken
+    try {
+      const needle = query.trim().toLowerCase()
+      if (needle === '' || hits.length === 0) {
+        clearHighlights()
+        return
+      }
+      const rows = rowsByAnchor()
+      const activeId = index >= 0 && index < hits.length ? hits[index].messageId : null
+      const restRanges = []
+      const activeRanges = []
+      // One walk per row: several hits can live in the same message, and the old
+      // loop re-walked that row once per occurrence.
+      const painted = new Set()
+      let sliceStart = performance.now()
+      for (const hit of hits) {
+        if (token !== paintToken) return
+        const messageId = hit.messageId
+        if (painted.has(messageId)) continue
+        painted.add(messageId)
+        const row = rows.get(messageId)
+        if (row === undefined || !row.isConnected) continue
+        const target = messageId === activeId ? activeRanges : restRanges
+        for (const range of rangesFor(row, needle)) target.push(range)
+        if (performance.now() - sliceStart >= PAINT_SLICE_MS) {
+          await yieldToMain()
+          sliceStart = performance.now()
+        }
+      }
+      if (token !== paintToken) return
+      const rest = new Highlight()
+      const active = new Highlight()
+      // The transcript may have re-rendered while this paint was yielding; a
+      // range whose node went away cannot be highlighted.
+      for (const range of restRanges) if (range.startContainer.isConnected) rest.add(range)
+      for (const range of activeRanges) if (range.startContainer.isConnected) active.add(range)
       clearHighlights()
-      return
+      if (rest.size > 0) CSS.highlights.set(HIGHLIGHT_HITS, rest)
+      if (active.size > 0) CSS.highlights.set(HIGHLIGHT_ACTIVE, active)
+    } catch (cause) {
+      console.warn('chat-search: painting failed', cause)
     }
-    const rows = rowsByAnchor()
-    const activeId = index >= 0 && index < hits.length ? hits[index].messageId : null
-    const rest = new Highlight()
-    const active = new Highlight()
-    for (const hit of hits) {
-      const row = rows.get(hit.messageId)
-      if (row === undefined) continue
-      const target = hit.messageId === activeId ? active : rest
-      for (const range of rangesFor(row, needle)) target.add(range)
-    }
-    clearHighlights()
-    if (rest.size > 0) CSS.highlights.set(HIGHLIGHT_HITS, rest)
-    if (active.size > 0) CSS.highlights.set(HIGHLIGHT_ACTIVE, active)
   }
 
   /**
@@ -301,7 +367,7 @@ export function activate(api) {
     const row = rowFor(messageId)
     if (row === null) {
       reportUnloaded()
-      paint()
+      void paint()
       return
     }
     clearActiveRow()
@@ -310,8 +376,8 @@ export function activate(api) {
     row.style.setProperty('outline-offset', '2px')
     row.scrollIntoView({ block: 'center', behavior: 'smooth' })
     keepInputFocus(() => { expandCollapsed(row) })
-    paint()
-    later(() => { keepInputFocus(paint) }, EXPAND_SETTLE_MS)
+    void paint()
+    later(() => { keepInputFocus(() => { void paint() }) }, EXPAND_SETTLE_MS)
   }
 
   /**
@@ -323,7 +389,7 @@ export function activate(api) {
     if (hits.length === 0) {
       index = -1
       updateCounter()
-      paint()
+      void paint()
       return
     }
     index = ((next % hits.length) + hits.length) % hits.length
@@ -343,20 +409,75 @@ export function activate(api) {
     later(() => { settle(messageId) }, REVEAL_RETRY_MS)
   }
 
-  const runSearch = () => {
+  /**
+   * Collect every occurrence of a needle from the rendered transcript in
+   * time-budgeted slices, aborting as soon as a newer query supersedes it.
+   * @param needle - lowercased, non-empty needle.
+   * @param generation - search generation this run belongs to.
+   * @returns hits in transcript order, or null when superseded.
+   */
+  const collectHits = async (needle, generation) => {
+    const found = []
+    const seen = new Set()
+    let sliceStart = performance.now()
+    for (const row of document.querySelectorAll(ANCHOR_SELECTOR)) {
+      if (generation !== searchGeneration) return null
+      const messageId = row.getAttribute('data-chat-anchor-key') ?? ''
+      if (messageId === '' || seen.has(messageId)) continue
+      const text = (row.textContent ?? '').replace(/\s+/gu, ' ').trim()
+      if (text === '') continue
+      seen.add(messageId)
+      const hay = text.toLowerCase()
+      let at = hay.indexOf(needle)
+      while (at !== -1) {
+        found.push({ messageId })
+        if (found.length >= HIT_LIMIT) return found
+        at = hay.indexOf(needle, at + needle.length)
+      }
+      if (performance.now() - sliceStart >= SEARCH_SLICE_MS) {
+        await yieldToMain()
+        sliceStart = performance.now()
+      }
+    }
+    return found
+  }
+
+  const runSearch = async () => {
     const needle = query.trim()
-    hits = needle === '' ? [] : [...conversation.find(needle, { limit: HIT_LIMIT })]
+    const generation = ++searchGeneration
+    if (needle === '') {
+      searching = false
+      hits = []
+      index = -1
+      cancelJumpTimers()
+      clearActiveRow()
+      clearHighlights()
+      updateCounter()
+      return
+    }
+    searching = true
+    updateCounter()
+    let found
+    try {
+      found = await collectHits(needle.toLowerCase(), generation)
+    } catch (cause) {
+      console.warn('chat-search: search failed', cause)
+      found = []
+    }
+    if (found === null || generation !== searchGeneration) return
+    searching = false
+    hits = found
     index = hits.length === 0 ? -1 : 0
     if (hits.length === 0) {
       cancelJumpTimers()
       clearActiveRow()
-      paint()
+      void paint()
       updateCounter()
-      if (needle !== '' && retriedFor !== needle) {
+      if (retriedFor !== needle) {
         retriedFor = needle
         // The transcript may still be mounting; retry once, then let the
         // transcript subscription keep the hits current.
-        later(() => { if (visible && query.trim() === needle) runSearch() }, EMPTY_RETRY_MS)
+        later(() => { if (visible && query.trim() === needle) void runSearch() }, EMPTY_RETRY_MS)
       }
       return
     }
@@ -365,7 +486,35 @@ export function activate(api) {
 
   const scheduleSearch = () => {
     window.clearTimeout(searchTimer)
-    searchTimer = window.setTimeout(runSearch, SEARCH_DEBOUNCE_MS)
+    searchTimer = window.setTimeout(() => { void runSearch() }, SEARCH_DEBOUNCE_MS)
+  }
+
+  /** Run one transcript refresh; a newer search or refresh supersedes it. */
+  const refreshNow = async () => {
+    if (!visible || searching) return
+    const needle = query.trim()
+    if (needle === '') return
+    const generation = searchGeneration
+    const seq = ++refreshSeq
+    const anchorId = index >= 0 && index < hits.length ? hits[index].messageId : null
+    let found
+    try {
+      found = await collectHits(needle.toLowerCase(), generation)
+    } catch (cause) {
+      console.warn('chat-search: refresh failed', cause)
+      return
+    }
+    if (found === null || generation !== searchGeneration || seq !== refreshSeq) return
+    hits = found
+    if (hits.length === 0) {
+      index = -1
+      clearActiveRow()
+    } else {
+      const at = anchorId === null ? -1 : hits.findIndex((hit) => hit.messageId === anchorId)
+      index = at === -1 ? Math.min(Math.max(index, 0), hits.length - 1) : at
+    }
+    void paint()
+    updateCounter()
   }
 
   /**
@@ -375,26 +524,15 @@ export function activate(api) {
   const refresh = () => {
     if (!visible || query.trim() === '') return
     window.clearTimeout(refreshTimer)
-    refreshTimer = window.setTimeout(() => {
-      if (!visible) return
-      const needle = query.trim()
-      if (needle === '') return
-      const anchorId = index >= 0 && index < hits.length ? hits[index].messageId : null
-      hits = [...conversation.find(needle, { limit: HIT_LIMIT })]
-      if (hits.length === 0) {
-        index = -1
-        clearActiveRow()
-      } else {
-        const at = anchorId === null ? -1 : hits.findIndex((hit) => hit.messageId === anchorId)
-        index = at === -1 ? Math.min(Math.max(index, 0), hits.length - 1) : at
-      }
-      paint()
-      updateCounter()
-    }, SEARCH_DEBOUNCE_MS)
+    refreshTimer = window.setTimeout(() => { void refreshNow() }, SEARCH_DEBOUNCE_MS)
   }
 
   const close = () => {
     visible = false
+    // Abort any scan or paint still running for the closed query.
+    searchGeneration += 1
+    paintToken += 1
+    searching = false
     window.clearTimeout(searchTimer)
     window.clearTimeout(refreshTimer)
     cancelJumpTimers()
@@ -417,7 +555,7 @@ export function activate(api) {
     box.style.display = 'flex'
     input.focus()
     input.select()
-    runSearch()
+    void runSearch()
   }
 
   const toggle = () => {
@@ -425,10 +563,24 @@ export function activate(api) {
     else open()
   }
 
-  input.addEventListener('input', () => {
+  input.addEventListener('input', (event) => {
     query = input.value
     retriedFor = null
+    // Abort the previous scan before it can block the keystroke being handled.
+    searchGeneration += 1
+    paintToken += 1
+    if (event.isComposing) {
+      // An IME composition is not a finished query: wait for compositionend
+      // instead of searching every intermediate candidate.
+      window.clearTimeout(searchTimer)
+      searching = false
+      updateCounter()
+      return
+    }
     scheduleSearch()
+  })
+  input.addEventListener('compositionend', () => {
+    if (visible) scheduleSearch()
   })
   input.addEventListener('keydown', (event) => {
     // While an IME composes, Enter commits the composition instead of acting on
@@ -521,7 +673,7 @@ export function activate(api) {
     container.append(trigger)
     // The header slot re-renders on a session switch: search the transcript that
     // is now on screen instead of keeping hits from the previous session.
-    if (visible) later(runSearch, 0)
+    if (visible) later(() => { void runSearch() }, 0)
     return () => {
       trigger.remove()
     }
@@ -542,6 +694,10 @@ export function activate(api) {
   const fallbackTimer = window.setTimeout(mountBodyFallback, 1500)
 
   return () => {
+    // Abort pending searches/paints before the DOM they read goes away.
+    searchGeneration += 1
+    paintToken += 1
+    searching = false
     window.clearTimeout(fallbackTimer)
     document.removeEventListener('keydown', onKeyDown, true)
     if (typeof offTranscript === 'function') offTranscript()

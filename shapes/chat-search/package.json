@@ -1,9 +1,9 @@
 {
   "name": "chat-search",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "title": "对话内搜索",
-  "description": "Ctrl+F 在聊天记录里搜索，命中高亮并自动展开折叠消息；F3 / Shift+F3 跳转，Esc 关闭。",
+  "description": "Ctrl+F 在聊天记录里搜索，命中高亮并自动展开折叠消息；搜索分片异步执行，输入不被长会话阻塞；F3 / Shift+F3 跳转，Esc 关闭。",
   "output": "text",
   "shape": {
     "apiVersion": 1,

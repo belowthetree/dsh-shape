@@ -22,16 +22,18 @@ Keep every client module inside `client/` — a cross-directory relative import 
 
 ## 2. A floating find bar (search the conversation)
 
-1. Capabilities: `conversation` (find/reveal/subscribe), `slots` (one header mount for the trigger).
+1. Capabilities: `conversation` (reveal/subscribe for jumps; `find` works for small transcripts), `slots` (one header mount for the trigger).
 2. Build the bar as a plain DOM node; `position: fixed; top: 64px; right: 24px; z-index: 60`.
 3. **Append it to `document.body`, not to a slot** — the bar must survive header re-renders.
 4. Mount only the 🔍 trigger into `conversation.session.header.utilities`, with a watchdog that parks it on `document.body` if it is still disconnected after ~1.5 s.
 5. Keyboard: a `document` capture listener owning `Ctrl/Cmd+F` (`preventDefault`), with `F3`/`Shift+F3` only while open (see [keyboard.md](keyboard.md)).
-6. Search: `conversation.find(needle, { limit })`; retry once after ~300 ms when the result is empty, because the transcript may still be mounting.
+6. **Search incrementally, not inside the keystroke.** `conversation.find()` is one synchronous pass that reads every rendered row's `textContent`; on a long conversation it blocks the find input. Read the `[data-chat-anchor-key]` rows in ~7 ms slices that `await scheduler.yield()` (or a `setTimeout(0)` fallback), bump a generation token on every `input` so the previous run aborts at its next slice, and skip searches while an IME composes (run them on `compositionend`). Retry once after ~300 ms when the result is empty, because the transcript may still be mounting.
 7. On a hit: expand collapsed blocks, `scrollIntoView({ block: 'center' })`, highlight, and restore input focus (see [transcript.md](transcript.md)).
 8. `Escape` closes and clears highlights.
 
 Verified: `1/57` hits on a long session, `F3` stepping, `Esc` clearing, and a hit inside a collapsed thinking block expanding automatically.
+
+Async search (0.8.2): the bundled `chat-search` dropped `conversation.find()` from its input path and now reads rows plus paints highlight ranges in time-budgeted slices, deduping paint work to one walk per matched row. Verified in jsdom against a stubbed `conversation` capability with 87 rows (duplicates, multi-occurrence messages, empty rows, CJK text): the hit count matched the old `find()` count exactly, the scan produced slice yields, a keystroke during a scan discarded the stale result, IME composition produced no search until `compositionend`, `F3` advanced through the async hits, the deduped paint set both highlights, and `Escape` / dispose removed the listener, highlights and style. Not yet run against a live Host.
 
 ## 3. A workspace/tab switcher (hold a key, release to commit)
 
