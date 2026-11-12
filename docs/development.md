@@ -46,21 +46,23 @@ curl http://127.0.0.1:<port>/dsh-shape/api/health
 
 宿主改成手写 JavaScript 之前，`src/host/index.ts` 与 `index.js` 是两份：`/api/data` 只进了产物，源码缺 148 行。现在只有一份，`src/host/*.js` 就是真相，改行为改这里即可。
 
-## 发布前的三道检查
+## 发布前的四道检查
 
 ```sh
 node scripts/check-client-bundle.mjs              # 整包加载 client.js 并调用 apply(ctx)
 node scripts/gen-capability-fallback.mjs --check  # 静态能力清单与 bundle 一致
 node scripts/check-tool-schemas.mjs               # 工具 schema 在 DSH 支持的子集内
+node scripts/check-runtime-refresh.mjs            # 刷新只重导变化的 eager 形态，休眠的不导
 ```
 
-三条都在 `.github/workflows/publish.yml` 里，版本未发布时依次执行后发布到 npm。
+四条都在 `.github/workflows/publish.yml` 里。前三条带 `if: state == 'new'`，只在这个版本还没发布时执行；最后一条**每次 push 都跑**，不看版本——这样用例一旦落后于运行时行为就当场失败，而不是攒到下一次发版才暴露。发版前按这个顺序本地跑一遍。
 
-### 为什么需要这三道
+### 为什么需要这四道
 
 - **整包加载**：`client.js` 是手工维护的 rolldown 产物，历史上出现过拼接把代码放到 `apply` 外面，导致工厂期 `ReferenceError`、客户端插件整体不可用。
 - **能力清单一致**：`skills/shape-development/reference/capabilities.generated.json` 是 `shape_capabilities` 的兜底数据，和 bundle 里的能力定义必须同步。
 - **工具 schema**：DSH 只接受 JSON Schema 的一个子集，`type` 必须是**单个字符串**。写了 `type: ['string', 'null']` 不会在加载时报错，而是让挂载该工具的预设行被判为不可用，整个 Shape Studio 预设从选择器消失。
+- **刷新重导**：`createShapeRuntime` 只对可启动、已启用的形态做哈希 diff，用模块加载钩子拦住 `import()` 就能在无浏览器的情况下断言"只重导变化的形态""重启加计数后缀""停用只停不导""休眠形态不导"。注意夹具必须写 `wake`：形态默认休眠，漏了 `{ eager: true }` 的夹具什么都导不进来，整个用例会红成一片。它曾经就这样落后于生命周期改动，把发布卡在 `.github/workflows/publish.yml` 的这一步上。
 
 ## client.js 的维护方式
 

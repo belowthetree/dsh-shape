@@ -135,8 +135,10 @@ const check = (label, actual, expected) => {
   if (!ok) failures.push(label)
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}: ${JSON.stringify(actual)}${ok ? '' : ` (expected ${JSON.stringify(expected)})`}`)
 }
-const shape = (id, hash) => ({
-  id, title: id, version: '1.0.0', valid: true, enabled: true, clientEntry: 'index.js', clientHash: hash,
+// Shapes are dormant unless they opt in with `wake.eager`, so refresh only diffs the
+// eager ones. These fixtures are that case; the dormancy path has its own check below.
+const shape = (id, hash, wake = { keys: [], eager: true }) => ({
+  id, title: id, version: '1.0.0', valid: true, enabled: true, clientEntry: 'index.js', clientHash: hash, wake,
 })
 
 shapes = [shape('alpha', 'aaaaaaaaaa'), shape('beta', 'bbbbbbbbbb')]
@@ -174,8 +176,16 @@ stubWindow.dispatchEvent({ type: 'dsh-shape:refresh' })
 await settleAll()
 check('disabling a shape stops it without importing anything', [globalThis.__disposed, globalThis.__imports], [['alpha', 'beta'], []])
 
+// A shape without `wake.eager` is dormant: refresh must neither import nor dispose it.
+shapes = [shape('gamma', 'dddddddddd', { keys: [], eager: false })]
+globalThis.__imports = []
+globalThis.__disposed = []
+stubWindow.dispatchEvent({ type: 'dsh-shape:refresh' })
+await settleAll()
+check('a dormant shape is not imported by refresh', [globalThis.__imports, globalThis.__disposed], [[], []])
+
 if (failures.length > 0) {
   console.error(`runtime refresh FAILED (${String(failures.length)}): ${failures.join(', ')}`)
   process.exit(1)
 }
-console.log('runtime refresh OK: 9 checks')
+console.log('runtime refresh OK: 10 checks')
