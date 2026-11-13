@@ -2,7 +2,13 @@
 
 [中文](README.md) | [English](README.en.md)
 
-[![dsh-shape 海报](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
+[![dsh-shape 海报](demo/poster.png)](demo/dsh-shape-demo.gif)
+
+## 演示
+
+![dsh-shape 演示](demo/dsh-shape-demo.gif)
+
+28 秒功能演示（720px GIF 预览）· [演示源码与复现步骤](demo)
 
 dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**：一个 shape（形态）就是一份清单加可选脚本，即时给 DSH 加上界面、聊天卡片和页面级快捷操作。
 
@@ -35,6 +41,18 @@ dsh-shape 是 DeepSeek Harness 插件，提供一种**动态轻量扩展形态**
 | `workspace-tab-switch` | 按住 `Ctrl` 连按 `Tab` | 弹出工作区预览条，松手切到高亮项；`Ctrl + Shift + Tab` 反向，方向键移动，`Esc` 取消 |
 
 两者都在包内 `shapes/` 里，可在 Shapes 面板启停或删除。想改造就把目录复制到用户目录并保持同名 id——用户版本会覆盖内置版本，升级插件不会冲掉你的改动。
+
+### 对话内搜索（`chat-search`）
+
+随包内置的搜索形态，默认加载（清单里 `shape.wake.eager: true`），两个入口：`Ctrl + F`，或对话顶栏的 🔍 按钮。按下后对话右上角出现查找条，输入即搜。
+
+- **搜什么**：当前会话已渲染的消息正文、思考内容与工具调用行，按字面量匹配、不区分大小写；命中处直接高亮，当前命中用更醒目的颜色，并给整行加描边
+- **怎么跳**：`F3` 下一条、`Shift + F3` 上一条，也可以点查找条上的 ↓ / ↑；到头会回绕。命中的行平滑滚动到视口中间，落在折叠消息里的命中会先自动展开
+- **进度**：查找条右侧显示 `当前/总数`（例如 `1/21`）；没命中显示「无结果」，还在扫描时显示「…」；命中落在尚未加载的历史里时显示「`n/m` 未加载」，并请求宿主把那段历史加载出来
+- **长会话不卡**：扫描与高亮按时间片异步执行，输入不被长对话阻塞；新输入会立即抢占上一次查询
+- **关闭**：`Esc`、点查找条上的 ×，或再按一次 `Ctrl + F`；关闭即清空查询与高亮
+- **限制**：只能搜到已经渲染的内容，更早的历史要等对话自己加载，详见[已知问题](docs/known-issues.md)
+- **停用 / 改造**：它是普通形态，可在 Shapes 面板里关掉或删除；想改就把 `shapes/chat-search/` 复制到用户目录并保持同名 id
 
 ## 内置能力
 
@@ -76,12 +94,6 @@ await store.set('collapsed', true)   // → <shape>/data/collapsed.json
 - [已知问题](docs/known-issues.md)：当前不可用的 API 与踩过的坑
 
 仓库里有三份 skill：`skills/shape-development/` 教 agent 写形态、`skills/shape-playbook/` 是经验流程文档（已验证的各类形态做法，加上 UI 不渲染、快捷键被拒、搜索/展开/高亮、预设判定损坏这些坑），两份都随包发布并由 Shape Studio 预设注册；`.dsh/skills/dsh-shape-contribution/` 教 agent 改这个包本身，放在 DSH 的**项目级技能目录**里，在本仓库工作时任何预设都能用。
-
-## 演示
-
-![dsh-shape 演示](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)
-
-22 秒功能演示：[1080p MP4](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4) · [演示源码与复现步骤](https://github.com/belowthetree/dsh-shape/tree/main/demo)
 
 ## Shape Studio 预设
 

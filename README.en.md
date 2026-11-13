@@ -2,7 +2,13 @@
 
 [English](README.en.md) | [中文](README.md)
 
-[![dsh-shape poster](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/poster.png)](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4)
+[![dsh-shape poster](demo/poster.png)](demo/dsh-shape-demo.gif)
+
+## Demo
+
+![dsh-shape demo](demo/dsh-shape-demo.gif)
+
+28-second feature demo (720px GIF preview) · [source and reproduction steps](demo)
 
 dsh-shape is a DeepSeek Harness plugin offering a **dynamic lightweight extension form** (形态): a shape is a manifest plus optional scripts that adds UI, chat cards, and page-level shortcuts to DSH on the fly.
 
@@ -35,6 +41,18 @@ Ready to use after installation:
 | `workspace-tab-switch` | Hold `Ctrl` and tap `Tab` | Opens a workspace strip; releasing the key lands on the highlighted one. `Ctrl + Shift + Tab` reverses, arrows move, `Esc` cancels |
 
 Both live in the package's `shapes/`; enable, disable, or delete them from the shapes panel. To customize one, copy its folder into the user shape root under the same id — the user copy overrides the bundled one and survives plugin upgrades.
+
+### Find in the conversation (`chat-search`)
+
+A bundled search shape, loaded eagerly (`shape.wake.eager: true` in its manifest). Two entry points: `Ctrl + F`, or the 🔍 button in the conversation header. A find bar appears at the top-right of the conversation and searches as you type.
+
+- **What it searches**: the text of every rendered message row in the current conversation — bodies, thinking blocks, and tool-call lines — matched literally and case-insensitively; hits are highlighted, with the current hit in a stronger colour plus a row outline
+- **Stepping**: `F3` for the next hit, `Shift + F3` for the previous one (or the ↓ / ↑ buttons in the bar); it wraps at both ends. The hit scrolls to the middle of the viewport, and a hit inside collapsed content expands it first
+- **Progress**: the counter shows `current/total` (e.g. `1/21`), `no results` when nothing matches, `…` while still scanning, and `n/m not loaded` when a hit lives in history that is not rendered yet — the host is then asked to load that part
+- **Long transcripts**: scanning and painting run in async slices, so typing stays responsive; a newer query immediately supersedes the previous one
+- **Closing**: `Esc`, the × button, or `Ctrl + F` again; closing clears the query and the highlights
+- **Limit**: only rendered content is searchable — older history loads on demand (see [Known issues](docs/known-issues.md))
+- **Disable or fork it**: it is a normal shape — turn it off or delete it in the shapes panel, or copy `shapes/chat-search/` into the user directory keeping the same id
 
 ## Built-in capabilities
 
@@ -77,12 +95,6 @@ The reference docs under [`docs/`](docs/README.md) are written in Chinese:
 - [Known issues](docs/known-issues.md) — APIs that do not work yet and the traps behind them
 
 Three skills live in the repository: `skills/shape-development/` (authoring shapes), `skills/shape-playbook/` (verified workflows for each kind of shape, plus the traps that cost time: UI that never renders, rejected shortcuts, searching and expanding the transcript, presets that break), both bundled into the Shape Studio preset, and `.dsh/skills/dsh-shape-contribution/` (changing the package itself). The last one sits in DSH's **project-level** skill root, so any preset used in this repository can load it.
-
-## Demo
-
-![dsh-shape demo](https://raw.githubusercontent.com/belowthetree/dsh-shape/main/demo/dsh-shape-demo.gif)
-
-22-second feature demo: [1080p MP4](https://github.com/belowthetree/dsh-shape/blob/main/demo/dsh-shape-demo.mp4) · [source and reproduction steps](https://github.com/belowthetree/dsh-shape/tree/main/demo)
 
 ## Shape Studio preset
 
